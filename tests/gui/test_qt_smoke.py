@@ -44,19 +44,37 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
     assert len(window.panel_widgets) == 3
 
     assert window._close_window_action.shortcut().toString() == "Alt+W"
-    assert window._exit_action.shortcut().toString() == "Alt+X"
+    exit_shortcuts = {seq.toString() for seq in window._exit_action.shortcuts()}
+    assert {"Ctrl+Q", "Alt+X"} <= exit_shortcuts
+
+    menu_titles = [action.text().replace("&", "") for action in window.menuBar().actions()]
+    assert menu_titles[:3] == ["File", "View", "Help"]
 
     file_menu = window.menuBar().actions()[0].menu()
     assert file_menu is not None
-    file_labels = [action.text() for action in file_menu.actions() if action.text()]
+    file_labels = [action.text().replace("&", "") for action in file_menu.actions() if action.text()]
     assert "Close Window" in file_labels
     assert "Exit" in file_labels
     assert "Save View" in file_labels
     assert "Restore View" in file_labels
     assert "Replace View" in file_labels
 
-    restore_action = next(action for action in file_menu.actions() if action.text() == "Restore View")
+    restore_action = next(
+        action for action in file_menu.actions() if action.text().replace("&", "") == "Restore View"
+    )
     assert restore_action.menu() is not None
+
+    view_menu = window.menuBar().actions()[1].menu()
+    assert view_menu is not None
+    refresh_action = next((action for action in view_menu.actions() if action.text() == "&Refresh"), None)
+    assert refresh_action is not None
+    assert refresh_action.shortcut().toString() == "F5"
+
+    help_menu = window.menuBar().actions()[2].menu()
+    assert help_menu is not None
+    help_action = next((action for action in help_menu.actions() if action.text() == "&Help"), None)
+    assert help_action is not None
+    assert help_action.shortcut().toString() == "F1"
 
 
 def test_hidden_action_updates_model_filter(qtbot, tmp_path: Path) -> None:

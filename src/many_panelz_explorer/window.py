@@ -203,77 +203,85 @@ class ExplorerWindow(QMainWindow):
 
     # ----- UI composition -----
     def _build_actions(self) -> None:
-        self._new_tab_action = QAction("New Tab", self)
+        self._new_tab_action = QAction("&New Tab", self)
         self._new_tab_action.setShortcut(QKeySequence("Ctrl+T"))
         self._new_tab_action.triggered.connect(self.new_tab_in_active_panel)
 
-        self._new_vertical_panel_action = QAction("New Vertical Panel", self)
+        self._new_vertical_panel_action = QAction("New &Vertical Panel", self)
         self._new_vertical_panel_action.setShortcut(QKeySequence("Ctrl+P"))
         self._new_vertical_panel_action.triggered.connect(
             lambda: self.split_active_panel(Qt.Orientation.Horizontal)
         )
 
-        self._new_horizontal_panel_action = QAction("New Horizontal Panel", self)
+        self._new_horizontal_panel_action = QAction("New &Horizontal Panel", self)
         self._new_horizontal_panel_action.setShortcut(QKeySequence("Ctrl+H"))
         self._new_horizontal_panel_action.triggered.connect(
             lambda: self.split_active_panel(Qt.Orientation.Vertical)
         )
 
-        self._clone_vertical_panel_action = QAction("Clone Current Panel (Vertical)", self)
+        self._clone_vertical_panel_action = QAction("Clone Current Panel (Ver&tical)", self)
         self._clone_vertical_panel_action.triggered.connect(
             lambda: self.clone_active_panel(Qt.Orientation.Horizontal)
         )
 
-        self._clone_horizontal_panel_action = QAction("Clone Current Panel (Horizontal)", self)
+        self._clone_horizontal_panel_action = QAction("Clone Current Panel (Hori&zontal)", self)
         self._clone_horizontal_panel_action.triggered.connect(
             lambda: self.clone_active_panel(Qt.Orientation.Vertical)
         )
 
-        self._new_window_action = QAction("New Window", self)
+        self._new_window_action = QAction("New &Window", self)
         self._new_window_action.setShortcut(QKeySequence("Ctrl+N"))
         self._new_window_action.triggered.connect(self.request_new_window.emit)
 
-        self._clone_window_action = QAction("Clone Current Window", self)
+        self._clone_window_action = QAction("Clone Current W&indow", self)
         self._clone_window_action.triggered.connect(self.clone_current_window)
 
-        self._save_view_action = QAction("Save View", self)
+        self._save_view_action = QAction("&Save View", self)
         self._save_view_action.triggered.connect(self.save_view)
 
-        self._restore_view_action = QAction("Restore View...", self)
+        self._restore_view_action = QAction("&Restore View...", self)
         self._restore_view_action.triggered.connect(self.restore_view)
 
-        self._replace_view_action = QAction("Replace View", self)
+        self._replace_view_action = QAction("Re&place View", self)
         self._replace_view_action.triggered.connect(self.replace_view)
 
-        self._close_tab_action = QAction("Close Tab", self)
+        self._close_tab_action = QAction("Close Ta&b", self)
         self._close_tab_action.setShortcut(QKeySequence("Ctrl+W"))
         self._close_tab_action.triggered.connect(self.close_active_tab)
 
-        self._close_panel_action = QAction("Close Panel", self)
+        self._close_panel_action = QAction("Close Pane&l", self)
         self._close_panel_action.setShortcut(QKeySequence("Ctrl+Shift+W"))
         self._close_panel_action.triggered.connect(self.close_active_panel)
 
-        self._close_window_action = QAction("Close Window", self)
+        self._close_window_action = QAction("Close Win&dow", self)
         self._close_window_action.setShortcut(QKeySequence("Alt+W"))
         self._close_window_action.triggered.connect(self.close)
 
-        self._exit_action = QAction("Exit", self)
-        self._exit_action.setShortcut(QKeySequence("Alt+X"))
+        self._exit_action = QAction("E&xit", self)
+        self._exit_action.setShortcuts([QKeySequence("Ctrl+Q"), QKeySequence("Alt+X")])
         self._exit_action.triggered.connect(self._quit_application)
 
-        self._on_top_action = QAction("On top", self)
+        self._refresh_action = QAction("&Refresh", self)
+        self._refresh_action.setShortcut(QKeySequence("F5"))
+        self._refresh_action.triggered.connect(self._refresh_active_panel)
+
+        self._on_top_action = QAction("On &Top", self)
         self._on_top_action.setCheckable(True)
         self._on_top_action.toggled.connect(self.set_on_top)
 
-        self._show_hidden_action = QAction("Show hidden files", self)
+        self._show_hidden_action = QAction("Show &Hidden Files", self)
         self._show_hidden_action.setCheckable(True)
         self._show_hidden_action.setChecked(self._show_hidden)
         self._show_hidden_action.toggled.connect(self._toggle_show_hidden)
 
+        self._help_action = QAction("&Help", self)
+        self._help_action.setShortcut(QKeySequence("F1"))
+        self._help_action.triggered.connect(self._show_help)
+
     def _build_menus(self) -> None:
         menu_bar = self.menuBar()
 
-        file_menu = QMenu("File", self)
+        file_menu = QMenu("&File", self)
         file_menu.addAction(self._new_tab_action)
         file_menu.addAction(self._new_vertical_panel_action)
         file_menu.addAction(self._new_horizontal_panel_action)
@@ -283,7 +291,7 @@ class ExplorerWindow(QMainWindow):
         file_menu.addAction(self._clone_window_action)
         file_menu.addSeparator()
         file_menu.addAction(self._save_view_action)
-        self._restore_view_menu = QMenu("Restore View", self)
+        self._restore_view_menu = QMenu("&Restore View", self)
         self._restore_view_menu.aboutToShow.connect(self._populate_restore_view_menu)
         file_menu.addMenu(self._restore_view_menu)
         file_menu.addAction(self._replace_view_action)
@@ -294,12 +302,18 @@ class ExplorerWindow(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(self._exit_action)
 
-        view_menu = QMenu("View", self)
+        view_menu = QMenu("&View", self)
+        view_menu.addAction(self._refresh_action)
+        view_menu.addSeparator()
         view_menu.addAction(self._on_top_action)
         view_menu.addAction(self._show_hidden_action)
 
+        help_menu = QMenu("&Help", self)
+        help_menu.addAction(self._help_action)
+
         menu_bar.addMenu(file_menu)
         menu_bar.addMenu(view_menu)
+        menu_bar.addMenu(help_menu)
 
         self.addActions(
             [
@@ -317,19 +331,35 @@ class ExplorerWindow(QMainWindow):
                 self._close_panel_action,
                 self._close_window_action,
                 self._exit_action,
+                self._refresh_action,
+                self._help_action,
             ]
+        )
+
+    def _refresh_active_panel(self) -> None:
+        panel = self.active_panel()
+        if panel is not None:
+            panel._refresh()
+
+    def _show_help(self) -> None:
+        QMessageBox.information(
+            self,
+            "Help",
+            "Keyboard shortcuts:\n"
+            "F5: Refresh active panel\n"
+            "Ctrl+Q / Alt+X: Exit application",
         )
 
     def _populate_restore_view_menu(self) -> None:
         self._restore_view_menu.clear()
         names = self.settings.list_saved_views()
         if not names:
-            empty_action = self._restore_view_menu.addAction("(No saved views)")
+            empty_action = self._restore_view_menu.addAction("(N&o saved views)")
             empty_action.setEnabled(False)
             return
 
         for view_name in names:
-            action = self._restore_view_menu.addAction(view_name)
+            action = self._restore_view_menu.addAction(view_name.replace("&", "&&"))
             action.triggered.connect(
                 lambda _checked=False, name=view_name: self.restore_view_named(name)
             )

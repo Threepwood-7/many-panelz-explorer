@@ -140,7 +140,9 @@ Runtime settings are stored via QSettings:
 | Ctrl+W | Close tab |
 | Ctrl+Shift+W | Close panel |
 | Alt+W | Close window |
-| Alt+X | Exit application |
+| Ctrl+Q / Alt+X | Exit application |
+| F5 | Refresh active panel |
+| F1 | Show help |
 | **Navigation** | |
 | Alt+Left | Back |
 | Alt+Right | Forward |
@@ -161,11 +163,15 @@ Runtime settings are stored via QSettings:
 - Clone Current Window
 - Save View / Restore View / Replace View
 - Close Tab (Ctrl+W) / Close Panel (Ctrl+Shift+W) / Close Window (Alt+W)
-- Exit (Alt+X)
+- Exit (Ctrl+Q, Alt+X)
 
 **View**:
+- Refresh (F5)
 - On top (checkable toggle)
 - Show hidden files (checkable toggle)
+
+**Help**:
+- Help (F1)
 
 **Context Menu** (right-click in file tree):
 - Open
