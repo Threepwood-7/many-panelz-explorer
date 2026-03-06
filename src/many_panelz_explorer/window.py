@@ -35,8 +35,8 @@ type TabsState = dict[int, PanelState]
 
 
 class ExplorerWindow(QMainWindow):
-    windowActivated = Signal()
-    requestNewWindow = Signal()
+    window_activated = Signal()
+    request_new_window = Signal()
 
     def __init__(
         self,
@@ -194,7 +194,7 @@ class ExplorerWindow(QMainWindow):
     # ----- QWidget/QWindow events -----
     def event(self, event: QEvent) -> bool:
         if event.type() == QEvent.Type.WindowActivate:
-            self.windowActivated.emit()
+            self.window_activated.emit()
         return super().event(event)
 
     def closeEvent(self, event: QCloseEvent) -> None:
@@ -231,7 +231,7 @@ class ExplorerWindow(QMainWindow):
 
         self._new_window_action = QAction("New Window", self)
         self._new_window_action.setShortcut(QKeySequence("Ctrl+N"))
-        self._new_window_action.triggered.connect(self.requestNewWindow.emit)
+        self._new_window_action.triggered.connect(self.request_new_window.emit)
 
         self._clone_window_action = QAction("Clone Current Window", self)
         self._clone_window_action.triggered.connect(self.clone_current_window)
@@ -367,7 +367,7 @@ class ExplorerWindow(QMainWindow):
                 parent=self,
             )
             panel.activated.connect(lambda pid=panel_id: self._set_active_panel(pid))
-            panel.becameEmpty.connect(lambda pid=panel_id: self._close_panel_by_id(pid))
+            panel.became_empty.connect(lambda pid=panel_id: self._close_panel_by_id(pid))
 
             if isinstance(panel_state, dict):
                 panel.restore_state(panel_state)

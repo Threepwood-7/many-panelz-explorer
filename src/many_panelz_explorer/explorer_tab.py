@@ -94,9 +94,9 @@ class ExplorerFileSystemModel(QFileSystemModel):
 
 
 class ExplorerTab(QWidget):
-    pathChanged = Signal(str)
-    historyChanged = Signal(bool, bool)
-    columnWidthsChanged = Signal(list)
+    path_changed = Signal(str)
+    history_changed = Signal(bool, bool)
+    column_widths_changed = Signal(list)
 
     def __init__(
         self,
@@ -201,7 +201,7 @@ class ExplorerTab(QWidget):
         index = self.model.setRootPath(str(target))
         self.view.setRootIndex(index)
         self._restore_selection_for_path(target, preferred=selection_hint)
-        self.pathChanged.emit(str(target))
+        self.path_changed.emit(str(target))
         self._emit_history_state()
 
     def refresh(self) -> None:
@@ -498,12 +498,12 @@ class ExplorerTab(QWidget):
         return True
 
     def _emit_history_state(self) -> None:
-        self.historyChanged.emit(self.can_go_back(), self.can_go_forward())
+        self.history_changed.emit(self.can_go_back(), self.can_go_forward())
 
     def _on_column_resized(self, _logical_index: int, _old_size: int, _new_size: int) -> None:
         if self._syncing_column_widths:
             return
-        self.columnWidthsChanged.emit(self.column_widths())
+        self.column_widths_changed.emit(self.column_widths())
 
     def _on_directory_loaded(self, _path: str) -> None:
         if self._pending_column_widths:

@@ -80,7 +80,7 @@ class _FocusWatcher(QObject):
 
 class PanelWidget(QWidget):
     activated = Signal()
-    becameEmpty = Signal()
+    became_empty = Signal()
 
     def __init__(
         self,
@@ -192,10 +192,10 @@ class PanelWidget(QWidget):
         def _on_widths_changed(widths: list[object], t: ExplorerTab = tab) -> None:
             self._on_tab_column_widths_changed(t, widths)
 
-        tab.pathChanged.connect(_on_path_changed)
-        tab.pathChanged.connect(_on_path_retitle)
-        tab.historyChanged.connect(_on_history_changed)
-        tab.columnWidthsChanged.connect(_on_widths_changed)
+        tab.path_changed.connect(_on_path_changed)
+        tab.path_changed.connect(_on_path_retitle)
+        tab.history_changed.connect(_on_history_changed)
+        tab.column_widths_changed.connect(_on_widths_changed)
 
         tab.installEventFilter(self.focus_watcher)
         tab.view.installEventFilter(self.focus_watcher)
@@ -305,7 +305,7 @@ class PanelWidget(QWidget):
         if widget is not None:
             widget.deleteLater()
         if self.tabs.count() == 0:
-            self.becameEmpty.emit()
+            self.became_empty.emit()
             return
         self._sync_toolbar_for_current_tab()
 

@@ -50,8 +50,8 @@ class AppController:
             window_id=window_id,
             initial_path=initial_path,
         )
-        window.requestNewWindow.connect(lambda w=window: self.new_window(from_window=w))
-        window.windowActivated.connect(lambda w=window: self._on_window_activated(w))
+        window.request_new_window.connect(lambda w=window: self.new_window(from_window=w))
+        window.window_activated.connect(lambda w=window: self._on_window_activated(w))
 
         if from_window is not None:
             geo = from_window.geometry()
