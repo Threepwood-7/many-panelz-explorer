@@ -5,6 +5,9 @@ from pathlib import Path
 
 from PySide6.QtCore import QStorageInfo
 
+MAX_VOLUME_NAME_CHARS = 1024
+ERROR_NO_MORE_FILES = 18
+
 
 def _is_windows() -> bool:
     return os.name == "nt"
@@ -59,15 +62,13 @@ def _windows_volume_mount_paths() -> list[Path]:
     ]
     get_paths.restype = wintypes.BOOL
 
-    max_volume_name = 1024
-    volume_name_buffer = ctypes.create_unicode_buffer(max_volume_name)
+    volume_name_buffer = ctypes.create_unicode_buffer(MAX_VOLUME_NAME_CHARS)
 
-    handle = find_first(volume_name_buffer, max_volume_name)
+    handle = find_first(volume_name_buffer, MAX_VOLUME_NAME_CHARS)
     invalid_handle = wintypes.HANDLE(-1).value
     if handle == invalid_handle:
         return []
 
-    error_no_more_files = 18
     mount_paths: list[Path] = []
 
     try:
@@ -84,8 +85,8 @@ def _windows_volume_mount_paths() -> list[Path]:
                         if item:
                             mount_paths.append(Path(item))
 
-            if not find_next(handle, volume_name_buffer, max_volume_name):
-                if ctypes.get_last_error() == error_no_more_files:
+            if not find_next(handle, volume_name_buffer, MAX_VOLUME_NAME_CHARS):
+                if ctypes.get_last_error() == ERROR_NO_MORE_FILES:
                     break
                 break
     finally:
