@@ -2,7 +2,7 @@
 
 Multi-panel, Windows-focused file explorer built with PySide6.
 
-Tooling: this project uses uv + Hatch; Nox is not used.
+Tooling: this project uses uv + Hatch.
 
 ## Setup
 
