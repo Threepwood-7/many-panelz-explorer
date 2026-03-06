@@ -14,7 +14,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "pyside6", specifier = ">=6.10.2" },
-    { name = "send2trash" },
+    { name = "send2trash", specifier = ">=2.1.0" },
 ]
 
 [[package]]
