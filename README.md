@@ -4,6 +4,26 @@ Multi-panel, Windows-focused file explorer built with PySide6.
 
 Tooling: this project uses uv + Hatch.
 
+## UI Walkthrough
+
+1. Configure panels and roots for your workspace.
+
+   ![Configure panels and roots](docs/images/ui-01-overview.png)
+
+   Multi-panel overview for opening and organizing primary working folders.
+
+2. Navigate split views to compare locations quickly.
+
+   ![Navigate split workflow](docs/images/ui-02-workflow.png)
+
+   Tabbed and split workflow state for moving between folder contexts.
+
+3. Inspect focused details before file operations.
+
+   ![Inspect file details](docs/images/ui-03-details.png)
+
+   Focused details/navigation state for reviewing selected paths.
+
 ## Setup
 
 ```powershell
