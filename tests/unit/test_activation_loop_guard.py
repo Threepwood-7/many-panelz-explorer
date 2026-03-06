@@ -47,7 +47,7 @@ class _FakeClosableWindow:
 
 
 def test_activation_runs_single_pass_while_active(monkeypatch, tmp_path: Path) -> None:
-    controller = AppController(argv=[], settings_path=tmp_path / "settings.ini")
+    controller = AppController(argv=[])
 
     calls = 0
 
@@ -66,7 +66,7 @@ def test_activation_runs_single_pass_while_active(monkeypatch, tmp_path: Path) -
 
 
 def test_latch_resets_after_app_deactivation(monkeypatch, tmp_path: Path) -> None:
-    controller = AppController(argv=[], settings_path=tmp_path / "settings.ini")
+    controller = AppController(argv=[])
 
     calls = 0
 
@@ -88,7 +88,7 @@ def test_latch_resets_after_app_deactivation(monkeypatch, tmp_path: Path) -> Non
 
 
 def test_bring_all_windows_single_iteration_no_per_window_activate(tmp_path: Path) -> None:
-    controller = AppController(argv=[], settings_path=tmp_path / "settings.ini")
+    controller = AppController(argv=[])
 
     late_window = _FakeWindow()
 
@@ -114,7 +114,7 @@ def test_bring_all_windows_single_iteration_no_per_window_activate(tmp_path: Pat
 
 
 def test_save_session_uses_last_closed_window_when_none_open(tmp_path: Path) -> None:
-    controller = AppController(argv=[], settings_path=tmp_path / "settings.ini")
+    controller = AppController(argv=[])
     fake = _FakeClosableWindow("w-closed")
 
     controller.windows = [fake]  # type: ignore[assignment]

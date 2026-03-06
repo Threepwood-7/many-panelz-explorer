@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -6,6 +6,12 @@ from typing import TYPE_CHECKING, cast
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 
+from .runtime_paths import (
+    SETTINGS_APP_NAME,
+    SETTINGS_ORG_NAME,
+    configure_qsettings,
+    resolve_app_data_dir,
+)
 from .settings import SettingsManager
 from .window import ExplorerWindow
 
@@ -14,15 +20,18 @@ if TYPE_CHECKING:
 
 
 class AppController:
-    def __init__(self, argv: Iterable[str] | None = None, settings_path: Path | None = None) -> None:
+    def __init__(self, argv: Iterable[str] | None = None) -> None:
         argv_list = list(argv) if argv is not None else []
+        configure_qsettings()
+        resolve_app_data_dir()
         existing = cast("QApplication | None", QApplication.instance())
         self.app: QApplication = existing if existing is not None else QApplication(argv_list)
-        self.app.setApplicationName("Many Panelz Explorer")
-        self.app.setOrganizationName("ManyPanelz")
+        self.app.setApplicationName(SETTINGS_APP_NAME)
+        self.app.setOrganizationName(SETTINGS_ORG_NAME)
+        self.app.setApplicationDisplayName("Many Panelz Explorer")
         self.app.setQuitOnLastWindowClosed(True)
 
-        self.settings = SettingsManager(settings_path=settings_path)
+        self.settings = SettingsManager()
         self.windows: list[ExplorerWindow] = []
         self._is_raising_windows = False
         self._activation_pass_done_for_current_active_state = False

@@ -49,7 +49,7 @@ class _ControllerCloneStub(_ControllerStub):
 
 
 def test_split_tab_close_actions(qtbot, tmp_path: Path) -> None:
-    settings = SettingsManager(settings_path=tmp_path / "settings.ini")
+    settings = SettingsManager()
     window = ExplorerWindow(controller=_ControllerStub(), settings=settings, window_id="test-window")
     qtbot.addWidget(window)
     window.show()
@@ -73,7 +73,7 @@ def test_split_tab_close_actions(qtbot, tmp_path: Path) -> None:
 
 
 def test_show_hidden_toggle_updates_tabs(qtbot, tmp_path: Path) -> None:
-    settings = SettingsManager(settings_path=tmp_path / "settings.ini")
+    settings = SettingsManager()
     window = ExplorerWindow(controller=_ControllerStub(), settings=settings, window_id="hidden-window")
     qtbot.addWidget(window)
     window.show()
@@ -91,7 +91,7 @@ def test_show_hidden_toggle_updates_tabs(qtbot, tmp_path: Path) -> None:
 
 
 def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> None:
-    settings = SettingsManager(settings_path=tmp_path / "settings.ini")
+    settings = SettingsManager()
     window = ExplorerWindow(controller=_ControllerStub(), settings=settings, window_id="clone-panel-window")
     qtbot.addWidget(window)
     window.show()
@@ -119,7 +119,7 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
 
 
 def test_clone_current_window_action(qtbot, tmp_path: Path) -> None:
-    settings = SettingsManager(settings_path=tmp_path / "settings.ini")
+    settings = SettingsManager()
     controller = _ControllerCloneStub(settings=settings)
     source = ExplorerWindow(controller=controller, settings=settings, window_id="source-window")
     qtbot.addWidget(source)
@@ -144,7 +144,7 @@ def test_clone_current_window_action(qtbot, tmp_path: Path) -> None:
 
 
 def test_close_window_action_closes_and_notifies_controller(qtbot, tmp_path: Path) -> None:
-    settings = SettingsManager(settings_path=tmp_path / "settings.ini")
+    settings = SettingsManager()
     controller = _ControllerStub()
     window = ExplorerWindow(controller=controller, settings=settings, window_id="close-window")
     qtbot.addWidget(window)
@@ -159,8 +159,7 @@ def test_close_window_action_closes_and_notifies_controller(qtbot, tmp_path: Pat
 
 
 def test_root_dropdown_ini_setting_controls_panel_dropdown(qtbot, tmp_path: Path) -> None:
-    settings_path = tmp_path / "settings.ini"
-    settings = SettingsManager(settings_path=settings_path)
+    settings = SettingsManager()
     settings.show_root_dropdown = True
     settings.sync()
 
@@ -170,7 +169,7 @@ def test_root_dropdown_ini_setting_controls_panel_dropdown(qtbot, tmp_path: Path
     assert window_on.active_panel() is not None
     assert window_on.active_panel().root_combo.isVisible() is True
 
-    settings_off = SettingsManager(settings_path=settings_path)
+    settings_off = SettingsManager()
     settings_off.show_root_dropdown = False
     settings_off.sync()
 
@@ -184,7 +183,7 @@ def test_root_dropdown_ini_setting_controls_panel_dropdown(qtbot, tmp_path: Path
 
 
 def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -> None:
-    settings = SettingsManager(settings_path=tmp_path / "settings.ini")
+    settings = SettingsManager()
     controller = _ControllerCloneStub(settings=settings)
     source = ExplorerWindow(controller=controller, settings=settings, window_id="view-source")
     qtbot.addWidget(source)

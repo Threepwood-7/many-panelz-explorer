@@ -107,22 +107,26 @@ No command-line arguments. The app restores the previous session (windows, panel
 
 Runtime settings are stored via QSettings:
 
-- Backend: `QSettings(IniFormat)` at `%APPDATA%\ManyPanelz\settings.ini`
-- No config files or environment variables required.
+- Backend: `QSettings(IniFormat, UserScope, "ThreepSoftwz", "many_panelz_explorer")`
+- Default INI path: `%APPDATA%\ThreepSoftwz\many_panelz_explorer.ini`
+- Runtime data root: `%LOCALAPPDATA%\ThreepSoftwz\many_panelz_explorer\`
+- OV01 overrides:
+  - `CONFIG_DIR` for INI root
+  - `DATA_DIR` for runtime data root
 
 ### Persisted Settings
 
 | Key | Description |
 |---|---|
-| `defaults/new_context_mode` | How new panels/tabs determine their starting path (`"home"`, `"cwd"`, or `"clone_active_path"`) |
-| `view/show_hidden_default` | Toggle hidden files visibility (default: true) |
-| `view/show_root_dropdown` | Show/hide root selector dropdown (default: false) |
-| `session/windows` | List of window IDs for session restoration |
-| `views/saved` | Named saved view layouts (JSON) |
-| `window/{id}/panel_tree` | Panel layout tree (JSON) |
-| `window/{id}/tabs` | Tab state for each panel (JSON) |
-| `window/{id}/on_top` | Window always-on-top state |
-| `window/{id}/geometry` | Window size/position |
+| `config/new_context_mode` | How new panels/tabs determine their starting path (`"home"`, `"cwd"`, or `"clone_active_path"`) |
+| `ui/show_hidden_default` | Toggle hidden files visibility (default: true) |
+| `ui/show_root_dropdown` | Show/hide root selector dropdown (default: false) |
+| `prefs/session_windows` | List of window IDs for session restoration |
+| `prefs/saved_views` | Named saved view layouts (JSON) |
+| `ui/windows/{id}/panel_tree` | Panel layout tree (JSON) |
+| `ui/windows/{id}/tabs` | Tab state for each panel (JSON) |
+| `ui/windows/{id}/on_top` | Window always-on-top state |
+| `ui/windows/{id}/geometry` | Window size/position |
 
 ## Keyboard Shortcuts
 

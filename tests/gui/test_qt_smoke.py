@@ -20,7 +20,7 @@ class _ControllerStub:
 
 
 def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
-    settings = SettingsManager(settings_path=tmp_path / "settings.ini")
+    settings = SettingsManager()
     window = ExplorerWindow(controller=_ControllerStub(), settings=settings, window_id="smoke")
     qtbot.addWidget(window)
     window.show()
@@ -60,7 +60,7 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
 
 
 def test_hidden_action_updates_model_filter(qtbot, tmp_path: Path) -> None:
-    settings = SettingsManager(settings_path=tmp_path / "settings.ini")
+    settings = SettingsManager()
     window = ExplorerWindow(controller=_ControllerStub(), settings=settings, window_id="smoke-hidden")
     qtbot.addWidget(window)
     window.show()

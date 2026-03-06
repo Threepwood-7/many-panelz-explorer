@@ -1,35 +1,37 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 from pathlib import Path
 from typing import Any, cast
 
-from PySide6.QtCore import QSettings, QStandardPaths
+from PySide6.QtCore import QSettings
+
+from .runtime_paths import (
+    SETTINGS_APP_NAME,
+    SETTINGS_ORG_NAME,
+    configure_qsettings,
+)
 
 
 class SettingsManager:
     """Thin wrapper around QSettings using INI storage."""
 
-    NEW_CONTEXT_MODE_KEY = "defaults/new_context_mode"
-    SHOW_HIDDEN_DEFAULT_KEY = "view/show_hidden_default"
-    SHOW_ROOT_DROPDOWN_KEY = "view/show_root_dropdown"
-    SESSION_WINDOWS_KEY = "session/windows"
-    SAVED_VIEWS_KEY = "views/saved"
+    NEW_CONTEXT_MODE_KEY = "config/new_context_mode"
+    SHOW_HIDDEN_DEFAULT_KEY = "ui/show_hidden_default"
+    SHOW_ROOT_DROPDOWN_KEY = "ui/show_root_dropdown"
+    SESSION_WINDOWS_KEY = "prefs/session_windows"
+    SAVED_VIEWS_KEY = "prefs/saved_views"
 
-    def __init__(self, settings_path: Path | None = None) -> None:
-        if settings_path is None:
-            config_dir = Path(
-                QStandardPaths.writableLocation(
-                    QStandardPaths.StandardLocation.AppConfigLocation
-                )
-            )
-            if not config_dir.exists():
-                config_dir.mkdir(parents=True, exist_ok=True)
-            settings_path = config_dir / "settings.ini"
-
-        self.settings_path = Path(settings_path)
-        self.settings_path.parent.mkdir(parents=True, exist_ok=True)
-        self.qsettings = QSettings(str(self.settings_path), QSettings.Format.IniFormat)
+    def __init__(self) -> None:
+        configure_qsettings()
+        self.qsettings = QSettings(
+            QSettings.Format.IniFormat,
+            QSettings.Scope.UserScope,
+            SETTINGS_ORG_NAME,
+            SETTINGS_APP_NAME,
+        )
+        self.qsettings.sync()
+        self.settings_path = Path(str(self.qsettings.fileName() or ""))
 
     def sync(self) -> None:
         self.qsettings.sync()
@@ -94,7 +96,7 @@ class SettingsManager:
         self.set_value(self.SHOW_ROOT_DROPDOWN_KEY, bool(enabled))
 
     def window_key(self, window_id: str, suffix: str) -> str:
-        return f"window/{window_id}/{suffix}"
+        return f"ui/windows/{window_id}/{suffix}"
 
     def session_window_ids(self) -> list[str]:
         data = self.get_json(self.SESSION_WINDOWS_KEY, [])
