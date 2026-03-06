@@ -49,6 +49,8 @@ test-cov = "pytest --cov=src/many_panelz_explorer --cov-report=term-missing --co
 dependencies = [
   "ruff>=0.6",
   "basedpyright>=1.18",
+  "deptry>=0.24",
+  "vulture>=2.15",
 ]
 
 [tool.hatch.envs.lint.scripts]
@@ -56,6 +58,9 @@ check = "ruff check ."
 fmt = "ruff format --check ."
 fix = ["ruff check --fix .", "ruff format ."]
 types = "basedpyright src/many_panelz_explorer"
+deps = "deptry ."
+deadcode = "vulture src --min-confidence 80"
+complexity = "ruff check src --select C901 --output-format concise"
 policy = "python scripts/policy/check_standard.py"
 all = [
   "ruff check --fix .",
@@ -129,10 +134,17 @@ ignore-names = [
   "windowState",
 ]
 
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
 docstring-code-format = true
+
+[tool.deptry]
+known_first_party = ["many_panelz_explorer"]
+package_module_name_map = { "PySide6" = "PySide6", "qbittorrent-api" = "qbittorrentapi", "opencv-python" = "cv2" }
 
 [tool.basedpyright]
 pythonVersion = "3.13"
