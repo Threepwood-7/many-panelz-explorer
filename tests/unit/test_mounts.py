@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 from many_panelz_explorer import mounts
 

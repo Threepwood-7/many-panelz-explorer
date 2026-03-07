@@ -1,4 +1,4 @@
-﻿from many_panelz_explorer.panel_tree import (
+from many_panelz_explorer.panel_tree import (
     ORIENTATION_HORIZONTAL,
     ORIENTATION_VERTICAL,
     PanelTreeModel,
