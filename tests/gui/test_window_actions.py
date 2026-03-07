@@ -1,4 +1,5 @@
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,7 @@ pytest.importorskip("PySide6")
 pytest.importorskip("pytestqt")
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QInputDialog
+from PySide6.QtWidgets import QInputDialog, QMessageBox
 
 from many_panelz_explorer.settings import SettingsManager
 from many_panelz_explorer.window import ExplorerWindow
@@ -23,10 +24,21 @@ class _ControllerStub:
         self.closed_windows.append(_window)
 
 
+def _test_roots_provider(tmp_path: Path) -> Callable[[Path | None], list[Path]]:
+    root = tmp_path / "roots"
+    root.mkdir(parents=True, exist_ok=True)
+    return lambda _current: [root]
+
+
 class _ControllerCloneStub(_ControllerStub):
-    def __init__(self, settings: SettingsManager) -> None:
+    def __init__(
+        self,
+        settings: SettingsManager,
+        roots_provider: Callable[[Path | None], list[Path]] | None = None,
+    ) -> None:
         super().__init__()
         self.settings = settings
+        self.roots_provider = roots_provider
         self.created_windows: list[ExplorerWindow] = []
 
     def new_window(
@@ -41,6 +53,7 @@ class _ControllerCloneStub(_ControllerStub):
             controller=self,
             settings=self.settings,
             window_id=window_id or f"clone-{len(self.created_windows) + 1}",
+            roots_provider=self.roots_provider,
         )
         self.created_windows.append(win)
         if show:
@@ -50,8 +63,12 @@ class _ControllerCloneStub(_ControllerStub):
 
 def test_split_tab_close_actions(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
     window = ExplorerWindow(
-        controller=_ControllerStub(), settings=settings, window_id="test-window"
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="test-window",
+        roots_provider=roots_provider,
     )
     qtbot.addWidget(window)
     window.show()
@@ -76,8 +93,12 @@ def test_split_tab_close_actions(qtbot, tmp_path: Path) -> None:
 
 def test_show_hidden_toggle_updates_tabs(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
     window = ExplorerWindow(
-        controller=_ControllerStub(), settings=settings, window_id="hidden-window"
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="hidden-window",
+        roots_provider=roots_provider,
     )
     qtbot.addWidget(window)
     window.show()
@@ -96,8 +117,12 @@ def test_show_hidden_toggle_updates_tabs(qtbot, tmp_path: Path) -> None:
 
 def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
     window = ExplorerWindow(
-        controller=_ControllerStub(), settings=settings, window_id="clone-panel-window"
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="clone-panel-window",
+        roots_provider=roots_provider,
     )
     qtbot.addWidget(window)
     window.show()
@@ -124,11 +149,39 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
     assert cloned_panel_horizontal.tabs.currentIndex() == source_current_index
 
 
+def test_set_on_top_direct_call_does_not_emit_toggled(qtbot, tmp_path: Path) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="on-top-signal",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    toggled_events: list[bool] = []
+    window._on_top_action.toggled.connect(toggled_events.append)
+
+    window.set_on_top(True)
+
+    assert toggled_events == []
+    assert window._on_top_action.isChecked() is True
+
+
 def test_clone_current_window_action(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
-    controller = _ControllerCloneStub(settings=settings)
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerCloneStub(
+        settings=settings,
+        roots_provider=roots_provider,
+    )
     source = ExplorerWindow(
-        controller=controller, settings=settings, window_id="source-window"
+        controller=controller,
+        settings=settings,
+        window_id="source-window",
+        roots_provider=roots_provider,
     )
     qtbot.addWidget(source)
     source.show()
@@ -155,9 +208,13 @@ def test_close_window_action_closes_and_notifies_controller(
     qtbot, tmp_path: Path
 ) -> None:
     settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
     controller = _ControllerStub()
     window = ExplorerWindow(
-        controller=controller, settings=settings, window_id="close-window"
+        controller=controller,
+        settings=settings,
+        window_id="close-window",
+        roots_provider=roots_provider,
     )
     qtbot.addWidget(window)
     window.show()
@@ -174,11 +231,15 @@ def test_root_dropdown_ini_setting_controls_panel_dropdown(
     qtbot, tmp_path: Path
 ) -> None:
     settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
     settings.show_root_dropdown = True
     settings.sync()
 
     window_on = ExplorerWindow(
-        controller=_ControllerStub(), settings=settings, window_id="dropdown-on"
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="dropdown-on",
+        roots_provider=roots_provider,
     )
     qtbot.addWidget(window_on)
     window_on.show()
@@ -190,7 +251,10 @@ def test_root_dropdown_ini_setting_controls_panel_dropdown(
     settings_off.sync()
 
     window_off = ExplorerWindow(
-        controller=_ControllerStub(), settings=settings_off, window_id="dropdown-off"
+        controller=_ControllerStub(),
+        settings=settings_off,
+        window_id="dropdown-off",
+        roots_provider=roots_provider,
     )
     qtbot.addWidget(window_off)
     window_off.show()
@@ -200,9 +264,16 @@ def test_root_dropdown_ini_setting_controls_panel_dropdown(
 
 def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -> None:
     settings = SettingsManager()
-    controller = _ControllerCloneStub(settings=settings)
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerCloneStub(
+        settings=settings,
+        roots_provider=roots_provider,
+    )
     source = ExplorerWindow(
-        controller=controller, settings=settings, window_id="view-source"
+        controller=controller,
+        settings=settings,
+        window_id="view-source",
+        roots_provider=roots_provider,
     )
     qtbot.addWidget(source)
     source.show()
@@ -215,6 +286,11 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     assert len(source.panel_widgets) == 2
 
     monkeypatch.setattr(QInputDialog, "getText", lambda *_a, **_k: ("My View", True))
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *_a, **_k: QMessageBox.StandardButton.Yes,
+    )
     source._save_view_action.trigger()
 
     saved = settings.get_saved_view("My View")

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-from PySide6.QtCore import QByteArray, QEvent, Qt, Signal
+from PySide6.QtCore import QByteArray, QEvent, QSignalBlocker, Qt, Signal
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
 
 type PanelState = dict[str, Any]
 type TabsState = dict[int, PanelState]
+type RootsProvider = Callable[[Path | None], list[Path]]
 
 
 class ExplorerWindow(QMainWindow):
@@ -44,12 +46,14 @@ class ExplorerWindow(QMainWindow):
         settings: SettingsManager,
         window_id: str | None = None,
         initial_path: Path | None = None,
+        roots_provider: RootsProvider | None = None,
     ) -> None:
         super().__init__(None)
         self.controller = controller
         self.settings = settings
         self.window_id = window_id or uuid.uuid4().hex
         self._initial_path = initial_path or Path.home()
+        self._roots_provider = roots_provider
         self._active_panel_id: int | None = None
         self._splitter_nodes: dict[QSplitter, SplitNode] = {}
 
@@ -201,9 +205,15 @@ class ExplorerWindow(QMainWindow):
         self.apply_cloned_state(view_state, restore_geometry=True)
 
     def set_on_top(self, enabled: bool) -> None:
-        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, bool(enabled))
-        self._on_top_action.setChecked(bool(enabled))
+        on_top = bool(enabled)
+        with QSignalBlocker(self._on_top_action):
+            self._on_top_action.setChecked(on_top)
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, on_top)
         self.show()
+
+    @property
+    def roots_provider(self) -> RootsProvider | None:
+        return self._roots_provider
 
     # ----- QWidget/QWindow events -----
     def event(self, event: QEvent) -> bool:
@@ -412,6 +422,7 @@ class ExplorerWindow(QMainWindow):
                 default_path=self._resolve_new_context_path(self._initial_path),
                 show_hidden=self._show_hidden,
                 show_root_dropdown=self.settings.show_root_dropdown,
+                roots_provider=self._roots_provider,
                 parent=self,
             )
             panel.activated.connect(lambda pid=panel_id: self._set_active_panel(pid))

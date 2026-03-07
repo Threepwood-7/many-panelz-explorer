@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 from PySide6.QtCore import QStorageInfo
 
 MAX_VOLUME_NAME_CHARS = 1024
 ERROR_NO_MORE_FILES = 18
+WINDOWS_ROOTS_CACHE_TTL_SECONDS = 2.0
+
+_windows_roots_cache: tuple[float, list[Path]] | None = None
 
 
 def _is_windows() -> bool:
@@ -108,7 +112,7 @@ def _qt_mounted_roots() -> list[Path]:
     return roots
 
 
-def _dedup_existing_roots(paths: list[Path]) -> list[Path]:
+def _dedup_roots(paths: list[Path], *, require_existing: bool) -> list[Path]:
     deduped: list[Path] = []
     seen: set[str] = set()
 
@@ -116,7 +120,7 @@ def _dedup_existing_roots(paths: list[Path]) -> list[Path]:
         normalized = os.path.normcase(os.path.normpath(str(path)))
         if normalized in seen:
             continue
-        if not path.exists() or not path.is_dir():
+        if require_existing and (not path.exists() or not path.is_dir()):
             continue
         seen.add(normalized)
         deduped.append(path)
@@ -124,14 +128,37 @@ def _dedup_existing_roots(paths: list[Path]) -> list[Path]:
     return deduped
 
 
+def _monotonic_seconds() -> float:
+    return time.monotonic()
+
+
+def clear_roots_cache() -> None:
+    global _windows_roots_cache
+    _windows_roots_cache = None
+
+
+def _list_windows_roots_cached() -> list[Path]:
+    global _windows_roots_cache
+
+    now = _monotonic_seconds()
+    if _windows_roots_cache is not None:
+        cached_at, cached_roots = _windows_roots_cache
+        if now - cached_at < WINDOWS_ROOTS_CACHE_TTL_SECONDS:
+            return list(cached_roots)
+
+    candidates: list[Path] = []
+    candidates.extend(_windows_drive_roots())
+    candidates.extend(_windows_volume_mount_paths())
+    roots = _dedup_roots(candidates, require_existing=False)
+
+    _windows_roots_cache = (now, roots)
+    return list(roots)
+
+
 def list_roots_for_navigation(current_path: Path | None = None) -> list[Path]:
     _ = current_path
-    candidates: list[Path] = []
     if _is_windows():
-        candidates.extend(_windows_drive_roots())
-        candidates.extend(_windows_volume_mount_paths())
-    else:
-        candidates.extend(_qt_mounted_roots())
+        return _list_windows_roots_cached()
 
     # Keep discovery/provider order stable; dedup/filter only.
-    return _dedup_existing_roots(candidates)
+    return _dedup_roots(_qt_mounted_roots(), require_existing=True)

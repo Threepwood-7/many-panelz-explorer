@@ -17,7 +17,7 @@ from .settings import SettingsManager
 from .window import ExplorerWindow
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 
 
 class AppController:
@@ -49,18 +49,22 @@ class AppController:
         *,
         window_id: str | None = None,
         show: bool = True,
+        roots_provider: Callable[[Path | None], list[Path]] | None = None,
     ) -> ExplorerWindow:
         initial_path = Path.home()
         if from_window is not None:
             active_panel = from_window.active_panel()
             if active_panel is not None:
                 initial_path = active_panel.current_path()
+            if roots_provider is None:
+                roots_provider = from_window.roots_provider
 
         window = ExplorerWindow(
             controller=self,
             settings=self.settings,
             window_id=window_id,
             initial_path=initial_path,
+            roots_provider=roots_provider,
         )
         window.request_new_window.connect(
             lambda w=window: self.new_window(from_window=w)

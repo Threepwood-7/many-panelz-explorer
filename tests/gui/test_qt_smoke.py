@@ -19,10 +19,20 @@ class _ControllerStub:
         return
 
 
+def _test_roots_provider(tmp_path: Path):
+    root = tmp_path / "roots"
+    root.mkdir(parents=True, exist_ok=True)
+    return lambda _current: [root]
+
+
 def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
     window = ExplorerWindow(
-        controller=_ControllerStub(), settings=settings, window_id="smoke"
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="smoke",
+        roots_provider=roots_provider,
     )
     qtbot.addWidget(window)
     window.show()
@@ -93,8 +103,12 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
 
 def test_hidden_action_updates_model_filter(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
     window = ExplorerWindow(
-        controller=_ControllerStub(), settings=settings, window_id="smoke-hidden"
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="smoke-hidden",
+        roots_provider=roots_provider,
     )
     qtbot.addWidget(window)
     window.show()

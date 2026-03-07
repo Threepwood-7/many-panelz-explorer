@@ -17,11 +17,21 @@ class _ControllerStub:
         return
 
 
+def _test_roots_provider(tmp_path: Path):
+    root = tmp_path / "roots"
+    root.mkdir(parents=True, exist_ok=True)
+    return lambda _current: [root]
+
+
 def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
 
     source = ExplorerWindow(
-        controller=_ControllerStub(), settings=settings, window_id="w1"
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="w1",
+        roots_provider=roots_provider,
     )
     qtbot.addWidget(source)
     source.show()
@@ -33,7 +43,10 @@ def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
 
     restored_settings = SettingsManager()
     restored = ExplorerWindow(
-        controller=_ControllerStub(), settings=restored_settings, window_id="w1"
+        controller=_ControllerStub(),
+        settings=restored_settings,
+        window_id="w1",
+        roots_provider=roots_provider,
     )
     qtbot.addWidget(restored)
     restored.restore_from_settings()
