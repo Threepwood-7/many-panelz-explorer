@@ -56,7 +56,9 @@ def test_activation_runs_single_pass_while_active(monkeypatch, tmp_path: Path) -
         calls += 1
         assert restore_minimized is True
 
-    monkeypatch.setattr(controller, "bring_all_windows_to_front", _fake_bring_all_windows_to_front)
+    monkeypatch.setattr(
+        controller, "bring_all_windows_to_front", _fake_bring_all_windows_to_front
+    )
 
     controller._on_window_activated()
     controller._on_window_activated()
@@ -75,7 +77,9 @@ def test_latch_resets_after_app_deactivation(monkeypatch, tmp_path: Path) -> Non
         calls += 1
         assert restore_minimized is True
 
-    monkeypatch.setattr(controller, "bring_all_windows_to_front", _fake_bring_all_windows_to_front)
+    monkeypatch.setattr(
+        controller, "bring_all_windows_to_front", _fake_bring_all_windows_to_front
+    )
 
     controller._on_window_activated()
     controller._on_window_activated()
@@ -87,7 +91,9 @@ def test_latch_resets_after_app_deactivation(monkeypatch, tmp_path: Path) -> Non
     assert calls == 2
 
 
-def test_bring_all_windows_single_iteration_no_per_window_activate(tmp_path: Path) -> None:
+def test_bring_all_windows_single_iteration_no_per_window_activate(
+    tmp_path: Path,
+) -> None:
     controller = AppController(argv=[])
 
     late_window = _FakeWindow()

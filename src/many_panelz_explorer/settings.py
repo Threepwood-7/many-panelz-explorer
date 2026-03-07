@@ -4,13 +4,9 @@ import json
 from pathlib import Path
 from typing import Any, cast
 
-from PySide6.QtCore import QSettings
+from threep_commons.qsettings_store import create_qsettings
 
-from .runtime_paths import (
-    SETTINGS_APP_NAME,
-    SETTINGS_ORG_NAME,
-    configure_qsettings,
-)
+from .constants import APP_IDENTITY
 
 
 class SettingsManager:
@@ -23,13 +19,7 @@ class SettingsManager:
     SAVED_VIEWS_KEY = "prefs/saved_views"
 
     def __init__(self) -> None:
-        configure_qsettings()
-        self.qsettings = QSettings(
-            QSettings.Format.IniFormat,
-            QSettings.Scope.UserScope,
-            SETTINGS_ORG_NAME,
-            SETTINGS_APP_NAME,
-        )
+        self.qsettings = create_qsettings(APP_IDENTITY)
         self.qsettings.sync()
         self.settings_path = Path(str(self.qsettings.fileName() or ""))
 

@@ -20,7 +20,9 @@ class _ControllerStub:
 def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
 
-    source = ExplorerWindow(controller=_ControllerStub(), settings=settings, window_id="w1")
+    source = ExplorerWindow(
+        controller=_ControllerStub(), settings=settings, window_id="w1"
+    )
     qtbot.addWidget(source)
     source.show()
 
@@ -30,7 +32,9 @@ def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
     source.save_to_settings()
 
     restored_settings = SettingsManager()
-    restored = ExplorerWindow(controller=_ControllerStub(), settings=restored_settings, window_id="w1")
+    restored = ExplorerWindow(
+        controller=_ControllerStub(), settings=restored_settings, window_id="w1"
+    )
     qtbot.addWidget(restored)
     restored.restore_from_settings()
 

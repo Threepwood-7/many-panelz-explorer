@@ -80,7 +80,9 @@ class ExplorerWindow(QMainWindow):
 
         tabs_state = self._serialize_tabs_state()
         orientation_value = 1 if orientation == Qt.Orientation.Horizontal else 2
-        new_panel_id = self.panel_tree.split_leaf(self._active_panel_id, orientation_value)
+        new_panel_id = self.panel_tree.split_leaf(
+            self._active_panel_id, orientation_value
+        )
 
         seed_path = self._resolve_new_context_path(active_panel.current_path())
         tabs_state[new_panel_id] = {
@@ -89,7 +91,9 @@ class ExplorerWindow(QMainWindow):
             "tabs": [{"path": str(seed_path)}],
         }
 
-        self._rebuild_from_tree(tabs_state=tabs_state, preferred_active_panel=new_panel_id)
+        self._rebuild_from_tree(
+            tabs_state=tabs_state, preferred_active_panel=new_panel_id
+        )
 
     def new_tab_in_active_panel(self) -> None:
         panel = self.active_panel()
@@ -106,11 +110,15 @@ class ExplorerWindow(QMainWindow):
         source_state = tabs_state.get(self._active_panel_id)
 
         orientation_value = 1 if orientation == Qt.Orientation.Horizontal else 2
-        new_panel_id = self.panel_tree.split_leaf(self._active_panel_id, orientation_value)
+        new_panel_id = self.panel_tree.split_leaf(
+            self._active_panel_id, orientation_value
+        )
 
         if source_state is None:
             source_panel = self.active_panel()
-            source_path = source_panel.current_path() if source_panel is not None else Path.home()
+            source_path = (
+                source_panel.current_path() if source_panel is not None else Path.home()
+            )
             source_state = {
                 "panel_id": self._active_panel_id,
                 "current_index": 0,
@@ -120,7 +128,9 @@ class ExplorerWindow(QMainWindow):
         cloned_state = cast("PanelState", deepcopy(source_state))
         cloned_state["panel_id"] = new_panel_id
         tabs_state[new_panel_id] = cloned_state
-        self._rebuild_from_tree(tabs_state=tabs_state, preferred_active_panel=new_panel_id)
+        self._rebuild_from_tree(
+            tabs_state=tabs_state, preferred_active_panel=new_panel_id
+        )
 
     def close_active_tab(self) -> None:
         panel = self.active_panel()
@@ -159,7 +169,9 @@ class ExplorerWindow(QMainWindow):
             if overwrite != QMessageBox.StandardButton.Yes:
                 return
 
-        self.settings.set_saved_view(view_name, self.serialize_state(include_geometry=True))
+        self.settings.set_saved_view(
+            view_name, self.serialize_state(include_geometry=True)
+        )
         self.settings.sync()
 
     def restore_view(self) -> None:
@@ -171,7 +183,9 @@ class ExplorerWindow(QMainWindow):
     def restore_view_named(self, view_name: str) -> None:
         payload = self.settings.get_saved_view(view_name)
         if payload is None:
-            QMessageBox.warning(self, "Restore View", f'View "{view_name}" was not found.')
+            QMessageBox.warning(
+                self, "Restore View", f'View "{view_name}" was not found.'
+            )
             return
         self._restore_view_state(payload)
 
@@ -219,12 +233,16 @@ class ExplorerWindow(QMainWindow):
             lambda: self.split_active_panel(Qt.Orientation.Vertical)
         )
 
-        self._clone_vertical_panel_action = QAction("Clone Current Panel (Ver&tical)", self)
+        self._clone_vertical_panel_action = QAction(
+            "Clone Current Panel (Ver&tical)", self
+        )
         self._clone_vertical_panel_action.triggered.connect(
             lambda: self.clone_active_panel(Qt.Orientation.Horizontal)
         )
 
-        self._clone_horizontal_panel_action = QAction("Clone Current Panel (Hori&zontal)", self)
+        self._clone_horizontal_panel_action = QAction(
+            "Clone Current Panel (Hori&zontal)", self
+        )
         self._clone_horizontal_panel_action.triggered.connect(
             lambda: self.clone_active_panel(Qt.Orientation.Vertical)
         )
@@ -339,7 +357,7 @@ class ExplorerWindow(QMainWindow):
     def _refresh_active_panel(self) -> None:
         panel = self.active_panel()
         if panel is not None:
-            panel._refresh()
+            panel.refresh_current_path()
 
     def _show_help(self) -> None:
         QMessageBox.information(
@@ -397,7 +415,9 @@ class ExplorerWindow(QMainWindow):
                 parent=self,
             )
             panel.activated.connect(lambda pid=panel_id: self._set_active_panel(pid))
-            panel.became_empty.connect(lambda pid=panel_id: self._close_panel_by_id(pid))
+            panel.became_empty.connect(
+                lambda pid=panel_id: self._close_panel_by_id(pid)
+            )
 
             if isinstance(panel_state, dict):
                 panel.restore_state(panel_state)
@@ -483,7 +503,10 @@ class ExplorerWindow(QMainWindow):
         self._rebuild_from_tree(tabs_state=tabs_state, preferred_active_panel=preferred)
 
     def _serialize_tabs_state(self) -> TabsState:
-        return {panel_id: panel.serialize_state() for panel_id, panel in self.panel_widgets.items()}
+        return {
+            panel_id: panel.serialize_state()
+            for panel_id, panel in self.panel_widgets.items()
+        }
 
     def _resolve_new_context_path(self, active_path: Path | None) -> Path:
         mode = self.settings.new_context_mode.strip().lower()
@@ -507,7 +530,9 @@ class ExplorerWindow(QMainWindow):
             QMessageBox.information(self, title, "No saved views.")
             return None
 
-        selected_raw, ok = QInputDialog.getItem(self, title, "Select a saved view:", names, 0, False)
+        selected_raw, ok = QInputDialog.getItem(
+            self, title, "Select a saved view:", names, 0, False
+        )
         selected = str(selected_raw).strip()
         if not ok or not selected:
             return None
@@ -543,13 +568,18 @@ class ExplorerWindow(QMainWindow):
 
     def save_to_settings(self) -> None:
         payload = self.serialize_state()
-        self.settings.set_json(self.settings.window_key(self.window_id, "panel_tree"), payload["panel_tree"])
+        self.settings.set_json(
+            self.settings.window_key(self.window_id, "panel_tree"),
+            payload["panel_tree"],
+        )
 
         tabs_payload = {
             "active_panel_id": payload["active_panel_id"],
             "panels": {str(pid): state for pid, state in payload["tabs"].items()},
         }
-        self.settings.set_json(self.settings.window_key(self.window_id, "tabs"), tabs_payload)
+        self.settings.set_json(
+            self.settings.window_key(self.window_id, "tabs"), tabs_payload
+        )
         self.settings.set_value(
             self.settings.window_key(self.window_id, "on_top"), payload["on_top"]
         )
@@ -563,19 +593,29 @@ class ExplorerWindow(QMainWindow):
         )
         if isinstance(panel_tree_data, dict):
             try:
-                self.panel_tree = PanelTreeModel.from_dict(cast("dict[str, Any]", panel_tree_data))
+                self.panel_tree = PanelTreeModel.from_dict(
+                    cast("dict[str, Any]", panel_tree_data)
+                )
             except Exception as exc:  # pragma: no cover - defensive path
-                QMessageBox.warning(self, "Restore", f"Could not restore panel tree: {exc}")
+                QMessageBox.warning(
+                    self, "Restore", f"Could not restore panel tree: {exc}"
+                )
                 self.panel_tree = PanelTreeModel()
 
-        tabs_payload_raw = self.settings.get_json(self.settings.window_key(self.window_id, "tabs"), {})
+        tabs_payload_raw = self.settings.get_json(
+            self.settings.window_key(self.window_id, "tabs"), {}
+        )
         tabs_payload = (
-            cast("dict[str, Any]", tabs_payload_raw) if isinstance(tabs_payload_raw, dict) else {}
+            cast("dict[str, Any]", tabs_payload_raw)
+            if isinstance(tabs_payload_raw, dict)
+            else {}
         )
         raw_panels_obj = tabs_payload.get("panels", {})
         tabs_state: TabsState = {}
         raw_panels = (
-            cast("dict[str, Any]", raw_panels_obj) if isinstance(raw_panels_obj, dict) else {}
+            cast("dict[str, Any]", raw_panels_obj)
+            if isinstance(raw_panels_obj, dict)
+            else {}
         )
         for panel_id_str, state in raw_panels.items():
             try:
@@ -593,9 +633,13 @@ class ExplorerWindow(QMainWindow):
             except (TypeError, ValueError):
                 preferred_active = None
 
-        self._rebuild_from_tree(tabs_state=tabs_state, preferred_active_panel=preferred_active)
+        self._rebuild_from_tree(
+            tabs_state=tabs_state, preferred_active_panel=preferred_active
+        )
 
-        on_top_value = self.settings.value(self.settings.window_key(self.window_id, "on_top"), False)
+        on_top_value = self.settings.value(
+            self.settings.window_key(self.window_id, "on_top"), False
+        )
         on_top = (
             on_top_value
             if isinstance(on_top_value, bool)
@@ -603,14 +647,20 @@ class ExplorerWindow(QMainWindow):
         )
         self.set_on_top(bool(on_top))
 
-        geometry = self.settings.value(self.settings.window_key(self.window_id, "geometry"))
+        geometry = self.settings.value(
+            self.settings.window_key(self.window_id, "geometry")
+        )
         if isinstance(geometry, QByteArray):
             self.restoreGeometry(geometry)
 
-    def apply_cloned_state(self, state: dict[str, Any], *, restore_geometry: bool = False) -> None:
+    def apply_cloned_state(
+        self, state: dict[str, Any], *, restore_geometry: bool = False
+    ) -> None:
         panel_tree_data = state.get("panel_tree")
         if isinstance(panel_tree_data, dict):
-            self.panel_tree = PanelTreeModel.from_dict(cast("dict[str, Any]", panel_tree_data))
+            self.panel_tree = PanelTreeModel.from_dict(
+                cast("dict[str, Any]", panel_tree_data)
+            )
 
         tabs_state: TabsState = {}
         raw_tabs = deepcopy(state.get("tabs", {}))

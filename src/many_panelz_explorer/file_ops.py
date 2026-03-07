@@ -157,7 +157,9 @@ def zip_extract(archive_path: Path, destination: Path) -> Path:
 def open_terminal_here(path: Path) -> None:
     path = Path(path)
     if os.name == "nt":
-        subprocess.Popen(["powershell", "-NoExit", "-Command", "Set-Location", str(path)])
+        subprocess.Popen(
+            ["powershell", "-NoExit", "-Command", "Set-Location", str(path)]
+        )
         return
     if shutil.which("x-terminal-emulator"):
         subprocess.Popen(["x-terminal-emulator", "--working-directory", str(path)])

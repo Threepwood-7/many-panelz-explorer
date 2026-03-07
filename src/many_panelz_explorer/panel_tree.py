@@ -183,7 +183,9 @@ class PanelTreeModel:
                 right = decode(node_data.get("right"))
                 if left is None or right is None:
                     raise ValueError("Split node requires both left and right children")
-                return SplitNode(orientation=orientation, ratio=ratio, left=left, right=right)
+                return SplitNode(
+                    orientation=orientation, ratio=ratio, left=left, right=right
+                )
 
             raise ValueError(f"Unsupported node type: {node_type!r}")
 

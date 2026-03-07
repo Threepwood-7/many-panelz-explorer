@@ -71,7 +71,9 @@ class ExplorerFileSystemModel(QFileSystemModel):
                 return f"{int(info.size()):,}"
             if column == 3:
                 modified = info.lastModified()
-                return modified.toString("yyyy-MM-dd HH:mm") if modified.isValid() else ""
+                return (
+                    modified.toString("yyyy-MM-dd HH:mm") if modified.isValid() else ""
+                )
 
         if role == int(Qt.ItemDataRole.TextAlignmentRole) and index.column() == 2:
             return int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -143,11 +145,15 @@ class ExplorerTab(QWidget):
         root.addWidget(self.view)
 
         self._alt_left_shortcut = QShortcut("Alt+Left", self)
-        self._alt_left_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self._alt_left_shortcut.setContext(
+            Qt.ShortcutContext.WidgetWithChildrenShortcut
+        )
         self._alt_left_shortcut.activated.connect(self.go_back)
 
         self._alt_right_shortcut = QShortcut("Alt+Right", self)
-        self._alt_right_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self._alt_right_shortcut.setContext(
+            Qt.ShortcutContext.WidgetWithChildrenShortcut
+        )
         self._alt_right_shortcut.activated.connect(self.go_forward)
 
         self._alt_up_shortcut = QShortcut("Alt+Up", self)
@@ -248,7 +254,9 @@ class ExplorerTab(QWidget):
 
     def column_widths(self) -> list[int]:
         header = self.view.header()
-        return [header.sectionSize(column) for column in range(self.model.columnCount())]
+        return [
+            header.sectionSize(column) for column in range(self.model.columnCount())
+        ]
 
     def apply_column_widths(self, widths: list[int]) -> None:
         if not widths:
@@ -280,31 +288,34 @@ class ExplorerTab(QWidget):
             key_event = cast("QKeyEvent", event)
             modifiers = key_event.modifiers()
             key = key_event.key()
-            if (
-                modifiers == Qt.KeyboardModifier.AltModifier
-                and key == int(Qt.Key.Key_Left)
+            if modifiers == Qt.KeyboardModifier.AltModifier and key == int(
+                Qt.Key.Key_Left
             ):
                 self.go_back()
                 return True
-            if (
-                modifiers == Qt.KeyboardModifier.AltModifier
-                and key == int(Qt.Key.Key_Right)
+            if modifiers == Qt.KeyboardModifier.AltModifier and key == int(
+                Qt.Key.Key_Right
             ):
                 self.go_forward()
                 return True
-            if modifiers == Qt.KeyboardModifier.AltModifier and key == int(Qt.Key.Key_Up):
-                self.go_up()
-                return True
-            if modifiers == Qt.KeyboardModifier.NoModifier and key == int(Qt.Key.Key_Left):
-                self.go_up()
-                return True
-            if (
-                modifiers == Qt.KeyboardModifier.NoModifier
-                and key == int(Qt.Key.Key_Backspace)
+            if modifiers == Qt.KeyboardModifier.AltModifier and key == int(
+                Qt.Key.Key_Up
             ):
                 self.go_up()
                 return True
-            if modifiers == Qt.KeyboardModifier.NoModifier and key == int(Qt.Key.Key_Right):
+            if modifiers == Qt.KeyboardModifier.NoModifier and key == int(
+                Qt.Key.Key_Left
+            ):
+                self.go_up()
+                return True
+            if modifiers == Qt.KeyboardModifier.NoModifier and key == int(
+                Qt.Key.Key_Backspace
+            ):
+                self.go_up()
+                return True
+            if modifiers == Qt.KeyboardModifier.NoModifier and key == int(
+                Qt.Key.Key_Right
+            ):
                 index = self.view.currentIndex()
                 if index.isValid():
                     self._on_item_activated(index)
@@ -387,10 +398,14 @@ class ExplorerTab(QWidget):
         self.refresh()
 
     def _new_folder(self) -> None:
-        name, ok = QInputDialog.getText(self, "New folder", "Folder name:", text="New Folder")
+        name, ok = QInputDialog.getText(
+            self, "New folder", "Folder name:", text="New Folder"
+        )
         if not ok or not name.strip():
             return
-        self._run_action(lambda: file_ops.create_folder(self.current_path(), name.strip()))
+        self._run_action(
+            lambda: file_ops.create_folder(self.current_path(), name.strip())
+        )
         self.refresh()
 
     def _copy_selected(self) -> None:
@@ -411,7 +426,9 @@ class ExplorerTab(QWidget):
         selected = self.selected_paths()
         if not selected:
             return
-        dest = QFileDialog.getExistingDirectory(self, "Move items", str(self.current_path()))
+        dest = QFileDialog.getExistingDirectory(
+            self, "Move items", str(self.current_path())
+        )
         if not dest:
             return
         self._run_action(lambda: file_ops.move_items(selected, Path(dest)))
@@ -446,7 +463,9 @@ class ExplorerTab(QWidget):
         if not selected:
             return
 
-        default_name = f"{selected[0].name}.zip" if len(selected) == 1 else "archive.zip"
+        default_name = (
+            f"{selected[0].name}.zip" if len(selected) == 1 else "archive.zip"
+        )
         target, _ = QFileDialog.getSaveFileName(
             self,
             "Create ZIP",
@@ -465,7 +484,9 @@ class ExplorerTab(QWidget):
         if archive.suffix.lower() != ".zip":
             return
 
-        target = QFileDialog.getExistingDirectory(self, "Extract ZIP", str(self.current_path()))
+        target = QFileDialog.getExistingDirectory(
+            self, "Extract ZIP", str(self.current_path())
+        )
         if not target:
             return
         self._run_action(lambda: file_ops.zip_extract(archive, Path(target)))
@@ -500,7 +521,9 @@ class ExplorerTab(QWidget):
     def _emit_history_state(self) -> None:
         self.history_changed.emit(self.can_go_back(), self.can_go_forward())
 
-    def _on_column_resized(self, _logical_index: int, _old_size: int, _new_size: int) -> None:
+    def _on_column_resized(
+        self, _logical_index: int, _old_size: int, _new_size: int
+    ) -> None:
         if self._syncing_column_widths:
             return
         self.column_widths_changed.emit(self.column_widths())
@@ -529,7 +552,9 @@ class ExplorerTab(QWidget):
             return
         self._selection_memory[self._path_key(path)] = selected
 
-    def _restore_selection_for_path(self, path: Path, preferred: Path | None = None) -> None:
+    def _restore_selection_for_path(
+        self, path: Path, preferred: Path | None = None
+    ) -> None:
         candidate = preferred or self._selection_memory.get(self._path_key(path))
         if candidate is None:
             return

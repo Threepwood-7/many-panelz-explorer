@@ -50,7 +50,9 @@ class _ControllerCloneStub(_ControllerStub):
 
 def test_split_tab_close_actions(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
-    window = ExplorerWindow(controller=_ControllerStub(), settings=settings, window_id="test-window")
+    window = ExplorerWindow(
+        controller=_ControllerStub(), settings=settings, window_id="test-window"
+    )
     qtbot.addWidget(window)
     window.show()
 
@@ -74,7 +76,9 @@ def test_split_tab_close_actions(qtbot, tmp_path: Path) -> None:
 
 def test_show_hidden_toggle_updates_tabs(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
-    window = ExplorerWindow(controller=_ControllerStub(), settings=settings, window_id="hidden-window")
+    window = ExplorerWindow(
+        controller=_ControllerStub(), settings=settings, window_id="hidden-window"
+    )
     qtbot.addWidget(window)
     window.show()
 
@@ -92,7 +96,9 @@ def test_show_hidden_toggle_updates_tabs(qtbot, tmp_path: Path) -> None:
 
 def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
-    window = ExplorerWindow(controller=_ControllerStub(), settings=settings, window_id="clone-panel-window")
+    window = ExplorerWindow(
+        controller=_ControllerStub(), settings=settings, window_id="clone-panel-window"
+    )
     qtbot.addWidget(window)
     window.show()
 
@@ -121,7 +127,9 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
 def test_clone_current_window_action(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
     controller = _ControllerCloneStub(settings=settings)
-    source = ExplorerWindow(controller=controller, settings=settings, window_id="source-window")
+    source = ExplorerWindow(
+        controller=controller, settings=settings, window_id="source-window"
+    )
     qtbot.addWidget(source)
     source.show()
 
@@ -143,10 +151,14 @@ def test_clone_current_window_action(qtbot, tmp_path: Path) -> None:
     assert cloned_counts == source_counts
 
 
-def test_close_window_action_closes_and_notifies_controller(qtbot, tmp_path: Path) -> None:
+def test_close_window_action_closes_and_notifies_controller(
+    qtbot, tmp_path: Path
+) -> None:
     settings = SettingsManager()
     controller = _ControllerStub()
-    window = ExplorerWindow(controller=controller, settings=settings, window_id="close-window")
+    window = ExplorerWindow(
+        controller=controller, settings=settings, window_id="close-window"
+    )
     qtbot.addWidget(window)
     window.show()
     assert window.isVisible()
@@ -158,12 +170,16 @@ def test_close_window_action_closes_and_notifies_controller(qtbot, tmp_path: Pat
     assert controller.closed_windows[-1] is window
 
 
-def test_root_dropdown_ini_setting_controls_panel_dropdown(qtbot, tmp_path: Path) -> None:
+def test_root_dropdown_ini_setting_controls_panel_dropdown(
+    qtbot, tmp_path: Path
+) -> None:
     settings = SettingsManager()
     settings.show_root_dropdown = True
     settings.sync()
 
-    window_on = ExplorerWindow(controller=_ControllerStub(), settings=settings, window_id="dropdown-on")
+    window_on = ExplorerWindow(
+        controller=_ControllerStub(), settings=settings, window_id="dropdown-on"
+    )
     qtbot.addWidget(window_on)
     window_on.show()
     assert window_on.active_panel() is not None
@@ -185,7 +201,9 @@ def test_root_dropdown_ini_setting_controls_panel_dropdown(qtbot, tmp_path: Path
 def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -> None:
     settings = SettingsManager()
     controller = _ControllerCloneStub(settings=settings)
-    source = ExplorerWindow(controller=controller, settings=settings, window_id="view-source")
+    source = ExplorerWindow(
+        controller=controller, settings=settings, window_id="view-source"
+    )
     qtbot.addWidget(source)
     source.show()
     source.resize(777, 555)
@@ -215,10 +233,14 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     monkeypatch.setattr(
         QInputDialog,
         "getItem",
-        lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("restore should use submenu, not dialog")),
+        lambda *_a, **_k: (_ for _ in ()).throw(
+            AssertionError("restore should use submenu, not dialog")
+        ),
     )
     source._populate_restore_view_menu()
-    restore_actions = [a for a in source._restore_view_menu.actions() if a.text() == "My View"]
+    restore_actions = [
+        a for a in source._restore_view_menu.actions() if a.text() == "My View"
+    ]
     assert restore_actions
     restore_actions[0].trigger()
     assert len(controller.created_windows) == 1

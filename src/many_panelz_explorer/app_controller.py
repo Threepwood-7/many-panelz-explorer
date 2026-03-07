@@ -5,12 +5,13 @@ from typing import TYPE_CHECKING, cast
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
+from threep_commons.paths import configure_qsettings, resolve_app_data_dir
 
-from .runtime_paths import (
+from .constants import (
+    APP_DISPLAY_NAME,
+    APP_IDENTITY,
     SETTINGS_APP_NAME,
     SETTINGS_ORG_NAME,
-    configure_qsettings,
-    resolve_app_data_dir,
 )
 from .settings import SettingsManager
 from .window import ExplorerWindow
@@ -22,13 +23,15 @@ if TYPE_CHECKING:
 class AppController:
     def __init__(self, argv: Iterable[str] | None = None) -> None:
         argv_list = list(argv) if argv is not None else []
-        configure_qsettings()
-        resolve_app_data_dir()
+        configure_qsettings(APP_IDENTITY)
+        resolve_app_data_dir(APP_IDENTITY)
         existing = cast("QApplication | None", QApplication.instance())
-        self.app: QApplication = existing if existing is not None else QApplication(argv_list)
+        self.app: QApplication = (
+            existing if existing is not None else QApplication(argv_list)
+        )
         self.app.setApplicationName(SETTINGS_APP_NAME)
         self.app.setOrganizationName(SETTINGS_ORG_NAME)
-        self.app.setApplicationDisplayName("Many Panelz Explorer")
+        self.app.setApplicationDisplayName(APP_DISPLAY_NAME)
         self.app.setQuitOnLastWindowClosed(True)
 
         self.settings = SettingsManager()
@@ -59,7 +62,9 @@ class AppController:
             window_id=window_id,
             initial_path=initial_path,
         )
-        window.request_new_window.connect(lambda w=window: self.new_window(from_window=w))
+        window.request_new_window.connect(
+            lambda w=window: self.new_window(from_window=w)
+        )
         window.window_activated.connect(lambda w=window: self._on_window_activated(w))
 
         if from_window is not None:
@@ -89,7 +94,10 @@ class AppController:
         try:
             managed_windows = list(self.windows)
             for window in managed_windows:
-                if restore_minimized and window.windowState() & Qt.WindowState.WindowMinimized:
+                if (
+                    restore_minimized
+                    and window.windowState() & Qt.WindowState.WindowMinimized
+                ):
                     window.showNormal()
                 window.raise_()
         finally:

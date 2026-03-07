@@ -178,7 +178,9 @@ def test_parent_entry_shown_except_at_drive_root(qtbot, tmp_path: Path) -> None:
     tab.show()
 
     qtbot.waitUntil(lambda: tab.model.rowCount(tab.view.rootIndex()) > 0)
-    first_name = str(tab.model.data(tab.model.index(0, 0, tab.view.rootIndex()), Qt.DisplayRole))
+    first_name = str(
+        tab.model.data(tab.model.index(0, 0, tab.view.rootIndex()), Qt.DisplayRole)
+    )
     assert first_name == ".."
 
     drive_root = Path(child.anchor)

@@ -216,13 +216,17 @@ def test_root_controls_sorted_alphabetically(qtbot, tmp_path: Path) -> None:
     panel.add_tab(root)
 
     button_labels = [button.text() for button in panel.root_buttons]
-    combo_labels = [panel.root_combo.itemText(i) for i in range(panel.root_combo.count())]
+    combo_labels = [
+        panel.root_combo.itemText(i) for i in range(panel.root_combo.count())
+    ]
 
     assert button_labels == ["AA", "HDD01", "HDD02"]
     assert combo_labels == ["AA", "HDD01", "HDD02"]
 
 
-def test_windows_mountpoint_uses_last_segment_and_tooltip(qtbot, tmp_path: Path, monkeypatch) -> None:
+def test_windows_mountpoint_uses_last_segment_and_tooltip(
+    qtbot, tmp_path: Path, monkeypatch
+) -> None:
     root = tmp_path / "root"
     mount = root / "M" / "HDD01"
     mount.mkdir(parents=True)
@@ -243,7 +247,9 @@ def test_windows_mountpoint_uses_last_segment_and_tooltip(qtbot, tmp_path: Path,
     assert panel.root_buttons[0].text() == "HDD01"
     assert panel.root_buttons[0].toolTip().endswith("HDD01")
     assert panel.root_combo.itemText(0) == "HDD01"
-    assert str(panel.root_combo.itemData(0, panel_widget_module.Qt.ToolTipRole)).endswith("HDD01")
+    assert str(
+        panel.root_combo.itemData(0, panel_widget_module.Qt.ToolTipRole)
+    ).endswith("HDD01")
 
 
 def test_alt_down_shows_current_tab_history_menu(qtbot, tmp_path: Path) -> None:

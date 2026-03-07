@@ -79,7 +79,9 @@ def _windows_volume_mount_paths() -> list[Path]:
 
             if required.value > 0:
                 path_buffer = ctypes.create_unicode_buffer(required.value)
-                if get_paths(volume_name, path_buffer, required.value, ctypes.byref(required)):
+                if get_paths(
+                    volume_name, path_buffer, required.value, ctypes.byref(required)
+                ):
                     raw = "".join(path_buffer[: required.value])
                     for item in raw.split("\x00"):
                         if item:

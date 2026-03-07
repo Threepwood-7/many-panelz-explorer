@@ -170,7 +170,9 @@ class PanelWidget(QWidget):
         self.address_edit.installEventFilter(self)
 
         self._alt_down_shortcut = QShortcut("Alt+Down", self)
-        self._alt_down_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self._alt_down_shortcut.setContext(
+            Qt.ShortcutContext.WidgetWithChildrenShortcut
+        )
         self._alt_down_shortcut.activated.connect(self._show_history_menu)
 
         self._sync_toolbar_for_current_tab()
@@ -186,7 +188,9 @@ class PanelWidget(QWidget):
         def _on_path_retitle(_path: str, t: ExplorerTab = tab) -> None:
             self._retitle_tab(t)
 
-        def _on_history_changed(_back: bool, _forward: bool, t: ExplorerTab = tab) -> None:
+        def _on_history_changed(
+            _back: bool, _forward: bool, t: ExplorerTab = tab
+        ) -> None:
             self._on_tab_history_changed(t)
 
         def _on_widths_changed(widths: list[object], t: ExplorerTab = tab) -> None:
@@ -267,7 +271,9 @@ class PanelWidget(QWidget):
     def restore_state(self, state: dict[str, Any]) -> None:
         raw_widths = state.get("column_widths", [])
         if isinstance(raw_widths, list):
-            self._column_widths = self._coerce_column_widths(cast("list[object]", raw_widths))
+            self._column_widths = self._coerce_column_widths(
+                cast("list[object]", raw_widths)
+            )
 
         self._restoring_state = True
         try:
@@ -331,7 +337,9 @@ class PanelWidget(QWidget):
         if tab is self.current_tab():
             self._sync_toolbar_for_current_tab()
 
-    def _on_tab_column_widths_changed(self, tab: ExplorerTab, widths: list[object]) -> None:
+    def _on_tab_column_widths_changed(
+        self, tab: ExplorerTab, widths: list[object]
+    ) -> None:
         if self._syncing_column_widths or self._restoring_state:
             return
         if not widths:
@@ -407,7 +415,9 @@ class PanelWidget(QWidget):
         self._rebuild_root_buttons(current_path, roots)
         self._rebuild_root_combo(current_path, roots)
 
-    def _rebuild_root_buttons(self, current_path: Path | None, roots: list[Path]) -> None:
+    def _rebuild_root_buttons(
+        self, current_path: Path | None, roots: list[Path]
+    ) -> None:
         while self.root_buttons_layout.count():
             item = self.root_buttons_layout.takeAt(0)
             if item is None:
@@ -421,8 +431,13 @@ class PanelWidget(QWidget):
             button = QPushButton(_root_display_text(root_path))
             button.setToolTip(_strip_windows_long_path(str(root_path)))
             button.setCheckable(True)
-            button.setChecked(current_path is not None and _is_path_under_root(current_path, root_path))
-            button.clicked.connect(lambda _checked=False, p=root_path: self._navigate_to_root(p))
+            button.setChecked(
+                current_path is not None
+                and _is_path_under_root(current_path, root_path)
+            )
+            button.clicked.connect(
+                lambda _checked=False, p=root_path: self._navigate_to_root(p)
+            )
             button.installEventFilter(self.focus_watcher)
             self.root_buttons_layout.addWidget(button)
             self.root_buttons.append(button)
@@ -494,7 +509,9 @@ class PanelWidget(QWidget):
             return
 
         current_path = tab.current_path()
-        matches = [root for root in self._root_paths if _is_path_under_root(current_path, root)]
+        matches = [
+            root for root in self._root_paths if _is_path_under_root(current_path, root)
+        ]
         if matches:
             root_path = max(matches, key=lambda p: len(os.path.normpath(str(p))))
             tab.set_path(root_path)
@@ -503,10 +520,13 @@ class PanelWidget(QWidget):
         if current_path.anchor:
             tab.set_path(Path(current_path.anchor))
 
-    def _refresh(self) -> None:
+    def refresh_current_path(self) -> None:
         tab = self.current_tab()
         if tab is not None:
             tab.refresh()
+
+    def _refresh(self) -> None:
+        self.refresh_current_path()
 
     def _on_address_submitted(self) -> None:
         tab = self.current_tab()
@@ -550,7 +570,9 @@ class PanelWidget(QWidget):
             action.setToolTip(_strip_windows_long_path(str(entry)))
             action.setCheckable(True)
             action.setChecked(index == current_index)
-            action.triggered.connect(lambda _checked=False, i=index: tab.go_to_history_index(i))
+            action.triggered.connect(
+                lambda _checked=False, i=index: tab.go_to_history_index(i)
+            )
 
         self._history_menu = menu
         menu.popup(self.address_edit.mapToGlobal(self.address_edit.rect().bottomLeft()))
