@@ -97,6 +97,10 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
     )
     assert refresh_action is not None
     assert refresh_action.shortcut().toString() == "Ctrl+R"
+    assert any(
+        action.text().replace("&", "") == "Show Widget Map"
+        for action in view_menu.actions()
+    )
 
     help_menu = window.menuBar().actions()[2].menu()
     assert help_menu is not None
@@ -233,4 +237,3 @@ def test_window_does_not_create_menu_overlap_widgets(qtbot, tmp_path: Path) -> N
         menu_bar.mapToGlobal(menu_bar.actionGeometry(file_action).center())
     )
     assert hit is menu_bar
-

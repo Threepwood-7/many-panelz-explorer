@@ -115,6 +115,33 @@ def test_show_hidden_toggle_updates_tabs(qtbot, tmp_path: Path) -> None:
     assert tab.model.filter() & tab.model.filter().Hidden
 
 
+def test_show_widget_map_toggle_updates_existing_and_new_panels(
+    qtbot, tmp_path: Path
+) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="widget-map-toggle-window",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    assert all(not panel.widget_map_enabled() for panel in window.panel_widgets.values())
+
+    window._show_widget_map_action.setChecked(True)
+    assert all(panel.widget_map_enabled() for panel in window.panel_widgets.values())
+
+    window._new_vertical_panel_action.trigger()
+    assert len(window.panel_widgets) == 2
+    assert all(panel.widget_map_enabled() for panel in window.panel_widgets.values())
+
+    window._show_widget_map_action.setChecked(False)
+    assert all(not panel.widget_map_enabled() for panel in window.panel_widgets.values())
+
+
 def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
     roots_provider = _test_roots_provider(tmp_path)

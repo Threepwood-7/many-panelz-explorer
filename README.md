@@ -55,6 +55,12 @@ A multi-panel, Windows-focused file explorer built with PySide6. Supports splitt
 
    Focused details/navigation state for reviewing selected paths.
 
+4. Toggle widget map to visualize stable IDs and aliases.
+
+   ![Widget naming map](docs/images/ui-04-widget-map.png)
+
+   Overlay labels for panel controls and active file list naming.
+
 ## Requirements
 
 - **Windows** (10 or later; also works on Linux/macOS via PySide6)
@@ -220,12 +226,14 @@ many-panelz-explorer/
 |       |-- setup_env.py              # Create/verify .venv via uv sync
 |       |-- run_app.py               # Launch app via hatch run
 |       |-- run_app_gui.pyw          # Launch GUI without console window
+|       |-- generate_widget_map_image.py # Generate widget naming map image
 |       `-- run_tests.py             # Run tests via hatch run test
 |-- docs/
 |   `-- images/
 |       |-- ui-01-overview.png
 |       |-- ui-02-workflow.png
-|       `-- ui-03-details.png
+|       |-- ui-03-details.png
+|       `-- ui-04-widget-map.png
 |-- tests/
 |   `-- ...                          # pytest suite with pytest-qt
 `-- .pre-commit-config.yaml
@@ -254,6 +262,7 @@ many-panelz-explorer/
 | `python scripts\windows\setup_env.py` | Create/verify `.venv` via `uv sync --locked` |
 | `pyw scripts\windows\run_app_gui.pyw` | Launch GUI without console window (auto-bootstraps venv) |
 | `python scripts\windows\run_app.py` | Launch app via `hatch run` (requires hatch in PATH) |
+| `python scripts\windows\generate_widget_map_image.py` | Render docs screenshot with widget map overlay |
 | `python scripts\windows\run_tests.py` | Run test suite via `hatch run test` |
 
 ### Testing

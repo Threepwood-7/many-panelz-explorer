@@ -13,6 +13,7 @@ from PySide6.QtTest import QTest
 
 import many_panelz_explorer.panel_widget as panel_widget_module
 from many_panelz_explorer.panel_widget import PanelWidget
+from many_panelz_explorer import widget_naming
 
 
 def _norm(path: Path | str) -> str:
@@ -456,6 +457,61 @@ def test_filter_overlay_appears_in_bottom_right_of_file_list(
     assert overlay_rect.bottom() <= view_bottom
     assert abs((view_right - overlay_rect.right()) - 8) <= 2
     assert abs((view_bottom - overlay_rect.bottom()) - 8) <= 2
+
+
+def test_widget_identity_contract_for_panel_and_file_list(qtbot, tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    first_tab = panel.add_tab(root)
+    second_tab = panel.add_tab(root)
+
+    assert first_tab.tab_uuid != second_tab.tab_uuid
+    assert panel.objectName() == widget_naming.object_name_for_id(
+        widget_naming.panel_widget_id(1)
+    )
+    assert str(panel.property("widget_id")) == widget_naming.panel_widget_id(1)
+    assert str(panel.address_edit.property("widget_alias")) == "P1.address"
+
+    expected_file_list_id = widget_naming.file_list_widget_id(1, first_tab.tab_uuid)
+    expected_file_list_alias = widget_naming.file_list_alias(1, first_tab.tab_uuid)
+    assert str(first_tab.view.property("widget_id")) == expected_file_list_id
+    assert str(first_tab.view.property("widget_alias")) == expected_file_list_alias
+
+
+def test_widget_map_overlay_can_be_toggled(qtbot, tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "alpha.txt").write_text("a", encoding="utf-8")
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    tab = panel.add_tab(root)
+    assert tab is not None
+
+    panel.set_widget_map_enabled(True)
+    qtbot.waitUntil(lambda: panel._widget_map_overlay.isVisible())
+
+    aliases = [entry.alias for entry in panel.widget_map_entries()]
+    assert any(alias.endswith(".file_list") for alias in aliases)
+    assert "P1.address" in aliases
+
+    panel.set_widget_map_enabled(False)
+    assert panel._widget_map_overlay.isVisible() is False
 
 
 def test_type_to_focus_does_not_show_filter_overlay_from_address_bar(

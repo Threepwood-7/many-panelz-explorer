@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -48,6 +49,7 @@ class ExplorerTab(QWidget):
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
+        self._tab_uuid = uuid.uuid4().hex
         self._history: list[Path] = []
         self._history_index = -1
         self._show_hidden = show_hidden
@@ -104,6 +106,10 @@ class ExplorerTab(QWidget):
 
         self.set_path(initial_path)
         self.view.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+
+    @property
+    def tab_uuid(self) -> str:
+        return self._tab_uuid
 
     def current_path(self) -> Path:
         if not self._history:

@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from . import file_ops
+from . import widget_naming
 from .panel_tree import (
     ORIENTATION_HORIZONTAL,
     ORIENTATION_VERTICAL,
@@ -62,6 +63,7 @@ class ExplorerWindow(QMainWindow):
         self._roots_provider = roots_provider
         self._active_panel_id: int | None = None
         self._last_non_source_panel_id: int | None = None
+        self._show_widget_map = False
 
         self.panel_tree = PanelTreeModel()
         self._layout_rows: PanelRows = self._rows_from_tree(self.panel_tree.root)
@@ -80,6 +82,10 @@ class ExplorerWindow(QMainWindow):
         self._build_shortcuts()
 
         self.setWindowTitle("Many Panelz Explorer")
+        window_widget_id = widget_naming.window_widget_id(self.window_id)
+        self.setObjectName(widget_naming.object_name_for_id(window_widget_id))
+        self.setProperty("widget_id", window_widget_id)
+        self.setProperty("widget_alias", "window")
         self.setWindowFlag(Qt.WindowType.Window, True)
 
         empty_state: TabsState = {}
@@ -361,6 +367,11 @@ class ExplorerWindow(QMainWindow):
         self._show_hidden_action.setChecked(self._show_hidden)
         self._show_hidden_action.toggled.connect(self._toggle_show_hidden)
 
+        self._show_widget_map_action = QAction("Show &Widget Map", self)
+        self._show_widget_map_action.setCheckable(True)
+        self._show_widget_map_action.setChecked(self._show_widget_map)
+        self._show_widget_map_action.toggled.connect(self._toggle_show_widget_map)
+
         self._help_action = QAction("&Help", self)
         self._help_action.setShortcut(QKeySequence("F1"))
         self._help_action.triggered.connect(self._show_help)
@@ -415,6 +426,7 @@ class ExplorerWindow(QMainWindow):
         view_menu.addSeparator()
         view_menu.addAction(self._on_top_action)
         view_menu.addAction(self._show_hidden_action)
+        view_menu.addAction(self._show_widget_map_action)
 
         help_menu = QMenu("&Help", self)
         help_menu.addAction(self._help_action)
@@ -443,6 +455,7 @@ class ExplorerWindow(QMainWindow):
                 self._close_window_action,
                 self._exit_action,
                 self._refresh_action,
+                self._show_widget_map_action,
                 self._help_action,
             ]
         )
@@ -534,6 +547,7 @@ class ExplorerWindow(QMainWindow):
             else:
                 panel.add_tab(self._resolve_new_context_path(self._initial_path))
 
+            panel.set_widget_map_enabled(self._show_widget_map)
             new_panel_widgets[panel_id] = panel
 
         self.panel_widgets = new_panel_widgets
@@ -651,6 +665,11 @@ class ExplorerWindow(QMainWindow):
         self.settings.show_hidden_default = self._show_hidden
         for panel in self.panel_widgets.values():
             panel.set_show_hidden(self._show_hidden)
+
+    def _toggle_show_widget_map(self, enabled: bool) -> None:
+        self._show_widget_map = bool(enabled)
+        for panel in self.panel_widgets.values():
+            panel.set_widget_map_enabled(self._show_widget_map)
 
     def _prompt_saved_view(self, title: str) -> dict[str, Any] | None:
         names = self.settings.list_saved_views()

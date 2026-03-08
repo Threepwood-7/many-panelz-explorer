@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-from PySide6.QtCore import QEvent, QObject, QPoint, Qt, QTimer, Signal
-from PySide6.QtGui import QKeyEvent, QShortcut
+from PySide6.QtCore import QEvent, QObject, QPoint, QRect, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QKeyEvent, QPaintEvent, QPainter, QPen, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
@@ -21,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from .explorer_tab import ExplorerTab
 from .mounts import list_roots_for_navigation
+from . import widget_naming
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -84,6 +86,74 @@ class _FocusWatcher(QObject):
         return super().eventFilter(obj, event)
 
 
+@dataclass(frozen=True)
+class _WidgetMapEntry:
+    widget: QWidget
+    alias: str
+    widget_id: str
+
+
+class _WidgetMapOverlay(QWidget):
+    def __init__(self, owner: "PanelWidget") -> None:
+        super().__init__(owner)
+        self._owner = owner
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.hide()
+
+    def refresh(self) -> None:
+        parent = self.parentWidget()
+        if parent is None:
+            return
+        self.setGeometry(parent.rect())
+        self.raise_()
+        self.update()
+
+    def paintEvent(self, event: QPaintEvent) -> None:  # noqa: N802
+        _ = event
+        entries = self._owner.widget_map_entries()
+        if not entries:
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        text_flags = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+
+        for entry in entries:
+            widget = entry.widget
+            if not widget.isVisible():
+                continue
+            top_left = widget.mapTo(self, QPoint(0, 0))
+            rect = QRect(top_left, widget.size()).adjusted(0, 0, -1, -1)
+            if rect.width() <= 2 or rect.height() <= 2:
+                continue
+
+            color = QColor("#22c55e")
+            painter.setPen(QPen(color, 2))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawRect(rect)
+
+            label = f"{entry.alias}"
+            metrics = painter.fontMetrics()
+            text_width = metrics.horizontalAdvance(label) + 12
+            text_height = metrics.height() + 8
+
+            label_x = rect.left() + 2
+            label_y = rect.top() - text_height - 2
+            if label_y < 2:
+                label_y = rect.top() + 2
+            if label_x + text_width > self.width() - 2:
+                label_x = max(2, self.width() - text_width - 2)
+
+            label_rect = QRect(label_x, label_y, text_width, text_height)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(0, 0, 0, 190))
+            painter.drawRoundedRect(label_rect, 4, 4)
+            painter.setPen(QColor("#f8fafc"))
+            painter.drawText(label_rect.adjusted(6, 0, -6, 0), int(text_flags), label)
+
+
 class PanelWidget(QWidget):
     COLUMN_SYNC_DEBOUNCE_MS = 120
 
@@ -114,8 +184,12 @@ class PanelWidget(QWidget):
         self.root_buttons: list[QPushButton] = []
         self._history_menu: QMenu | None = None
         self._pane_role = "normal"
+        self._show_widget_map = False
 
-        self.setObjectName("panelWidget")
+        self._panel_widget_id = widget_naming.panel_widget_id(self.panel_id)
+        self.setObjectName(widget_naming.object_name_for_id(self._panel_widget_id))
+        self.setProperty("widget_id", self._panel_widget_id)
+        self.setProperty("widget_alias", widget_naming.panel_alias(self.panel_id))
         self.setMinimumWidth(0)
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
 
@@ -219,6 +293,53 @@ class PanelWidget(QWidget):
         self.filter_edit.textChanged.connect(self._on_filter_text_changed)
         self.filter_edit.installEventFilter(self)
         self.installEventFilter(self)
+        self._assign_identity(
+            self.refresh_btn,
+            widget_naming.panel_control_widget_id(self.panel_id, "refresh"),
+            widget_naming.panel_control_alias(self.panel_id, "refresh"),
+        )
+        self._assign_identity(
+            self.address_edit,
+            widget_naming.panel_control_widget_id(self.panel_id, "address"),
+            widget_naming.panel_control_alias(self.panel_id, "address"),
+        )
+        self._assign_identity(
+            self.back_btn,
+            widget_naming.panel_control_widget_id(self.panel_id, "back"),
+            widget_naming.panel_control_alias(self.panel_id, "back"),
+        )
+        self._assign_identity(
+            self.forward_btn,
+            widget_naming.panel_control_widget_id(self.panel_id, "forward"),
+            widget_naming.panel_control_alias(self.panel_id, "forward"),
+        )
+        self._assign_identity(
+            self.up_btn,
+            widget_naming.panel_control_widget_id(self.panel_id, "up"),
+            widget_naming.panel_control_alias(self.panel_id, "up"),
+        )
+        self._assign_identity(
+            self.root_btn,
+            widget_naming.panel_control_widget_id(self.panel_id, "root"),
+            widget_naming.panel_control_alias(self.panel_id, "root"),
+        )
+        self._assign_identity(
+            self.tabs,
+            widget_naming.panel_control_widget_id(self.panel_id, "tabs"),
+            widget_naming.panel_control_alias(self.panel_id, "tabs"),
+        )
+        self._assign_identity(
+            self.tabs.tabBar(),
+            widget_naming.panel_control_widget_id(self.panel_id, "tab_bar"),
+            widget_naming.panel_control_alias(self.panel_id, "tab_bar"),
+        )
+        self._assign_identity(
+            self.filter_edit,
+            widget_naming.panel_control_widget_id(self.panel_id, "filter"),
+            widget_naming.panel_control_alias(self.panel_id, "filter"),
+        )
+
+        self._widget_map_overlay = _WidgetMapOverlay(self)
 
         self.back_btn.installEventFilter(self.focus_watcher)
         self.forward_btn.installEventFilter(self.focus_watcher)
@@ -246,11 +367,13 @@ class PanelWidget(QWidget):
 
         self._sync_toolbar_for_current_tab()
         self._apply_visual_role()
+        self._sync_widget_map_overlay()
 
     def add_tab(self, path: Path) -> ExplorerTab:
         source_tab = self.current_tab()
         source_widths = source_tab.column_widths() if source_tab is not None else []
         tab = ExplorerTab(path, show_hidden=self._show_hidden, parent=self)
+        self._assign_tab_identity(tab)
 
         def _on_path_changed(_path: str, t: ExplorerTab = tab) -> None:
             self._on_tab_path_changed(t)
@@ -287,6 +410,7 @@ class PanelWidget(QWidget):
             self._column_widths = tab.column_widths()
         self._sync_toolbar_for_current_tab()
         self.activated.emit()
+        self._sync_widget_map_overlay()
         return tab
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
@@ -343,6 +467,65 @@ class PanelWidget(QWidget):
             widget = self.tabs.widget(i)
             if isinstance(widget, ExplorerTab):
                 widget.set_show_hidden(self._show_hidden)
+
+    def set_widget_map_enabled(self, enabled: bool) -> None:
+        self._show_widget_map = bool(enabled)
+        self._sync_widget_map_overlay()
+
+    def widget_map_enabled(self) -> bool:
+        return self._show_widget_map
+
+    def widget_map_entries(self) -> list[_WidgetMapEntry]:
+        widgets: list[QWidget] = [
+            self.tabs,
+            self.tabs.tabBar(),
+            self.address_edit,
+            self.refresh_btn,
+            self.back_btn,
+            self.forward_btn,
+            self.up_btn,
+            self.root_btn,
+            self.filter_edit,
+        ]
+        tab = self.current_tab()
+        if tab is not None:
+            widgets.extend([tab, tab.view])
+
+        entries: list[_WidgetMapEntry] = []
+        for widget in widgets:
+            entry = self._entry_for_widget(widget)
+            if entry is not None:
+                entries.append(entry)
+        return entries
+
+    def _assign_identity(self, widget: QWidget, widget_id: str, alias: str) -> None:
+        widget.setObjectName(widget_naming.object_name_for_id(widget_id))
+        widget.setProperty("widget_id", widget_id)
+        widget.setProperty("widget_alias", alias)
+
+    def _assign_tab_identity(self, tab: ExplorerTab) -> None:
+        tab_id = widget_naming.tab_widget_id(self.panel_id, tab.tab_uuid)
+        tab_alias = widget_naming.tab_alias(self.panel_id, tab.tab_uuid)
+        self._assign_identity(tab, tab_id, tab_alias)
+        self._assign_identity(
+            tab.view,
+            widget_naming.file_list_widget_id(self.panel_id, tab.tab_uuid),
+            widget_naming.file_list_alias(self.panel_id, tab.tab_uuid),
+        )
+
+    def _entry_for_widget(self, widget: QWidget) -> _WidgetMapEntry | None:
+        widget_id = str(widget.property("widget_id") or "").strip()
+        alias = str(widget.property("widget_alias") or "").strip()
+        if not widget_id or not alias:
+            return None
+        return _WidgetMapEntry(widget=widget, alias=alias, widget_id=widget_id)
+
+    def _sync_widget_map_overlay(self) -> None:
+        if not self._show_widget_map:
+            self._widget_map_overlay.hide()
+            return
+        self._widget_map_overlay.show()
+        self._widget_map_overlay.refresh()
 
     def serialize_state(self) -> dict[str, object]:
         tabs: list[dict[str, str]] = []
@@ -404,6 +587,7 @@ class PanelWidget(QWidget):
             self.became_empty.emit()
             return
         self._sync_toolbar_for_current_tab()
+        self._sync_widget_map_overlay()
 
     def _retitle_tab(self, tab: ExplorerTab) -> None:
         index = self.tabs.indexOf(tab)
@@ -420,6 +604,7 @@ class PanelWidget(QWidget):
             if tab is not None and self.filter_edit.isVisible():
                 tab.set_inline_filter(self.filter_edit.text())
         self._sync_toolbar_for_current_tab()
+        self._sync_widget_map_overlay()
 
     def _on_tab_path_changed(self, tab: ExplorerTab) -> None:
         if tab is self.current_tab():
@@ -502,6 +687,7 @@ class PanelWidget(QWidget):
             self.refresh_btn.setEnabled(False)
             self.address_edit.setText("")
             self._rebuild_root_controls(None)
+            self._sync_widget_map_overlay()
             return
 
         self.back_btn.setEnabled(tab.can_go_back())
@@ -513,6 +699,7 @@ class PanelWidget(QWidget):
         self._rebuild_root_controls(tab.current_path())
         if self.filter_edit.isVisible():
             tab.set_inline_filter(self.filter_edit.text())
+        self._sync_widget_map_overlay()
 
     def _rebuild_root_controls(self, current_path: Path | None) -> None:
         roots = self._safe_roots(current_path)
@@ -732,6 +919,7 @@ class PanelWidget(QWidget):
         else:
             self._pane_role = "normal"
         self._apply_visual_role()
+        self._sync_widget_map_overlay()
 
     def clear_inline_filter(self) -> None:
         self.filter_edit.blockSignals(True)
@@ -763,17 +951,20 @@ class PanelWidget(QWidget):
             )
             self.filter_edit.setGeometry(x, y, width, height)
             self.filter_edit.raise_()
+            self._sync_widget_map_overlay()
             return
 
         width = max(220, int(self.width() * 0.35))
         x = max(margin, self.width() - width - margin)
         self.filter_edit.setGeometry(x, margin, width, height)
         self.filter_edit.raise_()
+        self._sync_widget_map_overlay()
 
     def _show_filter_overlay(self, *, seed_text: str) -> None:
         self._position_filter_overlay()
         self.filter_edit.setVisible(True)
         self.filter_edit.raise_()
+        self._sync_widget_map_overlay()
         self.filter_edit.setFocus()
         if seed_text:
             self.filter_edit.setText(self.filter_edit.text() + seed_text)
@@ -781,6 +972,7 @@ class PanelWidget(QWidget):
 
     def _hide_filter_overlay(self) -> None:
         self.filter_edit.setVisible(False)
+        self._sync_widget_map_overlay()
 
     def _on_filter_text_changed(self, text: str) -> None:
         tab = self.current_tab()
@@ -818,6 +1010,7 @@ class PanelWidget(QWidget):
             color = "#0088cc"
         else:
             color = "#555555"
+        panel_object_name = self.objectName()
         self.setStyleSheet(
-            f"QWidget#panelWidget {{ border: 2px solid {color}; border-radius: 2px; }}"
+            f"QWidget#{panel_object_name} {{ border: 2px solid {color}; border-radius: 2px; }}"
         )
