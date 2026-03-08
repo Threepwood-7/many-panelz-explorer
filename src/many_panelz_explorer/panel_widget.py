@@ -5,9 +5,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-from PySide6.QtCore import QEvent, QObject, QPoint, QRect, Qt, QTimer, Signal
+from PySide6.QtCore import (
+    QEvent,
+    QObject,
+    QPoint,
+    QRect,
+    QStringListModel,
+    Qt,
+    QTimer,
+    Signal,
+)
 from PySide6.QtGui import QColor, QKeyEvent, QPaintEvent, QPainter, QPen, QShortcut
 from PySide6.QtWidgets import (
+    QCompleter,
     QComboBox,
     QHBoxLayout,
     QLayout,
@@ -37,6 +47,20 @@ def _tab_label(path: Path) -> str:
 
 def _strip_windows_long_path(path: str) -> str:
     return path[4:] if path.startswith("\\\\?\\") else path
+
+
+def _is_hidden_or_system_entry(entry: os.DirEntry[str]) -> bool:
+    hidden = entry.name.startswith(".")
+    if os.name != "nt":
+        return hidden
+    try:
+        stat_result = entry.stat(follow_symlinks=False)
+    except OSError:
+        return hidden
+    attributes = int(getattr(stat_result, "st_file_attributes", 0))
+    hidden = hidden or bool(attributes & 0x2)
+    system = bool(attributes & 0x4)
+    return hidden or system
 
 
 def _is_path_under_root(path: Path, root: Path) -> bool:
@@ -156,6 +180,7 @@ class _WidgetMapOverlay(QWidget):
 
 class PanelWidget(QWidget):
     COLUMN_SYNC_DEBOUNCE_MS = 120
+    ADDRESS_COMPLETION_DEBOUNCE_MS = 140
 
     activated = Signal()
     became_empty = Signal()
@@ -185,6 +210,7 @@ class PanelWidget(QWidget):
         self._history_menu: QMenu | None = None
         self._pane_role = "normal"
         self._show_widget_map = False
+        self._address_completions_enabled = True
 
         self._panel_widget_id = widget_naming.panel_widget_id(self.panel_id)
         self.setObjectName(widget_naming.object_name_for_id(self._panel_widget_id))
@@ -236,6 +262,19 @@ class PanelWidget(QWidget):
             QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
         )
         toolbar.addWidget(self.address_edit, 1)
+        self._address_completion_model = QStringListModel(self)
+        self._address_completer = QCompleter(self._address_completion_model, self)
+        self._address_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self._address_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self._address_completer.setCompletionMode(
+            QCompleter.CompletionMode.PopupCompletion
+        )
+        self._address_completer.setMaxVisibleItems(14)
+        self._address_completer.activated[str].connect(
+            self._on_address_completion_activated
+        )
+        self.address_edit.setCompleter(self._address_completer)
+        self.address_edit.textEdited.connect(self._schedule_address_completion_update)
 
         self.back_btn = QPushButton("<")
         self.back_btn.setMinimumWidth(28)
@@ -364,6 +403,9 @@ class PanelWidget(QWidget):
         self._column_sync_timer = QTimer(self)
         self._column_sync_timer.setSingleShot(True)
         self._column_sync_timer.timeout.connect(self._flush_pending_column_width_sync)
+        self._address_completion_timer = QTimer(self)
+        self._address_completion_timer.setSingleShot(True)
+        self._address_completion_timer.timeout.connect(self._refresh_address_completions)
 
         self._sync_toolbar_for_current_tab()
         self._apply_visual_role()
@@ -467,6 +509,8 @@ class PanelWidget(QWidget):
             widget = self.tabs.widget(i)
             if isinstance(widget, ExplorerTab):
                 widget.set_show_hidden(self._show_hidden)
+        if self.address_edit.hasFocus():
+            self._schedule_address_completion_update(self.address_edit.text())
 
     def set_widget_map_enabled(self, enabled: bool) -> None:
         self._show_widget_map = bool(enabled)
@@ -685,7 +729,7 @@ class PanelWidget(QWidget):
             self.up_btn.setEnabled(False)
             self.root_btn.setEnabled(False)
             self.refresh_btn.setEnabled(False)
-            self.address_edit.setText("")
+            self._set_address_text_programmatically("")
             self._rebuild_root_controls(None)
             self._sync_widget_map_overlay()
             return
@@ -695,7 +739,9 @@ class PanelWidget(QWidget):
         self.up_btn.setEnabled(True)
         self.root_btn.setEnabled(True)
         self.refresh_btn.setEnabled(True)
-        self.address_edit.setText(_strip_windows_long_path(str(tab.current_path())))
+        self._set_address_text_programmatically(
+            _strip_windows_long_path(str(tab.current_path()))
+        )
         self._rebuild_root_controls(tab.current_path())
         if self.filter_edit.isVisible():
             tab.set_inline_filter(self.filter_edit.text())
@@ -870,7 +916,104 @@ class PanelWidget(QWidget):
         text = self.address_edit.text().strip()
         if not text:
             return
+        self._address_completion_timer.stop()
+        self._hide_address_completion_popup()
         tab.set_path(Path(text))
+
+    def _set_address_text_programmatically(self, text: str) -> None:
+        self._address_completions_enabled = False
+        try:
+            self.address_edit.setText(text)
+        finally:
+            self._address_completions_enabled = True
+        self._address_completion_timer.stop()
+        self._address_completion_model.setStringList([])
+        self._hide_address_completion_popup()
+
+    def _schedule_address_completion_update(self, _text: str) -> None:
+        if not self._address_completions_enabled:
+            return
+        self._address_completion_timer.start(self.ADDRESS_COMPLETION_DEBOUNCE_MS)
+
+    def _refresh_address_completions(self) -> None:
+        if not self._address_completions_enabled or not self.address_edit.hasFocus():
+            self._hide_address_completion_popup()
+            return
+        raw_text = self.address_edit.text().strip()
+        suggestions = self._collect_address_completion_paths(raw_text)
+        self._address_completion_model.setStringList(suggestions)
+        if not suggestions:
+            self._hide_address_completion_popup()
+            return
+        self._address_completer.setCompletionPrefix("")
+        self._address_completer.complete(self.address_edit.rect())
+
+    def _on_address_completion_activated(self, path_text: str) -> None:
+        selected = str(path_text).strip()
+        if not selected:
+            return
+        self._set_address_text_programmatically(selected)
+        self.address_edit.setFocus()
+        self.address_edit.setCursorPosition(len(selected))
+
+    def _hide_address_completion_popup(self) -> None:
+        popup = self._address_completer.popup()
+        if popup.isVisible():
+            popup.hide()
+
+    def _collect_address_completion_paths(self, raw_text: str) -> list[str]:
+        context = self._resolve_address_completion_context(raw_text)
+        if context is None:
+            return []
+        parent_dir, prefix = context
+        if not parent_dir.exists() or not parent_dir.is_dir():
+            return []
+
+        prefix_cmp = prefix.casefold()
+        suggestions: list[str] = []
+        try:
+            with os.scandir(parent_dir) as iterator:
+                for entry in iterator:
+                    try:
+                        is_dir = entry.is_dir(follow_symlinks=False)
+                    except OSError:
+                        continue
+                    if not is_dir:
+                        continue
+                    if not self._show_hidden and _is_hidden_or_system_entry(entry):
+                        continue
+                    name = entry.name
+                    if prefix_cmp and not name.casefold().startswith(prefix_cmp):
+                        continue
+                    suggestions.append(
+                        _strip_windows_long_path(str(parent_dir / name))
+                    )
+        except OSError:
+            return []
+        return sorted(set(suggestions), key=str.casefold)
+
+    def _resolve_address_completion_context(
+        self, raw_text: str
+    ) -> tuple[Path, str] | None:
+        text = str(raw_text or "").strip()
+        if not text:
+            return None
+
+        base_path = self.current_path()
+        expanded = os.path.expanduser(text)
+        has_trailing_separator = expanded.endswith(("\\", "/"))
+        candidate = Path(expanded)
+        if has_trailing_separator:
+            parent_dir = candidate if candidate.is_absolute() else (base_path / candidate)
+            return parent_dir.expanduser(), ""
+
+        prefix = candidate.name
+        parent_part = candidate.parent
+        if candidate.is_absolute():
+            parent_dir = parent_part if str(parent_part) not in {"", "."} else candidate
+        else:
+            parent_dir = base_path if str(parent_part) in {"", "."} else (base_path / parent_part)
+        return parent_dir.expanduser(), prefix
 
     def _on_root_selected(self, index: int) -> None:
         if index < 0 or index >= len(self._root_paths):

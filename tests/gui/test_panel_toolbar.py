@@ -106,6 +106,110 @@ def test_panel_toolbar_address_updates_on_tab_switch(qtbot, tmp_path: Path) -> N
     assert panel.current_tab().current_path() == root
 
 
+def test_address_autocomplete_shows_live_directory_suggestions(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "root"
+    alpha = root / "alpha"
+    alpine = root / "alpine"
+    beta = root / "beta"
+    alpha.mkdir(parents=True)
+    alpine.mkdir(parents=True)
+    beta.mkdir(parents=True)
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    panel.add_tab(root)
+
+    panel.address_edit.setFocus()
+    panel.address_edit.selectAll()
+    QTest.keyClicks(panel.address_edit, "al")
+
+    qtbot.waitUntil(
+        lambda: len(panel._address_completion_model.stringList()) >= 2,
+        timeout=2000,
+    )
+    suggestions = panel._address_completion_model.stringList()
+    assert _norm(alpha) in {_norm(item) for item in suggestions}
+    assert _norm(alpine) in {_norm(item) for item in suggestions}
+    assert panel._address_completer.popup().isVisible() is True
+
+
+def test_address_autocomplete_respects_show_hidden_setting(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "root"
+    visible = root / "visible"
+    hidden = root / ".hidden_dir"
+    visible.mkdir(parents=True)
+    hidden.mkdir(parents=True)
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=False,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    panel.add_tab(root)
+
+    panel.address_edit.setFocus()
+    panel.address_edit.selectAll()
+    QTest.keyClicks(panel.address_edit, ".hid")
+    qtbot.wait(220)
+    suggestions_hidden_off = panel._address_completion_model.stringList()
+    assert _norm(hidden) not in {_norm(item) for item in suggestions_hidden_off}
+
+    panel.set_show_hidden(True)
+    panel.address_edit.selectAll()
+    QTest.keyClicks(panel.address_edit, ".hid")
+    qtbot.waitUntil(
+        lambda: _norm(hidden)
+        in {_norm(item) for item in panel._address_completion_model.stringList()},
+        timeout=2000,
+    )
+
+
+def test_address_autocomplete_activation_fills_and_navigates_on_enter(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "root"
+    alpha = root / "alpha"
+    alpha.mkdir(parents=True)
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    tab = panel.add_tab(root)
+
+    panel.address_edit.setFocus()
+    panel.address_edit.selectAll()
+    QTest.keyClicks(panel.address_edit, "al")
+    qtbot.waitUntil(
+        lambda: _norm(alpha)
+        in {_norm(item) for item in panel._address_completion_model.stringList()},
+        timeout=2000,
+    )
+
+    panel._on_address_completion_activated(str(alpha))
+    assert _norm(panel.address_edit.text()) == _norm(alpha)
+
+    panel.address_edit.returnPressed.emit()
+    assert tab.current_path() == alpha
+
+
 def test_root_picker_navigates_active_tab_only(qtbot, tmp_path: Path) -> None:
     root = tmp_path / "root"
     a = root / "a"
