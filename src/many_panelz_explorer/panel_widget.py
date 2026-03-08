@@ -15,11 +15,18 @@ from PySide6.QtCore import (
     QTimer,
     Signal,
 )
-from PySide6.QtGui import QColor, QKeyEvent, QPaintEvent, QPainter, QPen, QShortcut
-from PySide6.QtGui import QFont
+from PySide6.QtGui import (
+    QColor,
+    QFont,
+    QKeyEvent,
+    QPainter,
+    QPaintEvent,
+    QPen,
+    QShortcut,
+)
 from PySide6.QtWidgets import (
-    QCompleter,
     QComboBox,
+    QCompleter,
     QHBoxLayout,
     QLayout,
     QLineEdit,
@@ -31,9 +38,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from . import widget_naming
 from .explorer_tab import ExplorerTab
 from .mounts import list_roots_for_navigation
-from . import widget_naming
+from .ui.panel import PanelNavigationCoordinator
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -119,7 +127,7 @@ class _WidgetMapEntry:
 
 
 class _WidgetMapOverlay(QWidget):
-    def __init__(self, owner: "PanelWidget") -> None:
+    def __init__(self, owner: PanelWidget) -> None:
         super().__init__(owner)
         self._owner = owner
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
@@ -135,7 +143,7 @@ class _WidgetMapOverlay(QWidget):
         self.raise_()
         self.update()
 
-    def paintEvent(self, event: QPaintEvent) -> None:  # noqa: N802
+    def paintEvent(self, event: QPaintEvent) -> None:
         _ = event
         entries = self._owner.widget_map_entries()
         if not entries:
@@ -229,6 +237,14 @@ class PanelWidget(QWidget):
         self._show_navigation_buttons = True
         self._file_list_font = QFont(self.font())
         self._navigation_font = QFont(self.font())
+        self._navigation_coordinator = PanelNavigationCoordinator(
+            self,
+            root_display_text=_root_display_text,
+            strip_windows_long_path=_strip_windows_long_path,
+            is_path_under_root=_is_path_under_root,
+            path_key=_path_key,
+            is_hidden_or_system_entry=_is_hidden_or_system_entry,
+        )
 
         self._panel_widget_id = widget_naming.panel_widget_id(self.panel_id)
         self.setObjectName(widget_naming.object_name_for_id(self._panel_widget_id))
@@ -914,312 +930,77 @@ class PanelWidget(QWidget):
                 widget.view.setFont(self._file_list_font)
 
     def _rebuild_root_controls(self, current_path: Path | None) -> None:
-        roots = self._safe_roots(current_path)
-        self._root_paths = roots
-        self._rebuild_root_buttons(current_path, roots)
-        self._rebuild_root_combo(current_path, roots)
+        self._navigation_coordinator.rebuild_root_controls(current_path)
 
     def _rebuild_root_buttons(
         self, current_path: Path | None, roots: list[Path]
     ) -> None:
-        while self.root_buttons_layout.count():
-            item = self.root_buttons_layout.takeAt(0)
-            if item is None:
-                continue
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
-
-        self.root_buttons = []
-        for root_path in roots:
-            button = QPushButton(_root_display_text(root_path))
-            button.setFont(self._navigation_font)
-            button.setMinimumWidth(0)
-            button.setSizePolicy(
-                QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
-            )
-            button.setToolTip(_strip_windows_long_path(str(root_path)))
-            button.setCheckable(True)
-            button.setChecked(
-                current_path is not None
-                and _is_path_under_root(current_path, root_path)
-            )
-            button.clicked.connect(
-                lambda _checked=False, p=root_path: self._navigate_to_root(p)
-            )
-            button.installEventFilter(self.focus_watcher)
-            self.root_buttons_layout.addWidget(button)
-            self.root_buttons.append(button)
-
-        self.root_buttons_layout.addStretch(1)
+        self._navigation_coordinator.rebuild_root_buttons(current_path, roots)
 
     def _rebuild_root_combo(self, current_path: Path | None, roots: list[Path]) -> None:
-        self.root_combo.setVisible(self._show_root_dropdown)
-        if not self._show_root_dropdown:
-            return
-
-        self.root_combo.blockSignals(True)
-        try:
-            self.root_combo.clear()
-            for root_path in roots:
-                self.root_combo.addItem(_root_display_text(root_path), str(root_path))
-                combo_idx = self.root_combo.count() - 1
-                self.root_combo.setItemData(
-                    combo_idx,
-                    _strip_windows_long_path(str(root_path)),
-                    Qt.ItemDataRole.ToolTipRole,
-                )
-
-            if current_path is None:
-                return
-
-            match_index = -1
-            for index, root_path in enumerate(roots):
-                if _is_path_under_root(current_path, root_path):
-                    match_index = index
-                    break
-
-            if match_index >= 0:
-                self.root_combo.setCurrentIndex(match_index)
-        finally:
-            self.root_combo.blockSignals(False)
+        self._navigation_coordinator.rebuild_root_combo(current_path, roots)
 
     def _safe_roots(self, current_path: Path | None) -> list[Path]:
-        try:
-            provided_roots = [Path(p) for p in self._roots_provider(current_path)]
-        except Exception:
-            provided_roots = []
-        roots = self._existing_unique_paths(provided_roots)
-        if not roots:
-            roots = self._fallback_roots(current_path)
-        return sorted(
-            roots,
-            key=lambda p: (
-                _root_display_text(p).lower(),
-                _strip_windows_long_path(str(p)).lower(),
-            ),
-        )
+        return self._navigation_coordinator.safe_roots(current_path)
 
     def _existing_unique_paths(self, paths: list[Path]) -> list[Path]:
-        unique: list[Path] = []
-        seen: set[str] = set()
-        for candidate in paths:
-            path = Path(candidate).expanduser()
-            if not path.exists() or not path.is_dir():
-                continue
-            key = _path_key(path)
-            if key in seen:
-                continue
-            seen.add(key)
-            unique.append(path)
-        return unique
+        return self._navigation_coordinator.existing_unique_paths(paths)
 
     def _fallback_roots(self, current_path: Path | None) -> list[Path]:
-        candidates: list[Path] = []
-        if current_path is not None:
-            current = Path(current_path).expanduser()
-            candidates.append(current)
-            if current.anchor:
-                candidates.append(Path(current.anchor))
-
-        home = Path.home()
-        candidates.append(home)
-        if home.anchor:
-            candidates.append(Path(home.anchor))
-
-        root_path = Path(os.sep)
-        candidates.append(root_path)
-
-        fallback = self._existing_unique_paths(candidates)
-        if fallback:
-            return fallback
-        return [home]
+        return self._navigation_coordinator.fallback_roots(current_path)
 
     def _go_back(self) -> None:
-        tab = self.current_tab()
-        if tab is not None:
-            tab.go_back()
+        self._navigation_coordinator.go_back()
 
     def _go_forward(self) -> None:
-        tab = self.current_tab()
-        if tab is not None:
-            tab.go_forward()
+        self._navigation_coordinator.go_forward()
 
     def _go_up(self) -> None:
-        tab = self.current_tab()
-        if tab is not None:
-            tab.go_up()
+        self._navigation_coordinator.go_up()
 
     def _go_root(self) -> None:
-        tab = self.current_tab()
-        if tab is None:
-            return
-
-        current_path = tab.current_path()
-        matches = [
-            root for root in self._root_paths if _is_path_under_root(current_path, root)
-        ]
-        if matches:
-            root_path = max(matches, key=lambda p: len(os.path.normpath(str(p))))
-            tab.set_path(root_path)
-            return
-
-        if current_path.anchor:
-            tab.set_path(Path(current_path.anchor))
+        self._navigation_coordinator.go_root()
 
     def refresh_current_path(self) -> None:
-        tab = self.current_tab()
-        if tab is not None:
-            tab.refresh()
+        self._navigation_coordinator.refresh_current_path()
 
     def _refresh(self) -> None:
-        self.refresh_current_path()
+        self._navigation_coordinator.refresh()
 
     def _on_address_submitted(self) -> None:
-        tab = self.current_tab()
-        if tab is None:
-            return
-
-        text = self.address_edit.text().strip()
-        if not text:
-            return
-        self._address_completion_timer.stop()
-        self._hide_address_completion_popup()
-        tab.set_path(Path(text))
+        self._navigation_coordinator.on_address_submitted()
 
     def _set_address_text_programmatically(self, text: str) -> None:
-        self._address_completions_enabled = False
-        try:
-            self.address_edit.setText(text)
-        finally:
-            self._address_completions_enabled = True
-        self._address_completion_timer.stop()
-        self._address_completion_model.setStringList([])
-        self._hide_address_completion_popup()
+        self._navigation_coordinator.set_address_text_programmatically(text)
 
     def _schedule_address_completion_update(self, _text: str) -> None:
-        if not self._address_completions_enabled:
-            return
-        self._address_completion_timer.start(self.ADDRESS_COMPLETION_DEBOUNCE_MS)
+        self._navigation_coordinator.schedule_address_completion_update(_text)
 
     def _refresh_address_completions(self) -> None:
-        if not self._address_completions_enabled or not self.address_edit.hasFocus():
-            self._hide_address_completion_popup()
-            return
-        raw_text = self.address_edit.text().strip()
-        suggestions = self._collect_address_completion_paths(raw_text)
-        self._address_completion_model.setStringList(suggestions)
-        if not suggestions:
-            self._hide_address_completion_popup()
-            return
-        self._address_completer.setCompletionPrefix("")
-        self._address_completer.complete(self.address_edit.rect())
+        self._navigation_coordinator.refresh_address_completions()
 
     def _on_address_completion_activated(self, path_text: str) -> None:
-        selected = str(path_text).strip()
-        if not selected:
-            return
-        self._set_address_text_programmatically(selected)
-        self.address_edit.setFocus()
-        self.address_edit.setCursorPosition(len(selected))
+        self._navigation_coordinator.on_address_completion_activated(path_text)
 
     def _hide_address_completion_popup(self) -> None:
-        popup = self._address_completer.popup()
-        if popup.isVisible():
-            popup.hide()
+        self._navigation_coordinator.hide_address_completion_popup()
 
     def _collect_address_completion_paths(self, raw_text: str) -> list[str]:
-        context = self._resolve_address_completion_context(raw_text)
-        if context is None:
-            return []
-        parent_dir, prefix = context
-        if not parent_dir.exists() or not parent_dir.is_dir():
-            return []
-
-        prefix_cmp = prefix.casefold()
-        suggestions: list[str] = []
-        try:
-            with os.scandir(parent_dir) as iterator:
-                for entry in iterator:
-                    try:
-                        is_dir = entry.is_dir(follow_symlinks=False)
-                    except OSError:
-                        continue
-                    if not is_dir:
-                        continue
-                    if not self._show_hidden and _is_hidden_or_system_entry(entry):
-                        continue
-                    name = entry.name
-                    if prefix_cmp and not name.casefold().startswith(prefix_cmp):
-                        continue
-                    suggestions.append(
-                        _strip_windows_long_path(str(parent_dir / name))
-                    )
-        except OSError:
-            return []
-        return sorted(set(suggestions), key=str.casefold)
+        return self._navigation_coordinator.collect_address_completion_paths(raw_text)
 
     def _resolve_address_completion_context(
         self, raw_text: str
     ) -> tuple[Path, str] | None:
-        text = str(raw_text or "").strip()
-        if not text:
-            return None
-
-        base_path = self.current_path()
-        expanded = os.path.expanduser(text)
-        has_trailing_separator = expanded.endswith(("\\", "/"))
-        candidate = Path(expanded)
-        if has_trailing_separator:
-            parent_dir = candidate if candidate.is_absolute() else (base_path / candidate)
-            return parent_dir.expanduser(), ""
-
-        prefix = candidate.name
-        parent_part = candidate.parent
-        if candidate.is_absolute():
-            parent_dir = parent_part if str(parent_part) not in {"", "."} else candidate
-        else:
-            parent_dir = base_path if str(parent_part) in {"", "."} else (base_path / parent_part)
-        return parent_dir.expanduser(), prefix
+        return self._navigation_coordinator.resolve_address_completion_context(raw_text)
 
     def _on_root_selected(self, index: int) -> None:
-        if index < 0 or index >= len(self._root_paths):
-            return
-        self._navigate_to_root(self._root_paths[index])
+        self._navigation_coordinator.on_root_selected(index)
 
     def _navigate_to_root(self, root_path: Path) -> None:
-        tab = self.current_tab()
-        if tab is None:
-            return
-        tab.set_path(root_path)
+        self._navigation_coordinator.navigate_to_root(root_path)
 
     def _show_history_menu(self) -> None:
-        tab = self.current_tab()
-        if tab is None:
-            return
-
-        history_entries, current_index = tab.history_snapshot()
-        if not history_entries:
-            return
-
-        if self._history_menu is not None:
-            self._history_menu.close()
-            self._history_menu.deleteLater()
-            self._history_menu = None
-
-        menu = QMenu(self)
-        for index in range(len(history_entries) - 1, -1, -1):
-            entry = history_entries[index]
-            action = menu.addAction(_strip_windows_long_path(str(entry)))
-            action.setToolTip(_strip_windows_long_path(str(entry)))
-            action.setCheckable(True)
-            action.setChecked(index == current_index)
-            action.triggered.connect(
-                lambda _checked=False, i=index: tab.go_to_history_index(i)
-            )
-
-        self._history_menu = menu
-        menu.popup(self.address_edit.mapToGlobal(self.address_edit.rect().bottomLeft()))
+        self._navigation_coordinator.show_history_menu()
 
     def set_role_visual_state(self, *, is_active: bool, is_target: bool) -> None:
         if is_active:
