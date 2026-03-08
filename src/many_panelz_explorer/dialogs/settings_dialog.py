@@ -371,6 +371,26 @@ class SettingsDialog(QDialog):
             controls=[self.show_root_dropdown_checkbox],
         )
 
+        self.column_width_auto_align_mode_combo = QComboBox(self)
+        self.column_width_auto_align_mode_combo.addItem(
+            "All panels and tabs", "all_panels_tabs"
+        )
+        self.column_width_auto_align_mode_combo.addItem(
+            "Current panel tabs", "current_panel_tabs"
+        )
+        self.column_width_auto_align_mode_combo.addItem("No alignment", "none")
+        self.column_width_auto_align_mode_combo.currentIndexChanged.connect(
+            self._on_controls_changed
+        )
+        self._add_row(
+            section=panels_group,
+            key="column_width_auto_align_mode",
+            title="Auto-Align Column Widths",
+            description="Choose how file-list column width changes propagate.",
+            terms="column width align auto-align tabs panels",
+            controls=[self.column_width_auto_align_mode_combo],
+        )
+
         self.show_refresh_button_checkbox = QCheckBox(
             "Show refresh button in each panel", self
         )
@@ -558,6 +578,10 @@ class SettingsDialog(QDialog):
             )
             self.show_hidden_checkbox.setChecked(preferences.show_hidden_default)
             self.show_root_dropdown_checkbox.setChecked(preferences.show_root_dropdown)
+            self._set_combo_value(
+                self.column_width_auto_align_mode_combo,
+                preferences.column_width_auto_align_mode,
+            )
             self.show_refresh_button_checkbox.setChecked(
                 preferences.show_refresh_button
             )
@@ -613,6 +637,9 @@ class SettingsDialog(QDialog):
             new_context_mode=str(self.new_context_combo.currentData()),
             show_hidden_default=self.show_hidden_checkbox.isChecked(),
             show_root_dropdown=self.show_root_dropdown_checkbox.isChecked(),
+            column_width_auto_align_mode=str(
+                self.column_width_auto_align_mode_combo.currentData()
+            ),
             show_refresh_button=self.show_refresh_button_checkbox.isChecked(),
             show_root_buttons=self.show_root_buttons_checkbox.isChecked(),
             show_address_bar=self.show_address_bar_checkbox.isChecked(),

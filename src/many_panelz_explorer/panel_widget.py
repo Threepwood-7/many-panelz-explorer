@@ -183,9 +183,13 @@ class PanelWidget(QWidget):
     COLUMN_SYNC_DEBOUNCE_MS = 120
     ADDRESS_COMPLETION_DEBOUNCE_MS = 140
     ROOT_COMBO_MIN_WIDTH = 108
+    COLUMN_ALIGN_MODE_ALL_PANELS_TABS = "all_panels_tabs"
+    COLUMN_ALIGN_MODE_CURRENT_PANEL_TABS = "current_panel_tabs"
+    COLUMN_ALIGN_MODE_NONE = "none"
 
     activated = Signal()
     current_context_changed = Signal()
+    column_widths_sync_requested = Signal(list, object)
     became_empty = Signal()
 
     def __init__(
@@ -209,6 +213,7 @@ class PanelWidget(QWidget):
         self._pending_column_widths_sync: list[int] = []
         self._pending_column_widths_source_tab: ExplorerTab | None = None
         self._restoring_state = False
+        self._column_width_auto_align_mode = self.COLUMN_ALIGN_MODE_CURRENT_PANEL_TABS
         self.root_buttons: list[QPushButton] = []
         self._history_menu: QMenu | None = None
         self._pane_role = "normal"
@@ -467,9 +472,16 @@ class PanelWidget(QWidget):
         self.tabs.addTab(tab, _tab_label(path))
         self.tabs.setCurrentWidget(tab)
         self._retitle_tab(tab)
-        if source_widths and not self._restoring_state:
+        if (
+            self._column_width_auto_align_mode != self.COLUMN_ALIGN_MODE_NONE
+            and source_widths
+            and not self._restoring_state
+        ):
             self._column_widths = self._coerce_column_widths(source_widths)
-        if self._column_widths:
+        if (
+            self._column_width_auto_align_mode != self.COLUMN_ALIGN_MODE_NONE
+            and self._column_widths
+        ):
             tab.apply_column_widths(self._column_widths)
         else:
             self._column_widths = tab.column_widths()
@@ -543,6 +555,21 @@ class PanelWidget(QWidget):
             show_address_bar=self._show_address_bar,
             show_navigation_buttons=self._show_navigation_buttons,
         )
+
+    def set_column_width_auto_align_mode(self, mode: str) -> None:
+        self._column_width_auto_align_mode = self._normalize_column_width_mode(mode)
+
+    def apply_column_widths_to_panel_tabs(
+        self,
+        widths: Sequence[object],
+        *,
+        source_tab: ExplorerTab | None = None,
+    ) -> None:
+        normalized = self._coerce_column_widths(widths)
+        if not normalized:
+            return
+        self._column_widths = list(normalized)
+        self._apply_column_widths_to_all_tabs(normalized, source_tab=source_tab)
 
     def apply_toolbar_visibility(
         self,
@@ -727,7 +754,12 @@ class PanelWidget(QWidget):
         if index >= 0:
             self.activated.emit()
             tab = self.current_tab()
-            if tab is not None and self._column_widths:
+            if (
+                tab is not None
+                and self._column_widths
+                and self._column_width_auto_align_mode
+                != self.COLUMN_ALIGN_MODE_NONE
+            ):
                 tab.apply_column_widths(self._column_widths)
             if tab is not None and self.filter_edit.isVisible():
                 tab.set_inline_filter(self.filter_edit.text())
@@ -767,7 +799,15 @@ class PanelWidget(QWidget):
         widths = list(self._pending_column_widths_sync)
         self._pending_column_widths_sync = []
         self._pending_column_widths_source_tab = None
-        self._apply_column_widths_to_all_tabs(widths, source_tab=source_tab)
+        if self._column_width_auto_align_mode == self.COLUMN_ALIGN_MODE_NONE:
+            return
+        if (
+            self._column_width_auto_align_mode
+            == self.COLUMN_ALIGN_MODE_CURRENT_PANEL_TABS
+        ):
+            self._apply_column_widths_to_all_tabs(widths, source_tab=source_tab)
+            return
+        self.column_widths_sync_requested.emit(widths, source_tab)
 
     def _apply_column_widths_to_all_tabs(
         self,
@@ -806,6 +846,16 @@ class PanelWidget(QWidget):
             if value > 0:
                 normalized.append(value)
         return normalized
+
+    def _normalize_column_width_mode(self, mode: str) -> str:
+        normalized = str(mode).strip().lower()
+        if normalized in {
+            self.COLUMN_ALIGN_MODE_ALL_PANELS_TABS,
+            self.COLUMN_ALIGN_MODE_CURRENT_PANEL_TABS,
+            self.COLUMN_ALIGN_MODE_NONE,
+        }:
+            return normalized
+        return self.COLUMN_ALIGN_MODE_CURRENT_PANEL_TABS
 
     def _sync_toolbar_for_current_tab(self) -> None:
         tab = self.current_tab()

@@ -8,6 +8,7 @@ def _tracked_keys() -> list[str]:
         SettingsManager.NEW_CONTEXT_MODE_KEY,
         SettingsManager.SHOW_HIDDEN_DEFAULT_KEY,
         SettingsManager.SHOW_ROOT_DROPDOWN_KEY,
+        SettingsManager.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY,
         SettingsManager.SHOW_REFRESH_BUTTON_KEY,
         SettingsManager.SHOW_ROOT_BUTTONS_KEY,
         SettingsManager.SHOW_ADDRESS_BAR_KEY,
@@ -48,6 +49,7 @@ def test_ui_preferences_round_trip() -> None:
             new_context_mode="cwd",
             show_hidden_default=False,
             show_root_dropdown=True,
+            column_width_auto_align_mode="all_panels_tabs",
             show_refresh_button=False,
             show_root_buttons=False,
             show_address_bar=False,
@@ -78,6 +80,9 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
     try:
         settings.set_value(SettingsManager.NEW_CONTEXT_MODE_KEY, "invalid-mode")
         settings.remove(SettingsManager.SHOW_ROOT_DROPDOWN_KEY)
+        settings.set_value(
+            SettingsManager.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY, "invalid-align-mode"
+        )
         settings.remove(SettingsManager.SHOW_REFRESH_BUTTON_KEY)
         settings.remove(SettingsManager.SHOW_ROOT_BUTTONS_KEY)
         settings.remove(SettingsManager.SHOW_ADDRESS_BAR_KEY)
@@ -98,6 +103,10 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         loaded = settings.ui_preferences()
         assert loaded.new_context_mode == "clone_active_path"
         assert loaded.show_root_dropdown is False
+        assert (
+            loaded.column_width_auto_align_mode
+            == SettingsManager.DEFAULT_COLUMN_WIDTH_AUTO_ALIGN_MODE
+        )
         assert loaded.show_refresh_button is True
         assert loaded.show_root_buttons is True
         assert loaded.show_address_bar is True
@@ -171,5 +180,19 @@ def test_ui_preferences_intensity_clamps_to_range() -> None:
         loaded = settings.ui_preferences()
         assert loaded.active_panel_tint_intensity_percent == 0
         assert loaded.target_panel_tint_intensity_percent == 100
+    finally:
+        _restore(settings, before)
+
+
+def test_ui_preferences_column_auto_align_mode_defaults_when_unset() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    try:
+        settings.remove(SettingsManager.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY)
+        loaded = settings.ui_preferences()
+        assert (
+            loaded.column_width_auto_align_mode
+            == SettingsManager.DEFAULT_COLUMN_WIDTH_AUTO_ALIGN_MODE
+        )
     finally:
         _restore(settings, before)

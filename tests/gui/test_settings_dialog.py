@@ -43,6 +43,21 @@ class _ControllerSettingsStub:
         self.settings.sync()
         self.preview_ui_preferences(preferences)
 
+    def broadcast_column_widths(
+        self,
+        widths: list[object],
+        *,
+        source_window: ExplorerWindow | None = None,
+        source_panel_id: int | None = None,
+        source_tab: object | None = None,
+    ) -> None:
+        for window in list(self.windows):
+            window.apply_column_widths_all_panels(
+                widths,
+                source_panel_id=source_panel_id if window is source_window else None,
+                source_tab=source_tab if window is source_window else None,
+            )
+
     def _apply_application_font(self, preferences: UiPreferences) -> None:
         font = QFont(self._default_app_font)
         family = str(preferences.app_font_family or "").strip()
@@ -64,6 +79,7 @@ def _tracked_keys() -> list[str]:
         SettingsManager.NEW_CONTEXT_MODE_KEY,
         SettingsManager.SHOW_HIDDEN_DEFAULT_KEY,
         SettingsManager.SHOW_ROOT_DROPDOWN_KEY,
+        SettingsManager.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY,
         SettingsManager.SHOW_REFRESH_BUTTON_KEY,
         SettingsManager.SHOW_ROOT_BUTTONS_KEY,
         SettingsManager.SHOW_ADDRESS_BAR_KEY,
@@ -169,6 +185,12 @@ def test_settings_search_filters_rows_in_place(
     qtbot.waitUntil(lambda: dialog._rows_by_key["navigation_font"].isVisible())
     assert dialog._rows_by_key["app_font"].isVisible() is False
 
+    dialog.search_edit.setText("column width align")
+    qtbot.waitUntil(
+        lambda: dialog._rows_by_key["column_width_auto_align_mode"].isVisible()
+    )
+    assert dialog._rows_by_key["show_hidden_default"].isVisible() is False
+
 
 def test_settings_live_preview_is_debounced(
     qtbot, tmp_path: Path, isolated_settings: SettingsManager
@@ -258,6 +280,7 @@ def test_settings_live_preview_all_windows_and_cancel_revert(
             new_context_mode="clone_active_path",
             show_hidden_default=True,
             show_root_dropdown=False,
+            column_width_auto_align_mode="current_panel_tabs",
             show_refresh_button=True,
             show_root_buttons=True,
             show_address_bar=True,

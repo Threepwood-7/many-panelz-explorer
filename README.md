@@ -129,6 +129,7 @@ Runtime settings are stored via QSettings:
 | `config/new_context_mode` | How new panels/tabs determine their starting path (`"home"`, `"cwd"`, or `"clone_active_path"`) |
 | `ui/show_hidden_default` | Toggle hidden files visibility (default: true) |
 | `ui/show_root_dropdown` | Show/hide root selector dropdown (default: false) |
+| `ui/file_list/column_width_auto_align_mode` | Auto-align mode for file-list columns (`"all_panels_tabs"`, `"current_panel_tabs"`, `"none"`; default: `"current_panel_tabs"`) |
 | `ui/show_refresh_button` | Show/hide refresh button in panel toolbar (default: true) |
 | `ui/show_root_buttons` | Show/hide root buttons strip in panel toolbar (default: true) |
 | `ui/show_address_bar` | Show/hide address bar in panel toolbar (default: true) |
@@ -196,6 +197,8 @@ Runtime settings are stored via QSettings:
 
 **View**:
 - Refresh (Ctrl+R)
+- Align Columns: Current Panel Tabs
+- Align Columns: All Panels and Tabs
 - On top (checkable toggle)
 - Show hidden files (checkable toggle)
 - Settings... (Ctrl+,)

@@ -16,6 +16,7 @@ class UiPreferences:
     new_context_mode: str
     show_hidden_default: bool
     show_root_dropdown: bool
+    column_width_auto_align_mode: str
     show_refresh_button: bool
     show_root_buttons: bool
     show_address_bar: bool
@@ -40,6 +41,7 @@ class SettingsManager:
     NEW_CONTEXT_MODE_KEY = "config/new_context_mode"
     SHOW_HIDDEN_DEFAULT_KEY = "ui/show_hidden_default"
     SHOW_ROOT_DROPDOWN_KEY = "ui/show_root_dropdown"
+    COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY = "ui/file_list/column_width_auto_align_mode"
     SHOW_REFRESH_BUTTON_KEY = "ui/show_refresh_button"
     SHOW_ROOT_BUTTONS_KEY = "ui/show_root_buttons"
     SHOW_ADDRESS_BAR_KEY = "ui/show_address_bar"
@@ -67,10 +69,16 @@ class SettingsManager:
     DEFAULT_FILE_LIST_USE_APP_FONT = True
     DEFAULT_FILE_LIST_FONT_FAMILY = ""
     DEFAULT_FILE_LIST_FONT_SIZE_PT = 10
+    DEFAULT_COLUMN_WIDTH_AUTO_ALIGN_MODE = "current_panel_tabs"
     DEFAULT_NAVIGATION_USE_APP_FONT = True
     DEFAULT_NAVIGATION_FONT_FAMILY = ""
     DEFAULT_NAVIGATION_FONT_SIZE_PT = 10
     _ALLOWED_NEW_CONTEXT_MODES = {"clone_active_path", "home", "cwd"}
+    _ALLOWED_COLUMN_WIDTH_AUTO_ALIGN_MODES = {
+        "all_panels_tabs",
+        "current_panel_tabs",
+        "none",
+    }
     _HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
     def __init__(self) -> None:
@@ -136,6 +144,26 @@ class SettingsManager:
     @show_root_dropdown.setter
     def show_root_dropdown(self, enabled: bool) -> None:
         self.set_value(self.SHOW_ROOT_DROPDOWN_KEY, bool(enabled))
+
+    @property
+    def column_width_auto_align_mode(self) -> str:
+        value = str(
+            self.value(
+                self.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY,
+                self.DEFAULT_COLUMN_WIDTH_AUTO_ALIGN_MODE,
+            )
+        )
+        mode = value.strip().lower()
+        if mode not in self._ALLOWED_COLUMN_WIDTH_AUTO_ALIGN_MODES:
+            return self.DEFAULT_COLUMN_WIDTH_AUTO_ALIGN_MODE
+        return mode
+
+    @column_width_auto_align_mode.setter
+    def column_width_auto_align_mode(self, mode: str) -> None:
+        normalized = str(mode).strip().lower()
+        if normalized not in self._ALLOWED_COLUMN_WIDTH_AUTO_ALIGN_MODES:
+            normalized = self.DEFAULT_COLUMN_WIDTH_AUTO_ALIGN_MODE
+        self.set_value(self.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY, normalized)
 
     @property
     def show_refresh_button(self) -> bool:
@@ -379,6 +407,7 @@ class SettingsManager:
             new_context_mode=self.new_context_mode,
             show_hidden_default=self.show_hidden_default,
             show_root_dropdown=self.show_root_dropdown,
+            column_width_auto_align_mode=self.column_width_auto_align_mode,
             show_refresh_button=self.show_refresh_button,
             show_root_buttons=self.show_root_buttons,
             show_address_bar=self.show_address_bar,
@@ -401,6 +430,7 @@ class SettingsManager:
         self.new_context_mode = preferences.new_context_mode
         self.show_hidden_default = preferences.show_hidden_default
         self.show_root_dropdown = preferences.show_root_dropdown
+        self.column_width_auto_align_mode = preferences.column_width_auto_align_mode
         self.show_refresh_button = preferences.show_refresh_button
         self.show_root_buttons = preferences.show_root_buttons
         self.show_address_bar = preferences.show_address_bar

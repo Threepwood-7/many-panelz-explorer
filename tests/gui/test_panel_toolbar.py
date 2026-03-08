@@ -480,6 +480,31 @@ def test_column_widths_sync_across_tabs_in_panel(qtbot, tmp_path: Path) -> None:
     qtbot.waitUntil(lambda: first_tab.view.columnWidth(2) == 260)
 
 
+def test_column_widths_persist_when_navigating_directories_in_same_tab(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "root"
+    child = root / "child"
+    child.mkdir(parents=True)
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+
+    tab = panel.add_tab(root)
+    tab.view.setColumnWidth(0, 377)
+    qtbot.waitUntil(lambda: tab.view.columnWidth(0) == 377)
+
+    tab.set_path(child)
+    qtbot.waitUntil(lambda: tab.current_path() == child)
+    qtbot.waitUntil(lambda: tab.view.columnWidth(0) == 377)
+
+
 def test_new_tab_preserves_current_tab_column_widths(qtbot, tmp_path: Path) -> None:
     root = tmp_path / "root"
     root.mkdir()

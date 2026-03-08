@@ -152,6 +152,10 @@ class ExplorerTab(QWidget):
             self._history = [target]
             self._history_index = 0
 
+        preserved_widths = self._coerce_column_widths(self.column_widths())
+        if preserved_widths:
+            self._pending_column_widths = preserved_widths
+
         index = self.model.setRootPath(str(target))
         self.view.setRootIndex(index)
         self._restore_selection_for_path(target, preferred=selection_hint)
@@ -232,9 +236,7 @@ class ExplorerTab(QWidget):
         ]
 
     def apply_column_widths(self, widths: list[int]) -> None:
-        if not widths:
-            return
-        normalized = [int(width) for width in widths if int(width) > 0]
+        normalized = self._coerce_column_widths(widths)
         if not normalized:
             return
         self._pending_column_widths = list(normalized)
@@ -508,11 +510,21 @@ class ExplorerTab(QWidget):
     ) -> None:
         if self._syncing_column_widths:
             return
+        current = self._coerce_column_widths(self.column_widths())
+        if current:
+            self._pending_column_widths = list(current)
         self.column_widths_changed.emit(self.column_widths())
 
     def _on_directory_loaded(self, _path: str) -> None:
         if self._pending_column_widths:
             self._apply_column_widths_once(self._pending_column_widths)
+
+    def _coerce_column_widths(self, widths: list[int]) -> list[int]:
+        normalized: list[int] = []
+        for width in widths:
+            if int(width) > 0:
+                normalized.append(int(width))
+        return normalized
 
     def _path_key(self, path: Path) -> str:
         return os.path.normcase(os.path.normpath(str(path)))

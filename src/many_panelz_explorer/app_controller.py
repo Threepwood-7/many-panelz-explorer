@@ -163,6 +163,21 @@ class AppController:
         self.settings.sync()
         self.preview_ui_preferences(preferences)
 
+    def broadcast_column_widths(
+        self,
+        widths: list[object],
+        *,
+        source_window: ExplorerWindow | None = None,
+        source_panel_id: int | None = None,
+        source_tab: object | None = None,
+    ) -> None:
+        for window in list(self.windows):
+            window.apply_column_widths_all_panels(
+                widths,
+                source_panel_id=source_panel_id if window is source_window else None,
+                source_tab=source_tab if window is source_window else None,
+            )
+
     def _apply_application_font(self, preferences: UiPreferences) -> None:
         self.app.setFont(self._effective_application_font(preferences))
 

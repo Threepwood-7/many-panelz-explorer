@@ -34,6 +34,7 @@ from .panel_widget import PanelWidget
 
 if TYPE_CHECKING:
     from .app_controller import AppController
+    from .explorer_tab import ExplorerTab
     from .settings import SettingsManager, UiPreferences
 
 
@@ -86,6 +87,7 @@ class ExplorerWindow(QMainWindow):
         self._new_context_mode = ui_preferences.new_context_mode
         self._show_hidden = ui_preferences.show_hidden_default
         self._show_root_dropdown = ui_preferences.show_root_dropdown
+        self._column_width_auto_align_mode = ui_preferences.column_width_auto_align_mode
         self._show_refresh_button = ui_preferences.show_refresh_button
         self._show_root_buttons = ui_preferences.show_root_buttons
         self._show_address_bar = ui_preferences.show_address_bar
@@ -402,6 +404,20 @@ class ExplorerWindow(QMainWindow):
         self._show_widget_map_action.setChecked(self._show_widget_map)
         self._show_widget_map_action.toggled.connect(self._toggle_show_widget_map)
 
+        self._align_columns_current_panel_tabs_action = QAction(
+            "Align Columns: Current Panel Tabs", self
+        )
+        self._align_columns_current_panel_tabs_action.triggered.connect(
+            self._align_columns_current_panel_tabs
+        )
+
+        self._align_columns_all_panels_tabs_action = QAction(
+            "Align Columns: All Panels and Tabs", self
+        )
+        self._align_columns_all_panels_tabs_action.triggered.connect(
+            self._align_columns_all_panels_tabs
+        )
+
         self._settings_action = QAction("&Settings...", self)
         self._settings_action.setShortcut(QKeySequence("Ctrl+,"))
         self._settings_action.triggered.connect(self._open_settings_dialog)
@@ -457,6 +473,8 @@ class ExplorerWindow(QMainWindow):
 
         view_menu = QMenu("&View", self)
         view_menu.addAction(self._refresh_action)
+        view_menu.addAction(self._align_columns_current_panel_tabs_action)
+        view_menu.addAction(self._align_columns_all_panels_tabs_action)
         view_menu.addSeparator()
         view_menu.addAction(self._on_top_action)
         view_menu.addAction(self._show_hidden_action)
@@ -491,6 +509,8 @@ class ExplorerWindow(QMainWindow):
                 self._close_window_action,
                 self._exit_action,
                 self._refresh_action,
+                self._align_columns_current_panel_tabs_action,
+                self._align_columns_all_panels_tabs_action,
                 self._show_widget_map_action,
                 self._settings_action,
                 self._help_action,
@@ -506,6 +526,33 @@ class ExplorerWindow(QMainWindow):
         panel = self.active_panel()
         if panel is not None:
             panel.refresh_current_path()
+
+    def _align_columns_current_panel_tabs(self) -> None:
+        panel = self.active_panel()
+        if panel is None:
+            return
+        tab = panel.current_tab()
+        if tab is None:
+            return
+        widths = tab.column_widths()
+        panel.apply_column_widths_to_panel_tabs(widths, source_tab=tab)
+        self.statusBar().showMessage("Aligned columns in current panel tabs.", 2000)
+
+    def _align_columns_all_panels_tabs(self) -> None:
+        panel = self.active_panel()
+        if panel is None:
+            return
+        tab = panel.current_tab()
+        if tab is None:
+            return
+        widths = tab.column_widths()
+        self.controller.broadcast_column_widths(
+            widths,
+            source_window=self,
+            source_panel_id=panel.panel_id,
+            source_tab=tab,
+        )
+        self.statusBar().showMessage("Aligned columns in all panels and tabs.", 2000)
 
     def _show_help(self) -> None:
         QMessageBox.information(
@@ -584,9 +631,15 @@ class ExplorerWindow(QMainWindow):
             )
             panel.activated.connect(lambda pid=panel_id: self._set_active_panel(pid))
             panel.current_context_changed.connect(self._update_pane_visuals)
+            panel.column_widths_sync_requested.connect(
+                lambda widths, source_tab, pid=panel_id: self._on_panel_column_widths_sync_requested(
+                    pid, widths, source_tab
+                )
+            )
             panel.became_empty.connect(
                 lambda pid=panel_id: self._close_panel_by_id(pid)
             )
+            panel.set_column_width_auto_align_mode(self._column_width_auto_align_mode)
 
             if isinstance(panel_state, dict):
                 panel.restore_state(panel_state)
@@ -717,6 +770,7 @@ class ExplorerWindow(QMainWindow):
         self._new_context_mode = preferences.new_context_mode
         self._show_hidden = bool(preferences.show_hidden_default)
         self._show_root_dropdown = bool(preferences.show_root_dropdown)
+        self._column_width_auto_align_mode = preferences.column_width_auto_align_mode
         self._show_refresh_button = bool(preferences.show_refresh_button)
         self._show_root_buttons = bool(preferences.show_root_buttons)
         self._show_address_bar = bool(preferences.show_address_bar)
@@ -751,6 +805,7 @@ class ExplorerWindow(QMainWindow):
                 show_address_bar=self._show_address_bar,
                 show_navigation_buttons=self._show_navigation_buttons,
             )
+            panel.set_column_width_auto_align_mode(self._column_width_auto_align_mode)
             panel.apply_font_preferences(
                 file_list_font=file_list_font,
                 navigation_font=navigation_font,
@@ -1022,6 +1077,34 @@ class ExplorerWindow(QMainWindow):
         if self._last_non_source_panel_id in candidates:
             return self._last_non_source_panel_id
         return candidates[0]
+
+    def _on_panel_column_widths_sync_requested(
+        self,
+        panel_id: int,
+        widths: list[object],
+        source_tab: object,
+    ) -> None:
+        self.controller.broadcast_column_widths(
+            widths,
+            source_window=self,
+            source_panel_id=panel_id,
+            source_tab=source_tab,
+        )
+
+    def apply_column_widths_all_panels(
+        self,
+        widths: list[object],
+        *,
+        source_panel_id: int | None = None,
+        source_tab: object | None = None,
+    ) -> None:
+        for panel_id, panel in self.panel_widgets.items():
+            panel_source_tab = (
+                cast("ExplorerTab | None", source_tab)
+                if panel_id == source_panel_id
+                else None
+            )
+            panel.apply_column_widths_to_panel_tabs(widths, source_tab=panel_source_tab)
 
     def _update_pane_visuals(self) -> None:
         source_id = self._active_panel_id
