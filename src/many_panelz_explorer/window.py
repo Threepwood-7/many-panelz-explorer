@@ -81,6 +81,7 @@ class ExplorerWindow(QMainWindow):
 
         self.setWindowTitle("Many Panelz Explorer")
         self.setWindowFlag(Qt.WindowType.Window, True)
+        self._neutralize_menu_overlap_widgets()
 
         empty_state: TabsState = {}
         self._sync_panel_tree_from_rows()
@@ -452,6 +453,26 @@ class ExplorerWindow(QMainWindow):
         menu_bar.setFocus(Qt.FocusReason.ShortcutFocusReason)
         menu_bar.setActiveAction(self._menu_file_action)
 
+    def _neutralize_menu_overlap_widgets(self) -> None:
+        menu_bar = self.menuBar()
+        menu_rect = menu_bar.geometry()
+        direct_children = self.findChildren(
+            QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly
+        )
+        protected = {self._central, menu_bar, self.statusBar()}
+        for child in direct_children:
+            if child in protected:
+                continue
+            if type(child) is not QWidget:
+                continue
+            if not child.isVisible():
+                continue
+            if child.geometry().intersects(menu_rect):
+                # Defensive cleanup for accidental top-level placeholders that can
+                # block menubar mouse hits.
+                child.hide()
+                child.deleteLater()
+
     def _refresh_active_panel(self) -> None:
         panel = self.active_panel()
         if panel is not None:
@@ -496,7 +517,7 @@ class ExplorerWindow(QMainWindow):
                 continue
             widget = item.widget()
             if widget is not None:
-                widget.setParent(None)
+                widget.hide()
                 widget.deleteLater()
 
     def _rebuild_from_tree(
@@ -540,10 +561,11 @@ class ExplorerWindow(QMainWindow):
 
         root_widget = self._build_rows_widget(self._layout_rows)
         if root_widget is None:
-            root_widget = QWidget(self)
+            root_widget = QWidget()
 
         self._clear_layout()
         self._central_layout.addWidget(root_widget)
+        self._neutralize_menu_overlap_widgets()
 
         target_active = preferred_active_panel
         if target_active is None or target_active not in self.panel_widgets:
@@ -562,7 +584,7 @@ class ExplorerWindow(QMainWindow):
         splitter = QSplitter(Qt.Orientation.Vertical, self)
         for row in rows:
             row_widget = self._build_row_widget(row)
-            splitter.addWidget(row_widget if row_widget is not None else QWidget(self))
+            splitter.addWidget(row_widget if row_widget is not None else QWidget())
         splitter.setChildrenCollapsible(False)
         splitter.setSizes([1000] * len(rows))
         return splitter
@@ -571,11 +593,13 @@ class ExplorerWindow(QMainWindow):
         if not row:
             return None
         if len(row) == 1:
-            return self.panel_widgets.get(row[0], QWidget(self))
+            panel = self.panel_widgets.get(row[0])
+            return panel if panel is not None else QWidget()
 
         splitter = QSplitter(Qt.Orientation.Horizontal, self)
         for panel_id in row:
-            splitter.addWidget(self.panel_widgets.get(panel_id, QWidget(self)))
+            panel = self.panel_widgets.get(panel_id)
+            splitter.addWidget(panel if panel is not None else QWidget())
         splitter.setChildrenCollapsible(False)
         splitter.setSizes([1000] * len(row))
         return splitter

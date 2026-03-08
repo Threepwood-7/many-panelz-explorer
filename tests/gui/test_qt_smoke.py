@@ -10,6 +10,7 @@ pytest.importorskip("pytestqt")
 
 from PySide6.QtCore import QDir, Qt
 from PySide6.QtTest import QTest
+from PySide6.QtWidgets import QApplication, QWidget
 
 from many_panelz_explorer.settings import SettingsManager
 from many_panelz_explorer.window import ExplorerWindow
@@ -199,3 +200,65 @@ def test_menu_mouse_click_opens_each_main_menu(qtbot, tmp_path: Path) -> None:
             lambda m=menu, a=action: m.isVisible() or menu_bar.activeAction() is a
         )
         menu.close()
+
+
+def test_window_does_not_create_menu_overlap_widgets(qtbot, tmp_path: Path) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="smoke-menu-no-overlap",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    menu_bar = window.menuBar()
+    protected = {window.centralWidget(), window.statusBar(), menu_bar}
+    overlap_children = [
+        child
+        for child in window.findChildren(
+            QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly
+        )
+        if child not in protected
+        and child.isVisible()
+        and type(child) is QWidget
+        and child.geometry().intersects(menu_bar.geometry())
+    ]
+    assert overlap_children == []
+
+    file_action = menu_bar.actions()[0]
+    hit = QApplication.widgetAt(
+        menu_bar.mapToGlobal(menu_bar.actionGeometry(file_action).center())
+    )
+    assert hit is menu_bar
+
+
+def test_menu_overlap_widget_is_removed_by_cleanup(qtbot, tmp_path: Path) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="smoke-menu-overlap-cleanup",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    menu_bar = window.menuBar()
+    file_action = menu_bar.actions()[0]
+
+    overlap = QWidget(window)
+    overlap.setGeometry(0, 0, 120, 30)
+    overlap.show()
+    qtbot.waitUntil(lambda: overlap.isVisible())
+
+    window._neutralize_menu_overlap_widgets()
+    assert overlap.isHidden()
+
+    hit = QApplication.widgetAt(
+        menu_bar.mapToGlobal(menu_bar.actionGeometry(file_action).center())
+    )
+    assert hit is menu_bar
