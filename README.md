@@ -34,6 +34,7 @@ A multi-panel, Windows-focused file explorer built with PySide6. Supports splitt
 - **Hidden files toggle** - show/hide hidden and system files
 - **Terminal integration** - open PowerShell (Windows) or x-terminal-emulator (Linux) at the current path
 - **Properties dialog** - path, type, size, and file count for selected items
+- **Settings dialog** - searchable preferences with live preview, tint sliders, and tint color pickers
 
 ## UI Walkthrough
 
@@ -128,6 +129,10 @@ Runtime settings are stored via QSettings:
 | `config/new_context_mode` | How new panels/tabs determine their starting path (`"home"`, `"cwd"`, or `"clone_active_path"`) |
 | `ui/show_hidden_default` | Toggle hidden files visibility (default: true) |
 | `ui/show_root_dropdown` | Show/hide root selector dropdown (default: false) |
+| `ui/show_refresh_button` | Show/hide refresh button in panel toolbar (default: true) |
+| `ui/show_root_buttons` | Show/hide root buttons strip in panel toolbar (default: true) |
+| `ui/show_address_bar` | Show/hide address bar in panel toolbar (default: true) |
+| `ui/show_navigation_buttons` | Show/hide navigation buttons group in panel toolbar (default: true) |
 | `prefs/session_windows` | List of window IDs for session restoration |
 | `prefs/saved_views` | Named saved view layouts (JSON) |
 | `ui/windows/{id}/panel_tree` | Panel layout tree (JSON) |
@@ -153,6 +158,7 @@ Runtime settings are stored via QSettings:
 | F8 | Delete selected |
 | Tab / Shift+Tab | Cycle active pane |
 | Ctrl+R | Refresh active pane |
+| Ctrl+, | Open Settings dialog |
 | Alt / F10 | Focus File menu |
 | F1 | Show help |
 | **Navigation** | |
@@ -184,6 +190,7 @@ Runtime settings are stored via QSettings:
 - Refresh (Ctrl+R)
 - On top (checkable toggle)
 - Show hidden files (checkable toggle)
+- Settings... (Ctrl+,)
 
 **Help**:
 - Help (F1)

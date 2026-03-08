@@ -12,7 +12,7 @@ pytest.importorskip("pytestqt")
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QInputDialog, QMessageBox
 
-from many_panelz_explorer.settings import SettingsManager
+from many_panelz_explorer.settings import SettingsManager, UiPreferences
 from many_panelz_explorer.window import ExplorerWindow
 
 
@@ -272,6 +272,7 @@ def test_root_dropdown_ini_setting_controls_panel_dropdown(
     window_on.show()
     assert window_on.active_panel() is not None
     assert window_on.active_panel().root_combo.isVisible() is True
+    qtbot.waitUntil(lambda: window_on.active_panel().root_combo.width() > 0)
 
     settings_off = SettingsManager()
     settings_off.show_root_dropdown = False
@@ -287,6 +288,50 @@ def test_root_dropdown_ini_setting_controls_panel_dropdown(
     window_off.show()
     assert window_off.active_panel() is not None
     assert window_off.active_panel().root_combo.isVisible() is False
+
+
+def test_apply_ui_preferences_updates_toolbar_visibility_flags(
+    qtbot, tmp_path: Path
+) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="toolbar-flags",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+    window._new_vertical_panel_action.trigger()
+
+    window.apply_ui_preferences(
+        UiPreferences(
+            new_context_mode="clone_active_path",
+            show_hidden_default=True,
+            show_root_dropdown=True,
+            show_refresh_button=False,
+            show_root_buttons=False,
+            show_address_bar=False,
+            show_navigation_buttons=False,
+            active_panel_tint_color_hex="#A8B6C4",
+            active_panel_tint_intensity_percent=24,
+            target_panel_tint_color_hex="#D2CCAA",
+            target_panel_tint_intensity_percent=28,
+        )
+    )
+
+    for panel in window.panel_widgets.values():
+        qtbot.waitUntil(lambda p=panel: p.root_combo.isVisible())
+        assert panel.refresh_btn.isVisible() is False
+        assert panel.root_buttons_host.isVisible() is False
+        assert panel.root_combo.isVisible() is True
+        assert panel.address_edit.isVisible() is False
+        assert panel.back_btn.isVisible() is False
+        assert panel.forward_btn.isVisible() is False
+        assert panel.up_btn.isVisible() is False
+        assert panel.root_btn.isVisible() is False
+        qtbot.waitUntil(lambda p=panel: p.root_combo.width() > 0)
 
 
 def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -> None:
@@ -381,6 +426,11 @@ def test_copy_to_target_uses_last_active_non_source_panel(
     qtbot, tmp_path: Path, monkeypatch
 ) -> None:
     settings = SettingsManager()
+    settings.active_panel_tint_color_hex = "#A8B6C4"
+    settings.active_panel_tint_intensity_percent = 24
+    settings.target_panel_tint_color_hex = "#D2CCAA"
+    settings.target_panel_tint_intensity_percent = 28
+    settings.sync()
     roots_provider = _test_roots_provider(tmp_path)
     window = ExplorerWindow(
         controller=_ControllerStub(),
@@ -428,6 +478,65 @@ def test_copy_to_target_uses_last_active_non_source_panel(
     assert captured == [dst_dir]
     assert source_panel._pane_role == "active"
     assert target_panel._pane_role == "target"
+    assert "border: none" in source_panel.styleSheet()
+    assert "background-color: rgba(168, 182, 196, 61)" in source_panel.styleSheet()
+    assert "border: none" in target_panel.styleSheet()
+    assert "background-color: rgba(210, 204, 170, 71)" in target_panel.styleSheet()
+
+
+def test_status_bar_persistent_source_target_paths_update_with_context_changes(
+    qtbot, tmp_path: Path
+) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="status-persistent-paths",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    window._new_vertical_panel_action.trigger()
+    ordered_ids = [pid for row in window._layout_rows for pid in row]
+    assert len(ordered_ids) >= 2
+    source_id = ordered_ids[0]
+    target_id = ordered_ids[1]
+    source_panel = window.panel_widgets[source_id]
+    target_panel = window.panel_widgets[target_id]
+
+    source_dir = tmp_path / "source"
+    target_dir = tmp_path / "target"
+    source_dir.mkdir()
+    target_dir.mkdir()
+
+    source_panel.current_tab().set_path(source_dir)
+    target_panel.current_tab().set_path(target_dir)
+
+    window._set_active_panel(target_id)
+    window._set_active_panel(source_id)
+
+    qtbot.waitUntil(
+        lambda: window._source_path_label.text() == f"Source path: {source_dir}"
+    )
+    assert window._target_path_label.text() == f"Target path: {target_dir}"
+    assert window._source_path_label.toolTip() == str(source_dir)
+    assert window._target_path_label.toolTip() == str(target_dir)
+
+    window.statusBar().showMessage("Temporary status", 60)
+    assert window._source_path_label.text() == f"Source path: {source_dir}"
+    assert window._target_path_label.text() == f"Target path: {target_dir}"
+    qtbot.wait(90)
+    assert window._source_path_label.text() == f"Source path: {source_dir}"
+    assert window._target_path_label.text() == f"Target path: {target_dir}"
+
+    nested_source = source_dir / "nested"
+    nested_source.mkdir()
+    source_panel.current_tab().set_path(nested_source)
+    qtbot.waitUntil(
+        lambda: window._source_path_label.text() == f"Source path: {nested_source}"
+    )
 
 
 def test_copy_or_move_conflict_choices(qtbot, tmp_path: Path, monkeypatch) -> None:

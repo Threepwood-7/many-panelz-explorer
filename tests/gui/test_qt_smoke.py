@@ -101,6 +101,12 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
         action.text().replace("&", "") == "Show Widget Map"
         for action in view_menu.actions()
     )
+    settings_action = next(
+        (action for action in view_menu.actions() if action.text() == "&Settings..."),
+        None,
+    )
+    assert settings_action is not None
+    assert settings_action.shortcut().toString() == "Ctrl+,"
 
     help_menu = window.menuBar().actions()[2].menu()
     assert help_menu is not None

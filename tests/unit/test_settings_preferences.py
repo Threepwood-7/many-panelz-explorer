@@ -1,0 +1,111 @@
+from __future__ import annotations
+
+from many_panelz_explorer.settings import SettingsManager, UiPreferences
+
+
+def _tracked_keys() -> list[str]:
+    return [
+        SettingsManager.NEW_CONTEXT_MODE_KEY,
+        SettingsManager.SHOW_HIDDEN_DEFAULT_KEY,
+        SettingsManager.SHOW_ROOT_DROPDOWN_KEY,
+        SettingsManager.SHOW_REFRESH_BUTTON_KEY,
+        SettingsManager.SHOW_ROOT_BUTTONS_KEY,
+        SettingsManager.SHOW_ADDRESS_BAR_KEY,
+        SettingsManager.SHOW_NAVIGATION_BUTTONS_KEY,
+        SettingsManager.ACTIVE_PANEL_TINT_COLOR_KEY,
+        SettingsManager.ACTIVE_PANEL_TINT_INTENSITY_KEY,
+        SettingsManager.TARGET_PANEL_TINT_COLOR_KEY,
+        SettingsManager.TARGET_PANEL_TINT_INTENSITY_KEY,
+    ]
+
+
+def _snapshot(settings: SettingsManager) -> dict[str, object]:
+    return {key: settings.value(key, None) for key in _tracked_keys()}
+
+
+def _restore(settings: SettingsManager, snapshot: dict[str, object]) -> None:
+    for key, value in snapshot.items():
+        if value is None:
+            settings.remove(key)
+        else:
+            settings.set_value(key, value)
+    settings.sync()
+
+
+def test_ui_preferences_round_trip() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    try:
+        expected = UiPreferences(
+            new_context_mode="cwd",
+            show_hidden_default=False,
+            show_root_dropdown=True,
+            show_refresh_button=False,
+            show_root_buttons=False,
+            show_address_bar=False,
+            show_navigation_buttons=False,
+            active_panel_tint_color_hex="#ABCDEF",
+            active_panel_tint_intensity_percent=80,
+            target_panel_tint_color_hex="#123456",
+            target_panel_tint_intensity_percent=33,
+        )
+        settings.set_ui_preferences(expected)
+        settings.sync()
+        assert settings.ui_preferences() == expected
+    finally:
+        _restore(settings, before)
+
+
+def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    try:
+        settings.set_value(SettingsManager.NEW_CONTEXT_MODE_KEY, "invalid-mode")
+        settings.remove(SettingsManager.SHOW_ROOT_DROPDOWN_KEY)
+        settings.remove(SettingsManager.SHOW_REFRESH_BUTTON_KEY)
+        settings.remove(SettingsManager.SHOW_ROOT_BUTTONS_KEY)
+        settings.remove(SettingsManager.SHOW_ADDRESS_BAR_KEY)
+        settings.remove(SettingsManager.SHOW_NAVIGATION_BUTTONS_KEY)
+        settings.set_value(SettingsManager.ACTIVE_PANEL_TINT_COLOR_KEY, "blue")
+        settings.set_value(SettingsManager.TARGET_PANEL_TINT_COLOR_KEY, "#12")
+        settings.set_value(SettingsManager.ACTIVE_PANEL_TINT_INTENSITY_KEY, "oops")
+        settings.set_value(SettingsManager.TARGET_PANEL_TINT_INTENSITY_KEY, "nope")
+
+        loaded = settings.ui_preferences()
+        assert loaded.new_context_mode == "clone_active_path"
+        assert loaded.show_root_dropdown is False
+        assert loaded.show_refresh_button is True
+        assert loaded.show_root_buttons is True
+        assert loaded.show_address_bar is True
+        assert loaded.show_navigation_buttons is True
+        assert (
+            loaded.active_panel_tint_color_hex
+            == SettingsManager.DEFAULT_ACTIVE_PANEL_TINT_COLOR_HEX
+        )
+        assert (
+            loaded.target_panel_tint_color_hex
+            == SettingsManager.DEFAULT_TARGET_PANEL_TINT_COLOR_HEX
+        )
+        assert (
+            loaded.active_panel_tint_intensity_percent
+            == SettingsManager.DEFAULT_ACTIVE_PANEL_TINT_INTENSITY_PERCENT
+        )
+        assert (
+            loaded.target_panel_tint_intensity_percent
+            == SettingsManager.DEFAULT_TARGET_PANEL_TINT_INTENSITY_PERCENT
+        )
+    finally:
+        _restore(settings, before)
+
+
+def test_ui_preferences_intensity_clamps_to_range() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    try:
+        settings.set_value(SettingsManager.ACTIVE_PANEL_TINT_INTENSITY_KEY, -5)
+        settings.set_value(SettingsManager.TARGET_PANEL_TINT_INTENSITY_KEY, 1000)
+        loaded = settings.ui_preferences()
+        assert loaded.active_panel_tint_intensity_percent == 0
+        assert loaded.target_panel_tint_intensity_percent == 100
+    finally:
+        _restore(settings, before)

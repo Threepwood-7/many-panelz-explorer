@@ -13,7 +13,7 @@ from .constants import (
     SETTINGS_APP_NAME,
     SETTINGS_ORG_NAME,
 )
-from .settings import SettingsManager
+from .settings import SettingsManager, UiPreferences
 from .window import ExplorerWindow
 
 if TYPE_CHECKING:
@@ -146,3 +146,15 @@ class AppController:
     def run(self) -> int:
         self.restore_session()
         return self.app.exec()
+
+    def current_ui_preferences(self) -> UiPreferences:
+        return self.settings.ui_preferences()
+
+    def preview_ui_preferences(self, preferences: UiPreferences) -> None:
+        for window in list(self.windows):
+            window.apply_ui_preferences(preferences)
+
+    def apply_ui_preferences(self, preferences: UiPreferences) -> None:
+        self.settings.set_ui_preferences(preferences)
+        self.settings.sync()
+        self.preview_ui_preferences(preferences)

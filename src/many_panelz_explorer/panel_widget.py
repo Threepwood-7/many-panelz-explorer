@@ -181,8 +181,10 @@ class _WidgetMapOverlay(QWidget):
 class PanelWidget(QWidget):
     COLUMN_SYNC_DEBOUNCE_MS = 120
     ADDRESS_COMPLETION_DEBOUNCE_MS = 140
+    ROOT_COMBO_MIN_WIDTH = 108
 
     activated = Signal()
+    current_context_changed = Signal()
     became_empty = Signal()
 
     def __init__(
@@ -211,11 +213,20 @@ class PanelWidget(QWidget):
         self._pane_role = "normal"
         self._show_widget_map = False
         self._address_completions_enabled = True
+        self._active_role_color = QColor("#A8B6C4")
+        self._active_role_intensity_percent = 24
+        self._target_role_color = QColor("#D2CCAA")
+        self._target_role_intensity_percent = 28
+        self._show_refresh_button = True
+        self._show_root_buttons = True
+        self._show_address_bar = True
+        self._show_navigation_buttons = True
 
         self._panel_widget_id = widget_naming.panel_widget_id(self.panel_id)
         self.setObjectName(widget_naming.object_name_for_id(self._panel_widget_id))
         self.setProperty("widget_id", self._panel_widget_id)
         self.setProperty("widget_alias", widget_naming.panel_alias(self.panel_id))
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setMinimumWidth(0)
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
 
@@ -239,7 +250,7 @@ class PanelWidget(QWidget):
         self.root_buttons_host = QWidget()
         self.root_buttons_host.setMinimumWidth(0)
         self.root_buttons_host.setSizePolicy(
-            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
         )
         self.root_buttons_layout = QHBoxLayout(self.root_buttons_host)
         self.root_buttons_layout.setContentsMargins(0, 0, 0, 0)
@@ -249,9 +260,9 @@ class PanelWidget(QWidget):
         self.root_combo = QComboBox()
         self.root_combo.activated.connect(self._on_root_selected)
         self.root_combo.setVisible(self._show_root_dropdown)
-        self.root_combo.setMinimumWidth(0)
+        self.root_combo.setMinimumWidth(self.ROOT_COMBO_MIN_WIDTH)
         self.root_combo.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
         )
         toolbar.addWidget(self.root_combo)
 
@@ -303,6 +314,12 @@ class PanelWidget(QWidget):
         )
         self.root_btn.clicked.connect(self._go_root)
         toolbar.addWidget(self.root_btn)
+        self._navigation_buttons = [
+            self.back_btn,
+            self.forward_btn,
+            self.up_btn,
+            self.root_btn,
+        ]
 
         root.addLayout(toolbar)
 
@@ -408,6 +425,7 @@ class PanelWidget(QWidget):
         self._address_completion_timer.timeout.connect(self._refresh_address_completions)
 
         self._sync_toolbar_for_current_tab()
+        self._sync_toolbar_visibility()
         self._apply_visual_role()
         self._sync_widget_map_overlay()
 
@@ -511,6 +529,58 @@ class PanelWidget(QWidget):
                 widget.set_show_hidden(self._show_hidden)
         if self.address_edit.hasFocus():
             self._schedule_address_completion_update(self.address_edit.text())
+
+    def set_show_root_dropdown(self, enabled: bool) -> None:
+        self.apply_toolbar_visibility(
+            show_refresh_button=self._show_refresh_button,
+            show_root_buttons=self._show_root_buttons,
+            show_root_dropdown=enabled,
+            show_address_bar=self._show_address_bar,
+            show_navigation_buttons=self._show_navigation_buttons,
+        )
+
+    def apply_toolbar_visibility(
+        self,
+        *,
+        show_refresh_button: bool,
+        show_root_buttons: bool,
+        show_root_dropdown: bool,
+        show_address_bar: bool,
+        show_navigation_buttons: bool,
+    ) -> None:
+        dropdown_changed = self._show_root_dropdown != bool(show_root_dropdown)
+        self._show_refresh_button = bool(show_refresh_button)
+        self._show_root_buttons = bool(show_root_buttons)
+        self._show_root_dropdown = bool(show_root_dropdown)
+        self._show_address_bar = bool(show_address_bar)
+        self._show_navigation_buttons = bool(show_navigation_buttons)
+        if dropdown_changed:
+            self._rebuild_root_controls(self.current_path())
+        self._sync_toolbar_visibility()
+        self._sync_widget_map_overlay()
+
+    def set_role_visual_preferences(
+        self,
+        *,
+        active_color_hex: str,
+        active_intensity_percent: int,
+        target_color_hex: str,
+        target_intensity_percent: int,
+    ) -> None:
+        active_color = QColor(str(active_color_hex))
+        target_color = QColor(str(target_color_hex))
+        if active_color.isValid():
+            self._active_role_color = active_color
+        if target_color.isValid():
+            self._target_role_color = target_color
+        self._active_role_intensity_percent = self._normalize_percent(
+            active_intensity_percent
+        )
+        self._target_role_intensity_percent = self._normalize_percent(
+            target_intensity_percent
+        )
+        self._apply_visual_role()
+        self._sync_widget_map_overlay()
 
     def set_widget_map_enabled(self, enabled: bool) -> None:
         self._show_widget_map = bool(enabled)
@@ -647,12 +717,14 @@ class PanelWidget(QWidget):
                 tab.apply_column_widths(self._column_widths)
             if tab is not None and self.filter_edit.isVisible():
                 tab.set_inline_filter(self.filter_edit.text())
+            self.current_context_changed.emit()
         self._sync_toolbar_for_current_tab()
         self._sync_widget_map_overlay()
 
     def _on_tab_path_changed(self, tab: ExplorerTab) -> None:
         if tab is self.current_tab():
             self._sync_toolbar_for_current_tab()
+            self.current_context_changed.emit()
 
     def _on_tab_history_changed(self, tab: ExplorerTab) -> None:
         if tab is self.current_tab():
@@ -746,6 +818,14 @@ class PanelWidget(QWidget):
         if self.filter_edit.isVisible():
             tab.set_inline_filter(self.filter_edit.text())
         self._sync_widget_map_overlay()
+
+    def _sync_toolbar_visibility(self) -> None:
+        self.refresh_btn.setVisible(self._show_refresh_button)
+        self.root_buttons_host.setVisible(self._show_root_buttons)
+        self.root_combo.setVisible(self._show_root_dropdown)
+        self.address_edit.setVisible(self._show_address_bar)
+        for nav_button in self._navigation_buttons:
+            nav_button.setVisible(self._show_navigation_buttons)
 
     def _rebuild_root_controls(self, current_path: Path | None) -> None:
         roots = self._safe_roots(current_path)
@@ -1148,12 +1228,30 @@ class PanelWidget(QWidget):
 
     def _apply_visual_role(self) -> None:
         if self._pane_role == "active":
-            color = "#f4b400"
+            color = self._active_role_color
+            alpha = self._alpha_from_percent(self._active_role_intensity_percent)
+            background_color = f"rgba({color.red()}, {color.green()}, {color.blue()}, {alpha})"
         elif self._pane_role == "target":
-            color = "#0088cc"
+            color = self._target_role_color
+            alpha = self._alpha_from_percent(self._target_role_intensity_percent)
+            background_color = f"rgba({color.red()}, {color.green()}, {color.blue()}, {alpha})"
         else:
-            color = "#555555"
+            background_color = "rgba(0, 0, 0, 0)"
         panel_object_name = self.objectName()
         self.setStyleSheet(
-            f"QWidget#{panel_object_name} {{ border: 2px solid {color}; border-radius: 2px; }}"
+            f"QWidget#{panel_object_name} {{ "
+            f"border: none; "
+            f"background-color: {background_color}; "
+            f"}}"
         )
+
+    def _normalize_percent(self, value: int) -> int:
+        if value < 0:
+            return 0
+        if value > 100:
+            return 100
+        return int(value)
+
+    def _alpha_from_percent(self, percent: int) -> int:
+        normalized = self._normalize_percent(percent)
+        return int((normalized / 100.0) * 255.0)

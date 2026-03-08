@@ -292,6 +292,7 @@ def test_root_dropdown_is_optional(qtbot, tmp_path: Path) -> None:
     panel_with_dropdown.show()
     panel_with_dropdown.add_tab(root)
     assert panel_with_dropdown.root_combo.isVisible() is True
+    qtbot.waitUntil(lambda: panel_with_dropdown.root_combo.width() > 0)
     assert len(panel_with_dropdown.root_buttons) == 2
 
     index = _index_for_root(panel_with_dropdown, a)
@@ -327,6 +328,70 @@ def test_root_controls_sorted_alphabetically(qtbot, tmp_path: Path) -> None:
 
     assert button_labels == ["AA", "HDD01", "HDD02"]
     assert combo_labels == ["AA", "HDD01", "HDD02"]
+
+
+def test_toolbar_visibility_flags_are_independent(qtbot, tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    root.mkdir(parents=True)
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        show_root_dropdown=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    panel.add_tab(root)
+
+    qtbot.waitUntil(lambda: panel.root_combo.isVisible() and panel.root_combo.width() > 0)
+    assert panel.refresh_btn.isVisible() is True
+    assert panel.root_buttons_host.isVisible() is True
+    assert panel.address_edit.isVisible() is True
+    assert panel.back_btn.isVisible() is True
+
+    panel.apply_toolbar_visibility(
+        show_refresh_button=False,
+        show_root_buttons=False,
+        show_root_dropdown=False,
+        show_address_bar=False,
+        show_navigation_buttons=False,
+    )
+    assert panel.refresh_btn.isVisible() is False
+    assert panel.root_buttons_host.isVisible() is False
+    assert panel.root_combo.isVisible() is False
+    assert panel.address_edit.isVisible() is False
+    assert panel.back_btn.isVisible() is False
+    assert panel.forward_btn.isVisible() is False
+    assert panel.up_btn.isVisible() is False
+    assert panel.root_btn.isVisible() is False
+
+    panel.apply_toolbar_visibility(
+        show_refresh_button=False,
+        show_root_buttons=True,
+        show_root_dropdown=False,
+        show_address_bar=True,
+        show_navigation_buttons=False,
+    )
+    assert panel.refresh_btn.isVisible() is False
+    assert panel.root_buttons_host.isVisible() is True
+    assert panel.root_combo.isVisible() is False
+    assert panel.address_edit.isVisible() is True
+    assert panel.back_btn.isVisible() is False
+
+    panel.apply_toolbar_visibility(
+        show_refresh_button=True,
+        show_root_buttons=True,
+        show_root_dropdown=True,
+        show_address_bar=True,
+        show_navigation_buttons=True,
+    )
+    qtbot.waitUntil(lambda: panel.root_combo.isVisible() and panel.root_combo.width() > 0)
+    assert panel.refresh_btn.isVisible() is True
+    assert panel.root_buttons_host.isVisible() is True
+    assert panel.address_edit.isVisible() is True
+    assert panel.back_btn.isVisible() is True
 
 
 def test_windows_mountpoint_uses_last_segment_and_tooltip(
@@ -479,7 +544,9 @@ def test_column_widths_persist_in_panel_state(qtbot, tmp_path: Path) -> None:
     assert restored_tab.view.columnWidth(3) == 180
 
 
-def test_panel_controls_do_not_enforce_minimum_widths(qtbot, tmp_path: Path) -> None:
+def test_panel_controls_keep_root_combo_minimum_width_for_visibility(
+    qtbot, tmp_path: Path
+) -> None:
     root = tmp_path / "root"
     root.mkdir()
 
@@ -495,7 +562,7 @@ def test_panel_controls_do_not_enforce_minimum_widths(qtbot, tmp_path: Path) -> 
     panel.add_tab(root)
 
     assert panel.minimumWidth() == 0
-    assert panel.root_combo.minimumWidth() == 0
+    assert panel.root_combo.minimumWidth() == PanelWidget.ROOT_COMBO_MIN_WIDTH
     assert panel.address_edit.minimumWidth() == 0
     assert panel.tabs.minimumWidth() == 0
     assert panel.tabs.tabBar().minimumWidth() == 0
@@ -711,7 +778,7 @@ def test_root_controls_fallback_when_provider_raises(qtbot, tmp_path: Path) -> N
     assert panel._root_paths
 
 
-def test_root_buttons_host_remains_visible_under_narrow_width(
+def test_root_buttons_host_can_shrink_under_narrow_width(
     qtbot, tmp_path: Path
 ) -> None:
     root = tmp_path / "root"
@@ -726,14 +793,14 @@ def test_root_buttons_host_remains_visible_under_narrow_width(
         panel_id=1,
         default_path=root,
         show_hidden=True,
+        show_root_dropdown=True,
         roots_provider=lambda _current: [root, *roots],
     )
     qtbot.addWidget(panel)
     panel.resize(260, 180)
     panel.show()
     panel.add_tab(root)
-    qtbot.waitUntil(lambda: panel.root_buttons_host.isVisible())
+    qtbot.waitUntil(lambda: panel.root_combo.isVisible() and panel.root_combo.width() > 0)
 
-    assert panel.root_buttons_host.width() > 0
+    assert panel.root_buttons_host.isVisible() is True
     assert panel.root_buttons
-    assert max(button.width() for button in panel.root_buttons) > 0

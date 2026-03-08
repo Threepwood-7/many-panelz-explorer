@@ -12,6 +12,7 @@ from PySide6.QtGui import QAction, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QInputDialog,
+    QLabel,
     QMainWindow,
     QMenu,
     QMessageBox,
@@ -33,7 +34,7 @@ from .panel_widget import PanelWidget
 
 if TYPE_CHECKING:
     from .app_controller import AppController
-    from .settings import SettingsManager
+    from .settings import SettingsManager, UiPreferences
 
 
 type PanelState = dict[str, Any]
@@ -73,9 +74,30 @@ class ExplorerWindow(QMainWindow):
         self._central_layout = QVBoxLayout(self._central)
         self._central_layout.setContentsMargins(0, 0, 0, 0)
         self.setCentralWidget(self._central)
-        self.statusBar().showMessage("")
 
-        self._show_hidden = self.settings.show_hidden_default
+        status_bar = self.statusBar()
+        self._source_path_label = QLabel("Source path: (none)", self)
+        self._target_path_label = QLabel("Target path: (none)", self)
+        status_bar.addPermanentWidget(self._source_path_label, 1)
+        status_bar.addPermanentWidget(self._target_path_label, 1)
+        status_bar.showMessage("")
+
+        ui_preferences = self.settings.ui_preferences()
+        self._new_context_mode = ui_preferences.new_context_mode
+        self._show_hidden = ui_preferences.show_hidden_default
+        self._show_root_dropdown = ui_preferences.show_root_dropdown
+        self._show_refresh_button = ui_preferences.show_refresh_button
+        self._show_root_buttons = ui_preferences.show_root_buttons
+        self._show_address_bar = ui_preferences.show_address_bar
+        self._show_navigation_buttons = ui_preferences.show_navigation_buttons
+        self._active_panel_tint_color_hex = ui_preferences.active_panel_tint_color_hex
+        self._active_panel_tint_intensity_percent = (
+            ui_preferences.active_panel_tint_intensity_percent
+        )
+        self._target_panel_tint_color_hex = ui_preferences.target_panel_tint_color_hex
+        self._target_panel_tint_intensity_percent = (
+            ui_preferences.target_panel_tint_intensity_percent
+        )
 
         self._build_actions()
         self._build_menus()
@@ -372,6 +394,10 @@ class ExplorerWindow(QMainWindow):
         self._show_widget_map_action.setChecked(self._show_widget_map)
         self._show_widget_map_action.toggled.connect(self._toggle_show_widget_map)
 
+        self._settings_action = QAction("&Settings...", self)
+        self._settings_action.setShortcut(QKeySequence("Ctrl+,"))
+        self._settings_action.triggered.connect(self._open_settings_dialog)
+
         self._help_action = QAction("&Help", self)
         self._help_action.setShortcut(QKeySequence("F1"))
         self._help_action.triggered.connect(self._show_help)
@@ -427,6 +453,8 @@ class ExplorerWindow(QMainWindow):
         view_menu.addAction(self._on_top_action)
         view_menu.addAction(self._show_hidden_action)
         view_menu.addAction(self._show_widget_map_action)
+        view_menu.addSeparator()
+        view_menu.addAction(self._settings_action)
 
         help_menu = QMenu("&Help", self)
         help_menu.addAction(self._help_action)
@@ -456,6 +484,7 @@ class ExplorerWindow(QMainWindow):
                 self._exit_action,
                 self._refresh_action,
                 self._show_widget_map_action,
+                self._settings_action,
                 self._help_action,
             ]
         )
@@ -479,9 +508,16 @@ class ExplorerWindow(QMainWindow):
             "F6: Move to target pane\n"
             "F8: Delete selection\n"
             "Tab / Shift+Tab: Switch active pane\n"
+            "Ctrl+, : Open settings\n"
             "Alt or F10: Focus main menu\n"
             "Ctrl+Q / Alt+X: Exit application",
         )
+
+    def _open_settings_dialog(self) -> None:
+        from .dialogs.settings_dialog import SettingsDialog
+
+        dialog = SettingsDialog(controller=self.controller, parent=self)
+        dialog.exec()
 
     def _populate_restore_view_menu(self) -> None:
         self._restore_view_menu.clear()
@@ -533,11 +569,12 @@ class ExplorerWindow(QMainWindow):
                 panel_id=panel_id,
                 default_path=self._resolve_new_context_path(self._initial_path),
                 show_hidden=self._show_hidden,
-                show_root_dropdown=self.settings.show_root_dropdown,
+                show_root_dropdown=self._show_root_dropdown,
                 roots_provider=self._roots_provider,
                 parent=self,
             )
             panel.activated.connect(lambda pid=panel_id: self._set_active_panel(pid))
+            panel.current_context_changed.connect(self._update_pane_visuals)
             panel.became_empty.connect(
                 lambda pid=panel_id: self._close_panel_by_id(pid)
             )
@@ -547,6 +584,19 @@ class ExplorerWindow(QMainWindow):
             else:
                 panel.add_tab(self._resolve_new_context_path(self._initial_path))
 
+            panel.set_role_visual_preferences(
+                active_color_hex=self._active_panel_tint_color_hex,
+                active_intensity_percent=self._active_panel_tint_intensity_percent,
+                target_color_hex=self._target_panel_tint_color_hex,
+                target_intensity_percent=self._target_panel_tint_intensity_percent,
+            )
+            panel.apply_toolbar_visibility(
+                show_refresh_button=self._show_refresh_button,
+                show_root_buttons=self._show_root_buttons,
+                show_root_dropdown=self._show_root_dropdown,
+                show_address_bar=self._show_address_bar,
+                show_navigation_buttons=self._show_navigation_buttons,
+            )
             panel.set_widget_map_enabled(self._show_widget_map)
             new_panel_widgets[panel_id] = panel
 
@@ -650,8 +700,45 @@ class ExplorerWindow(QMainWindow):
             for panel_id, panel in self.panel_widgets.items()
         }
 
+    def apply_ui_preferences(self, preferences: UiPreferences) -> None:
+        self._new_context_mode = preferences.new_context_mode
+        self._show_hidden = bool(preferences.show_hidden_default)
+        self._show_root_dropdown = bool(preferences.show_root_dropdown)
+        self._show_refresh_button = bool(preferences.show_refresh_button)
+        self._show_root_buttons = bool(preferences.show_root_buttons)
+        self._show_address_bar = bool(preferences.show_address_bar)
+        self._show_navigation_buttons = bool(preferences.show_navigation_buttons)
+        self._active_panel_tint_color_hex = preferences.active_panel_tint_color_hex
+        self._active_panel_tint_intensity_percent = (
+            preferences.active_panel_tint_intensity_percent
+        )
+        self._target_panel_tint_color_hex = preferences.target_panel_tint_color_hex
+        self._target_panel_tint_intensity_percent = (
+            preferences.target_panel_tint_intensity_percent
+        )
+
+        with QSignalBlocker(self._show_hidden_action):
+            self._show_hidden_action.setChecked(self._show_hidden)
+
+        for panel in self.panel_widgets.values():
+            panel.set_show_hidden(self._show_hidden)
+            panel.apply_toolbar_visibility(
+                show_refresh_button=self._show_refresh_button,
+                show_root_buttons=self._show_root_buttons,
+                show_root_dropdown=self._show_root_dropdown,
+                show_address_bar=self._show_address_bar,
+                show_navigation_buttons=self._show_navigation_buttons,
+            )
+            panel.set_role_visual_preferences(
+                active_color_hex=self._active_panel_tint_color_hex,
+                active_intensity_percent=self._active_panel_tint_intensity_percent,
+                target_color_hex=self._target_panel_tint_color_hex,
+                target_intensity_percent=self._target_panel_tint_intensity_percent,
+            )
+        self._update_pane_visuals()
+
     def _resolve_new_context_path(self, active_path: Path | None) -> Path:
-        mode = self.settings.new_context_mode.strip().lower()
+        mode = self._new_context_mode.strip().lower()
         if mode == "home":
             return Path.home()
         if mode == "cwd":
@@ -900,16 +987,27 @@ class ExplorerWindow(QMainWindow):
                 is_active=panel_id == source_id,
                 is_target=panel_id == target_id,
             )
+        self._set_persistent_path_status(source_id=source_id, target_id=target_id)
 
-        if source_id is None:
-            self.statusBar().showMessage("")
-            return
-        if target_id is None:
-            self.statusBar().showMessage(f"Source pane: {source_id}", 3000)
-            return
-        self.statusBar().showMessage(
-            f"Source pane: {source_id} | Target pane: {target_id}", 3000
-        )
+    def _set_persistent_path_status(
+        self, *, source_id: int | None, target_id: int | None
+    ) -> None:
+        source_path = self._panel_path_text(source_id)
+        target_path = self._panel_path_text(target_id)
+
+        self._source_path_label.setText(f"Source path: {source_path}")
+        self._target_path_label.setText(f"Target path: {target_path}")
+
+        self._source_path_label.setToolTip("" if source_path == "(none)" else source_path)
+        self._target_path_label.setToolTip("" if target_path == "(none)" else target_path)
+
+    def _panel_path_text(self, panel_id: int | None) -> str:
+        if panel_id is None:
+            return "(none)"
+        panel = self.panel_widgets.get(panel_id)
+        if panel is None:
+            return "(none)"
+        return str(panel.current_path())
 
     # ----- persistence -----
     def _encode_geometry(self) -> str:
