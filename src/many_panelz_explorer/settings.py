@@ -20,6 +20,14 @@ class UiPreferences:
     show_root_buttons: bool
     show_address_bar: bool
     show_navigation_buttons: bool
+    app_font_family: str
+    app_font_size_pt: int
+    file_list_use_app_font: bool
+    file_list_font_family: str
+    file_list_font_size_pt: int
+    navigation_use_app_font: bool
+    navigation_font_family: str
+    navigation_font_size_pt: int
     active_panel_tint_color_hex: str
     active_panel_tint_intensity_percent: int
     target_panel_tint_color_hex: str
@@ -36,6 +44,14 @@ class SettingsManager:
     SHOW_ROOT_BUTTONS_KEY = "ui/show_root_buttons"
     SHOW_ADDRESS_BAR_KEY = "ui/show_address_bar"
     SHOW_NAVIGATION_BUTTONS_KEY = "ui/show_navigation_buttons"
+    APP_FONT_FAMILY_KEY = "ui/font/app/family"
+    APP_FONT_SIZE_PT_KEY = "ui/font/app/size_pt"
+    FILE_LIST_USE_APP_FONT_KEY = "ui/font/file_list/use_app_font"
+    FILE_LIST_FONT_FAMILY_KEY = "ui/font/file_list/family"
+    FILE_LIST_FONT_SIZE_PT_KEY = "ui/font/file_list/size_pt"
+    NAVIGATION_USE_APP_FONT_KEY = "ui/font/navigation/use_app_font"
+    NAVIGATION_FONT_FAMILY_KEY = "ui/font/navigation/family"
+    NAVIGATION_FONT_SIZE_PT_KEY = "ui/font/navigation/size_pt"
     ACTIVE_PANEL_TINT_COLOR_KEY = "ui/panel_tint/active_color_hex"
     ACTIVE_PANEL_TINT_INTENSITY_KEY = "ui/panel_tint/active_intensity_percent"
     TARGET_PANEL_TINT_COLOR_KEY = "ui/panel_tint/target_color_hex"
@@ -46,6 +62,14 @@ class SettingsManager:
     DEFAULT_ACTIVE_PANEL_TINT_INTENSITY_PERCENT = 24
     DEFAULT_TARGET_PANEL_TINT_COLOR_HEX = "#D2CCAA"
     DEFAULT_TARGET_PANEL_TINT_INTENSITY_PERCENT = 28
+    DEFAULT_APP_FONT_FAMILY = ""
+    DEFAULT_APP_FONT_SIZE_PT = 0
+    DEFAULT_FILE_LIST_USE_APP_FONT = True
+    DEFAULT_FILE_LIST_FONT_FAMILY = ""
+    DEFAULT_FILE_LIST_FONT_SIZE_PT = 10
+    DEFAULT_NAVIGATION_USE_APP_FONT = True
+    DEFAULT_NAVIGATION_FONT_FAMILY = ""
+    DEFAULT_NAVIGATION_FONT_SIZE_PT = 10
     _ALLOWED_NEW_CONTEXT_MODES = {"clone_active_path", "home", "cwd"}
     _HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
@@ -148,6 +172,133 @@ class SettingsManager:
         self.set_value(self.SHOW_NAVIGATION_BUTTONS_KEY, bool(enabled))
 
     @property
+    def app_font_family(self) -> str:
+        return self._normalize_font_family(
+            self.value(self.APP_FONT_FAMILY_KEY, self.DEFAULT_APP_FONT_FAMILY)
+        )
+
+    @app_font_family.setter
+    def app_font_family(self, family: str) -> None:
+        self.set_value(self.APP_FONT_FAMILY_KEY, self._normalize_font_family(family))
+
+    @property
+    def app_font_size_pt(self) -> int:
+        return self._normalize_font_size(
+            self.value(self.APP_FONT_SIZE_PT_KEY, self.DEFAULT_APP_FONT_SIZE_PT),
+            fallback=self.DEFAULT_APP_FONT_SIZE_PT,
+            allow_zero=True,
+        )
+
+    @app_font_size_pt.setter
+    def app_font_size_pt(self, size_pt: int) -> None:
+        self.set_value(
+            self.APP_FONT_SIZE_PT_KEY,
+            self._normalize_font_size(
+                size_pt,
+                fallback=self.DEFAULT_APP_FONT_SIZE_PT,
+                allow_zero=True,
+            ),
+        )
+
+    @property
+    def file_list_use_app_font(self) -> bool:
+        return self._normalize_bool(
+            self.value(
+                self.FILE_LIST_USE_APP_FONT_KEY,
+                self.DEFAULT_FILE_LIST_USE_APP_FONT,
+            )
+        )
+
+    @file_list_use_app_font.setter
+    def file_list_use_app_font(self, enabled: bool) -> None:
+        self.set_value(self.FILE_LIST_USE_APP_FONT_KEY, bool(enabled))
+
+    @property
+    def file_list_font_family(self) -> str:
+        return self._normalize_font_family(
+            self.value(
+                self.FILE_LIST_FONT_FAMILY_KEY,
+                self.DEFAULT_FILE_LIST_FONT_FAMILY,
+            )
+        )
+
+    @file_list_font_family.setter
+    def file_list_font_family(self, family: str) -> None:
+        self.set_value(
+            self.FILE_LIST_FONT_FAMILY_KEY,
+            self._normalize_font_family(family),
+        )
+
+    @property
+    def file_list_font_size_pt(self) -> int:
+        return self._normalize_font_size(
+            self.value(
+                self.FILE_LIST_FONT_SIZE_PT_KEY,
+                self.DEFAULT_FILE_LIST_FONT_SIZE_PT,
+            ),
+            fallback=self.DEFAULT_FILE_LIST_FONT_SIZE_PT,
+        )
+
+    @file_list_font_size_pt.setter
+    def file_list_font_size_pt(self, size_pt: int) -> None:
+        self.set_value(
+            self.FILE_LIST_FONT_SIZE_PT_KEY,
+            self._normalize_font_size(
+                size_pt,
+                fallback=self.DEFAULT_FILE_LIST_FONT_SIZE_PT,
+            ),
+        )
+
+    @property
+    def navigation_use_app_font(self) -> bool:
+        return self._normalize_bool(
+            self.value(
+                self.NAVIGATION_USE_APP_FONT_KEY,
+                self.DEFAULT_NAVIGATION_USE_APP_FONT,
+            )
+        )
+
+    @navigation_use_app_font.setter
+    def navigation_use_app_font(self, enabled: bool) -> None:
+        self.set_value(self.NAVIGATION_USE_APP_FONT_KEY, bool(enabled))
+
+    @property
+    def navigation_font_family(self) -> str:
+        return self._normalize_font_family(
+            self.value(
+                self.NAVIGATION_FONT_FAMILY_KEY,
+                self.DEFAULT_NAVIGATION_FONT_FAMILY,
+            )
+        )
+
+    @navigation_font_family.setter
+    def navigation_font_family(self, family: str) -> None:
+        self.set_value(
+            self.NAVIGATION_FONT_FAMILY_KEY,
+            self._normalize_font_family(family),
+        )
+
+    @property
+    def navigation_font_size_pt(self) -> int:
+        return self._normalize_font_size(
+            self.value(
+                self.NAVIGATION_FONT_SIZE_PT_KEY,
+                self.DEFAULT_NAVIGATION_FONT_SIZE_PT,
+            ),
+            fallback=self.DEFAULT_NAVIGATION_FONT_SIZE_PT,
+        )
+
+    @navigation_font_size_pt.setter
+    def navigation_font_size_pt(self, size_pt: int) -> None:
+        self.set_value(
+            self.NAVIGATION_FONT_SIZE_PT_KEY,
+            self._normalize_font_size(
+                size_pt,
+                fallback=self.DEFAULT_NAVIGATION_FONT_SIZE_PT,
+            ),
+        )
+
+    @property
     def active_panel_tint_color_hex(self) -> str:
         return self._normalize_color_hex(
             self.value(
@@ -232,6 +383,14 @@ class SettingsManager:
             show_root_buttons=self.show_root_buttons,
             show_address_bar=self.show_address_bar,
             show_navigation_buttons=self.show_navigation_buttons,
+            app_font_family=self.app_font_family,
+            app_font_size_pt=self.app_font_size_pt,
+            file_list_use_app_font=self.file_list_use_app_font,
+            file_list_font_family=self.file_list_font_family,
+            file_list_font_size_pt=self.file_list_font_size_pt,
+            navigation_use_app_font=self.navigation_use_app_font,
+            navigation_font_family=self.navigation_font_family,
+            navigation_font_size_pt=self.navigation_font_size_pt,
             active_panel_tint_color_hex=self.active_panel_tint_color_hex,
             active_panel_tint_intensity_percent=self.active_panel_tint_intensity_percent,
             target_panel_tint_color_hex=self.target_panel_tint_color_hex,
@@ -246,6 +405,14 @@ class SettingsManager:
         self.show_root_buttons = preferences.show_root_buttons
         self.show_address_bar = preferences.show_address_bar
         self.show_navigation_buttons = preferences.show_navigation_buttons
+        self.app_font_family = preferences.app_font_family
+        self.app_font_size_pt = preferences.app_font_size_pt
+        self.file_list_use_app_font = preferences.file_list_use_app_font
+        self.file_list_font_family = preferences.file_list_font_family
+        self.file_list_font_size_pt = preferences.file_list_font_size_pt
+        self.navigation_use_app_font = preferences.navigation_use_app_font
+        self.navigation_font_family = preferences.navigation_font_family
+        self.navigation_font_size_pt = preferences.navigation_font_size_pt
         self.active_panel_tint_color_hex = preferences.active_panel_tint_color_hex
         self.active_panel_tint_intensity_percent = (
             preferences.active_panel_tint_intensity_percent
@@ -305,6 +472,28 @@ class SettingsManager:
         if isinstance(raw, str):
             return raw.strip().lower() in {"1", "true", "yes", "on"}
         return bool(raw)
+
+    def _normalize_font_family(self, raw: Any) -> str:
+        return str(raw or "").strip()
+
+    def _normalize_font_size(
+        self,
+        raw: Any,
+        *,
+        fallback: int,
+        allow_zero: bool = False,
+    ) -> int:
+        try:
+            size = int(raw)
+        except (TypeError, ValueError):
+            return int(fallback)
+        if allow_zero and size <= 0:
+            return 0
+        if size < 6:
+            return 6
+        if size > 32:
+            return 32
+        return size
 
     def _normalize_color_hex(self, raw: Any, *, fallback: str) -> str:
         text = str(raw).strip()

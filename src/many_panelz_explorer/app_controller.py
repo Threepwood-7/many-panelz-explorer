@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 from threep_commons.paths import configure_qsettings, resolve_app_data_dir
 
@@ -33,8 +34,10 @@ class AppController:
         self.app.setOrganizationName(SETTINGS_ORG_NAME)
         self.app.setApplicationDisplayName(APP_DISPLAY_NAME)
         self.app.setQuitOnLastWindowClosed(True)
+        self._default_app_font = QFont(self.app.font())
 
         self.settings = SettingsManager()
+        self._apply_application_font(self.settings.ui_preferences())
         self.windows: list[ExplorerWindow] = []
         self._is_raising_windows = False
         self._activation_pass_done_for_current_active_state = False
@@ -151,6 +154,7 @@ class AppController:
         return self.settings.ui_preferences()
 
     def preview_ui_preferences(self, preferences: UiPreferences) -> None:
+        self._apply_application_font(preferences)
         for window in list(self.windows):
             window.apply_ui_preferences(preferences)
 
@@ -158,3 +162,16 @@ class AppController:
         self.settings.set_ui_preferences(preferences)
         self.settings.sync()
         self.preview_ui_preferences(preferences)
+
+    def _apply_application_font(self, preferences: UiPreferences) -> None:
+        self.app.setFont(self._effective_application_font(preferences))
+
+    def _effective_application_font(self, preferences: UiPreferences) -> QFont:
+        font = QFont(self._default_app_font)
+        family = str(preferences.app_font_family or "").strip()
+        if family:
+            font.setFamily(family)
+        size_pt = int(preferences.app_font_size_pt)
+        if size_pt > 0:
+            font.setPointSize(size_pt)
+        return font

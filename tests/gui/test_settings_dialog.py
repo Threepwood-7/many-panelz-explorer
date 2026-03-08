@@ -8,6 +8,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6")
 pytest.importorskip("pytestqt")
 
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QApplication
+
 from many_panelz_explorer.dialogs.settings_dialog import SettingsDialog
 from many_panelz_explorer.settings import SettingsManager, UiPreferences
 from many_panelz_explorer.window import ExplorerWindow
@@ -16,6 +19,10 @@ from many_panelz_explorer.window import ExplorerWindow
 class _ControllerSettingsStub:
     def __init__(self, settings: SettingsManager) -> None:
         self.settings = settings
+        app = QApplication.instance()
+        assert app is not None
+        self._app = app
+        self._default_app_font = QFont(app.font())
         self.windows: list[ExplorerWindow] = []
         self.preview_calls: list[UiPreferences] = []
 
@@ -27,6 +34,7 @@ class _ControllerSettingsStub:
 
     def preview_ui_preferences(self, preferences: UiPreferences) -> None:
         self.preview_calls.append(preferences)
+        self._apply_application_font(preferences)
         for window in list(self.windows):
             window.apply_ui_preferences(preferences)
 
@@ -34,6 +42,15 @@ class _ControllerSettingsStub:
         self.settings.set_ui_preferences(preferences)
         self.settings.sync()
         self.preview_ui_preferences(preferences)
+
+    def _apply_application_font(self, preferences: UiPreferences) -> None:
+        font = QFont(self._default_app_font)
+        family = str(preferences.app_font_family or "").strip()
+        if family:
+            font.setFamily(family)
+        if int(preferences.app_font_size_pt) > 0:
+            font.setPointSize(int(preferences.app_font_size_pt))
+        self._app.setFont(font)
 
 
 def _test_roots_provider(tmp_path: Path):
@@ -51,6 +68,14 @@ def _tracked_keys() -> list[str]:
         SettingsManager.SHOW_ROOT_BUTTONS_KEY,
         SettingsManager.SHOW_ADDRESS_BAR_KEY,
         SettingsManager.SHOW_NAVIGATION_BUTTONS_KEY,
+        SettingsManager.APP_FONT_FAMILY_KEY,
+        SettingsManager.APP_FONT_SIZE_PT_KEY,
+        SettingsManager.FILE_LIST_USE_APP_FONT_KEY,
+        SettingsManager.FILE_LIST_FONT_FAMILY_KEY,
+        SettingsManager.FILE_LIST_FONT_SIZE_PT_KEY,
+        SettingsManager.NAVIGATION_USE_APP_FONT_KEY,
+        SettingsManager.NAVIGATION_FONT_FAMILY_KEY,
+        SettingsManager.NAVIGATION_FONT_SIZE_PT_KEY,
         SettingsManager.ACTIVE_PANEL_TINT_COLOR_KEY,
         SettingsManager.ACTIVE_PANEL_TINT_INTENSITY_KEY,
         SettingsManager.TARGET_PANEL_TINT_COLOR_KEY,
@@ -63,6 +88,9 @@ def isolated_settings() -> SettingsManager:
     settings = SettingsManager()
     keys = _tracked_keys()
     snapshot = {key: settings.value(key, None) for key in keys}
+    app = QApplication.instance()
+    assert app is not None
+    app_font_snapshot = QFont(app.font())
     try:
         yield settings
     finally:
@@ -72,6 +100,7 @@ def isolated_settings() -> SettingsManager:
             else:
                 settings.set_value(key, value)
         settings.sync()
+        app.setFont(app_font_snapshot)
 
 
 def _new_window(
@@ -136,6 +165,10 @@ def test_settings_search_filters_rows_in_place(
     assert dialog._rows_by_key["show_hidden_default"].isVisible() is False
     assert dialog._rows_by_key["active_color"].isVisible() is False
 
+    dialog.search_edit.setText("navigation font")
+    qtbot.waitUntil(lambda: dialog._rows_by_key["navigation_font"].isVisible())
+    assert dialog._rows_by_key["app_font"].isVisible() is False
+
 
 def test_settings_live_preview_is_debounced(
     qtbot, tmp_path: Path, isolated_settings: SettingsManager
@@ -166,6 +199,57 @@ def test_settings_live_preview_is_debounced(
     assert last.active_panel_tint_intensity_percent == 33
 
 
+def test_app_font_size_spin_skips_values_below_minimum(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-app-font-step",
+        roots_provider=roots_provider,
+    )
+
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    dialog.app_font_size_spin.setValue(0)
+    dialog.app_font_size_spin.stepUp()
+    assert dialog.app_font_size_spin.value() == 6
+
+    dialog.app_font_size_spin.stepDown()
+    assert dialog.app_font_size_spin.value() == 0
+
+
+def test_settings_app_font_preview_and_cancel_revert(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-app-font-preview",
+        roots_provider=roots_provider,
+    )
+    _ = window
+    baseline_size = QApplication.instance().font().pointSize()
+
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    dialog.app_font_size_spin.setValue(16)
+    qtbot.waitUntil(lambda: QApplication.instance().font().pointSize() == 16)
+
+    dialog.reject()
+    qtbot.waitUntil(lambda: QApplication.instance().font().pointSize() == baseline_size)
+
+
 def test_settings_live_preview_all_windows_and_cancel_revert(
     qtbot, tmp_path: Path, isolated_settings: SettingsManager
 ) -> None:
@@ -178,6 +262,14 @@ def test_settings_live_preview_all_windows_and_cancel_revert(
             show_root_buttons=True,
             show_address_bar=True,
             show_navigation_buttons=True,
+            app_font_family="",
+            app_font_size_pt=0,
+            file_list_use_app_font=True,
+            file_list_font_family="",
+            file_list_font_size_pt=10,
+            navigation_use_app_font=True,
+            navigation_font_family="",
+            navigation_font_size_pt=10,
             active_panel_tint_color_hex="#A8B6C4",
             active_panel_tint_intensity_percent=24,
             target_panel_tint_color_hex="#D2CCAA",
@@ -258,6 +350,11 @@ def test_settings_apply_persists_and_new_window_uses_values(
     dialog.show_root_buttons_checkbox.setChecked(False)
     dialog.show_address_bar_checkbox.setChecked(False)
     dialog.show_navigation_buttons_checkbox.setChecked(False)
+    dialog.app_font_size_spin.setValue(12)
+    dialog.file_list_use_app_font_checkbox.setChecked(False)
+    dialog.file_list_font_size_spin.setValue(14)
+    dialog.navigation_use_app_font_checkbox.setChecked(False)
+    dialog.navigation_font_size_spin.setValue(13)
     dialog._apply_and_commit()
 
     persisted = isolated_settings.ui_preferences()
@@ -269,6 +366,11 @@ def test_settings_apply_persists_and_new_window_uses_values(
     assert persisted.show_root_buttons is False
     assert persisted.show_address_bar is False
     assert persisted.show_navigation_buttons is False
+    assert persisted.app_font_size_pt == 12
+    assert persisted.file_list_use_app_font is False
+    assert persisted.file_list_font_size_pt == 14
+    assert persisted.navigation_use_app_font is False
+    assert persisted.navigation_font_size_pt == 13
 
     reopened = _new_window(
         qtbot,
@@ -288,6 +390,8 @@ def test_settings_apply_persists_and_new_window_uses_values(
     assert reopened_panel.forward_btn.isVisible() is False
     assert reopened_panel.up_btn.isVisible() is False
     assert reopened_panel.root_btn.isVisible() is False
+    assert reopened_panel.current_tab().view.font().pointSize() == 14
+    assert reopened_panel.address_edit.font().pointSize() == 13
     assert "rgba(168, 182, 196, 127)" in reopened_panel.styleSheet()
 
 
@@ -325,6 +429,11 @@ def test_settings_checkbox_changes_sync_existing_windows(
     dialog.show_root_buttons_checkbox.setChecked(False)
     dialog.show_address_bar_checkbox.setChecked(False)
     dialog.show_navigation_buttons_checkbox.setChecked(False)
+    dialog.app_font_size_spin.setValue(11)
+    dialog.file_list_use_app_font_checkbox.setChecked(False)
+    dialog.file_list_font_size_spin.setValue(15)
+    dialog.navigation_use_app_font_checkbox.setChecked(False)
+    dialog.navigation_font_size_spin.setValue(12)
     qtbot.waitUntil(lambda: first._show_hidden_action.isChecked() is False)
     assert second._show_hidden_action.isChecked() is False
 
@@ -342,3 +451,5 @@ def test_settings_checkbox_changes_sync_existing_windows(
     assert second_panel.address_edit.isVisible() is False
     assert first_panel.back_btn.isVisible() is False
     assert second_panel.back_btn.isVisible() is False
+    assert first_panel.current_tab().view.font().pointSize() == 15
+    assert second_panel.current_tab().view.font().pointSize() == 15

@@ -16,6 +16,7 @@ from PySide6.QtCore import (
     Signal,
 )
 from PySide6.QtGui import QColor, QKeyEvent, QPaintEvent, QPainter, QPen, QShortcut
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QCompleter,
     QComboBox,
@@ -221,6 +222,8 @@ class PanelWidget(QWidget):
         self._show_root_buttons = True
         self._show_address_bar = True
         self._show_navigation_buttons = True
+        self._file_list_font = QFont(self.font())
+        self._navigation_font = QFont(self.font())
 
         self._panel_widget_id = widget_naming.panel_widget_id(self.panel_id)
         self.setObjectName(widget_naming.object_name_for_id(self._panel_widget_id))
@@ -426,6 +429,7 @@ class PanelWidget(QWidget):
 
         self._sync_toolbar_for_current_tab()
         self._sync_toolbar_visibility()
+        self._apply_toolbar_font()
         self._apply_visual_role()
         self._sync_widget_map_overlay()
 
@@ -453,6 +457,7 @@ class PanelWidget(QWidget):
         tab.path_changed.connect(_on_path_retitle)
         tab.history_changed.connect(_on_history_changed)
         tab.column_widths_changed.connect(_on_widths_changed)
+        tab.view.setFont(self._file_list_font)
 
         tab.installEventFilter(self.focus_watcher)
         tab.view.installEventFilter(self.focus_watcher)
@@ -557,6 +562,15 @@ class PanelWidget(QWidget):
         if dropdown_changed:
             self._rebuild_root_controls(self.current_path())
         self._sync_toolbar_visibility()
+        self._sync_widget_map_overlay()
+
+    def apply_font_preferences(
+        self, *, file_list_font: QFont, navigation_font: QFont
+    ) -> None:
+        self._file_list_font = QFont(file_list_font)
+        self._navigation_font = QFont(navigation_font)
+        self._apply_toolbar_font()
+        self._apply_file_list_font()
         self._sync_widget_map_overlay()
 
     def set_role_visual_preferences(
@@ -827,6 +841,24 @@ class PanelWidget(QWidget):
         for nav_button in self._navigation_buttons:
             nav_button.setVisible(self._show_navigation_buttons)
 
+    def _apply_toolbar_font(self) -> None:
+        toolbar_widgets: list[QWidget] = [
+            self.refresh_btn,
+            self.root_combo,
+            self.address_edit,
+            *self._navigation_buttons,
+        ]
+        for widget in toolbar_widgets:
+            widget.setFont(self._navigation_font)
+        for button in self.root_buttons:
+            button.setFont(self._navigation_font)
+
+    def _apply_file_list_font(self) -> None:
+        for index in range(self.tabs.count()):
+            widget = self.tabs.widget(index)
+            if isinstance(widget, ExplorerTab):
+                widget.view.setFont(self._file_list_font)
+
     def _rebuild_root_controls(self, current_path: Path | None) -> None:
         roots = self._safe_roots(current_path)
         self._root_paths = roots
@@ -847,6 +879,7 @@ class PanelWidget(QWidget):
         self.root_buttons = []
         for root_path in roots:
             button = QPushButton(_root_display_text(root_path))
+            button.setFont(self._navigation_font)
             button.setMinimumWidth(0)
             button.setSizePolicy(
                 QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed

@@ -314,6 +314,14 @@ def test_apply_ui_preferences_updates_toolbar_visibility_flags(
             show_root_buttons=False,
             show_address_bar=False,
             show_navigation_buttons=False,
+            app_font_family="",
+            app_font_size_pt=11,
+            file_list_use_app_font=False,
+            file_list_font_family="",
+            file_list_font_size_pt=14,
+            navigation_use_app_font=False,
+            navigation_font_family="",
+            navigation_font_size_pt=13,
             active_panel_tint_color_hex="#A8B6C4",
             active_panel_tint_intensity_percent=24,
             target_panel_tint_color_hex="#D2CCAA",
@@ -332,6 +340,12 @@ def test_apply_ui_preferences_updates_toolbar_visibility_flags(
         assert panel.up_btn.isVisible() is False
         assert panel.root_btn.isVisible() is False
         qtbot.waitUntil(lambda p=panel: p.root_combo.width() > 0)
+        assert panel.current_tab().view.font().pointSize() == 14
+        assert panel.address_edit.font().pointSize() == 13
+
+    source_panel = next(iter(window.panel_widgets.values()))
+    new_tab = source_panel.add_tab(source_panel.current_path())
+    assert new_tab.view.font().pointSize() == 14
 
 
 def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -> None:

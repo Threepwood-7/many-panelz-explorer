@@ -12,6 +12,14 @@ def _tracked_keys() -> list[str]:
         SettingsManager.SHOW_ROOT_BUTTONS_KEY,
         SettingsManager.SHOW_ADDRESS_BAR_KEY,
         SettingsManager.SHOW_NAVIGATION_BUTTONS_KEY,
+        SettingsManager.APP_FONT_FAMILY_KEY,
+        SettingsManager.APP_FONT_SIZE_PT_KEY,
+        SettingsManager.FILE_LIST_USE_APP_FONT_KEY,
+        SettingsManager.FILE_LIST_FONT_FAMILY_KEY,
+        SettingsManager.FILE_LIST_FONT_SIZE_PT_KEY,
+        SettingsManager.NAVIGATION_USE_APP_FONT_KEY,
+        SettingsManager.NAVIGATION_FONT_FAMILY_KEY,
+        SettingsManager.NAVIGATION_FONT_SIZE_PT_KEY,
         SettingsManager.ACTIVE_PANEL_TINT_COLOR_KEY,
         SettingsManager.ACTIVE_PANEL_TINT_INTENSITY_KEY,
         SettingsManager.TARGET_PANEL_TINT_COLOR_KEY,
@@ -44,6 +52,14 @@ def test_ui_preferences_round_trip() -> None:
             show_root_buttons=False,
             show_address_bar=False,
             show_navigation_buttons=False,
+            app_font_family="Consolas",
+            app_font_size_pt=11,
+            file_list_use_app_font=False,
+            file_list_font_family="Cascadia Mono",
+            file_list_font_size_pt=13,
+            navigation_use_app_font=False,
+            navigation_font_family="Segoe UI",
+            navigation_font_size_pt=12,
             active_panel_tint_color_hex="#ABCDEF",
             active_panel_tint_intensity_percent=80,
             target_panel_tint_color_hex="#123456",
@@ -66,6 +82,14 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.remove(SettingsManager.SHOW_ROOT_BUTTONS_KEY)
         settings.remove(SettingsManager.SHOW_ADDRESS_BAR_KEY)
         settings.remove(SettingsManager.SHOW_NAVIGATION_BUTTONS_KEY)
+        settings.remove(SettingsManager.APP_FONT_FAMILY_KEY)
+        settings.remove(SettingsManager.APP_FONT_SIZE_PT_KEY)
+        settings.remove(SettingsManager.FILE_LIST_USE_APP_FONT_KEY)
+        settings.remove(SettingsManager.FILE_LIST_FONT_FAMILY_KEY)
+        settings.remove(SettingsManager.FILE_LIST_FONT_SIZE_PT_KEY)
+        settings.remove(SettingsManager.NAVIGATION_USE_APP_FONT_KEY)
+        settings.remove(SettingsManager.NAVIGATION_FONT_FAMILY_KEY)
+        settings.remove(SettingsManager.NAVIGATION_FONT_SIZE_PT_KEY)
         settings.set_value(SettingsManager.ACTIVE_PANEL_TINT_COLOR_KEY, "blue")
         settings.set_value(SettingsManager.TARGET_PANEL_TINT_COLOR_KEY, "#12")
         settings.set_value(SettingsManager.ACTIVE_PANEL_TINT_INTENSITY_KEY, "oops")
@@ -78,6 +102,31 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         assert loaded.show_root_buttons is True
         assert loaded.show_address_bar is True
         assert loaded.show_navigation_buttons is True
+        assert loaded.app_font_family == SettingsManager.DEFAULT_APP_FONT_FAMILY
+        assert loaded.app_font_size_pt == SettingsManager.DEFAULT_APP_FONT_SIZE_PT
+        assert (
+            loaded.file_list_use_app_font
+            == SettingsManager.DEFAULT_FILE_LIST_USE_APP_FONT
+        )
+        assert (
+            loaded.file_list_font_family == SettingsManager.DEFAULT_FILE_LIST_FONT_FAMILY
+        )
+        assert (
+            loaded.file_list_font_size_pt
+            == SettingsManager.DEFAULT_FILE_LIST_FONT_SIZE_PT
+        )
+        assert (
+            loaded.navigation_use_app_font
+            == SettingsManager.DEFAULT_NAVIGATION_USE_APP_FONT
+        )
+        assert (
+            loaded.navigation_font_family
+            == SettingsManager.DEFAULT_NAVIGATION_FONT_FAMILY
+        )
+        assert (
+            loaded.navigation_font_size_pt
+            == SettingsManager.DEFAULT_NAVIGATION_FONT_SIZE_PT
+        )
         assert (
             loaded.active_panel_tint_color_hex
             == SettingsManager.DEFAULT_ACTIVE_PANEL_TINT_COLOR_HEX
@@ -94,6 +143,21 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
             loaded.target_panel_tint_intensity_percent
             == SettingsManager.DEFAULT_TARGET_PANEL_TINT_INTENSITY_PERCENT
         )
+    finally:
+        _restore(settings, before)
+
+
+def test_ui_preferences_font_size_clamps_to_range() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    try:
+        settings.set_value(SettingsManager.APP_FONT_SIZE_PT_KEY, -12)
+        settings.set_value(SettingsManager.FILE_LIST_FONT_SIZE_PT_KEY, 2)
+        settings.set_value(SettingsManager.NAVIGATION_FONT_SIZE_PT_KEY, 120)
+        loaded = settings.ui_preferences()
+        assert loaded.app_font_size_pt == 0
+        assert loaded.file_list_font_size_pt == 6
+        assert loaded.navigation_font_size_pt == 32
     finally:
         _restore(settings, before)
 

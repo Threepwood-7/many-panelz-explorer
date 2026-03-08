@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from PySide6.QtCore import QByteArray, QEvent, QSignalBlocker, Qt, Signal
-from PySide6.QtGui import QAction, QCloseEvent, QKeySequence, QShortcut
+from PySide6.QtGui import QAction, QCloseEvent, QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QInputDialog,
@@ -90,6 +90,14 @@ class ExplorerWindow(QMainWindow):
         self._show_root_buttons = ui_preferences.show_root_buttons
         self._show_address_bar = ui_preferences.show_address_bar
         self._show_navigation_buttons = ui_preferences.show_navigation_buttons
+        self._app_font_family = ui_preferences.app_font_family
+        self._app_font_size_pt = ui_preferences.app_font_size_pt
+        self._file_list_use_app_font = ui_preferences.file_list_use_app_font
+        self._file_list_font_family = ui_preferences.file_list_font_family
+        self._file_list_font_size_pt = ui_preferences.file_list_font_size_pt
+        self._navigation_use_app_font = ui_preferences.navigation_use_app_font
+        self._navigation_font_family = ui_preferences.navigation_font_family
+        self._navigation_font_size_pt = ui_preferences.navigation_font_size_pt
         self._active_panel_tint_color_hex = ui_preferences.active_panel_tint_color_hex
         self._active_panel_tint_intensity_percent = (
             ui_preferences.active_panel_tint_intensity_percent
@@ -563,6 +571,7 @@ class ExplorerWindow(QMainWindow):
         self._sync_panel_tree_from_rows()
 
         new_panel_widgets: dict[int, PanelWidget] = {}
+        file_list_font, navigation_font = self._effective_panel_fonts()
         for panel_id in panel_ids:
             panel_state = tabs_state.get(panel_id)
             panel = PanelWidget(
@@ -596,6 +605,10 @@ class ExplorerWindow(QMainWindow):
                 show_root_dropdown=self._show_root_dropdown,
                 show_address_bar=self._show_address_bar,
                 show_navigation_buttons=self._show_navigation_buttons,
+            )
+            panel.apply_font_preferences(
+                file_list_font=file_list_font,
+                navigation_font=navigation_font,
             )
             panel.set_widget_map_enabled(self._show_widget_map)
             new_panel_widgets[panel_id] = panel
@@ -708,6 +721,14 @@ class ExplorerWindow(QMainWindow):
         self._show_root_buttons = bool(preferences.show_root_buttons)
         self._show_address_bar = bool(preferences.show_address_bar)
         self._show_navigation_buttons = bool(preferences.show_navigation_buttons)
+        self._app_font_family = preferences.app_font_family
+        self._app_font_size_pt = int(preferences.app_font_size_pt)
+        self._file_list_use_app_font = bool(preferences.file_list_use_app_font)
+        self._file_list_font_family = preferences.file_list_font_family
+        self._file_list_font_size_pt = int(preferences.file_list_font_size_pt)
+        self._navigation_use_app_font = bool(preferences.navigation_use_app_font)
+        self._navigation_font_family = preferences.navigation_font_family
+        self._navigation_font_size_pt = int(preferences.navigation_font_size_pt)
         self._active_panel_tint_color_hex = preferences.active_panel_tint_color_hex
         self._active_panel_tint_intensity_percent = (
             preferences.active_panel_tint_intensity_percent
@@ -720,6 +741,7 @@ class ExplorerWindow(QMainWindow):
         with QSignalBlocker(self._show_hidden_action):
             self._show_hidden_action.setChecked(self._show_hidden)
 
+        file_list_font, navigation_font = self._effective_panel_fonts()
         for panel in self.panel_widgets.values():
             panel.set_show_hidden(self._show_hidden)
             panel.apply_toolbar_visibility(
@@ -729,6 +751,10 @@ class ExplorerWindow(QMainWindow):
                 show_address_bar=self._show_address_bar,
                 show_navigation_buttons=self._show_navigation_buttons,
             )
+            panel.apply_font_preferences(
+                file_list_font=file_list_font,
+                navigation_font=navigation_font,
+            )
             panel.set_role_visual_preferences(
                 active_color_hex=self._active_panel_tint_color_hex,
                 active_intensity_percent=self._active_panel_tint_intensity_percent,
@@ -736,6 +762,27 @@ class ExplorerWindow(QMainWindow):
                 target_intensity_percent=self._target_panel_tint_intensity_percent,
             )
         self._update_pane_visuals()
+
+    def _effective_panel_fonts(self) -> tuple[QFont, QFont]:
+        app_font = QApplication.font()
+        file_list_font = QFont(app_font)
+        navigation_font = QFont(app_font)
+
+        if not self._file_list_use_app_font:
+            family = str(self._file_list_font_family or "").strip()
+            if family:
+                file_list_font.setFamily(family)
+            if self._file_list_font_size_pt > 0:
+                file_list_font.setPointSize(self._file_list_font_size_pt)
+
+        if not self._navigation_use_app_font:
+            family = str(self._navigation_font_family or "").strip()
+            if family:
+                navigation_font.setFamily(family)
+            if self._navigation_font_size_pt > 0:
+                navigation_font.setPointSize(self._navigation_font_size_pt)
+
+        return file_list_font, navigation_font
 
     def _resolve_new_context_path(self, active_path: Path | None) -> Path:
         mode = self._new_context_mode.strip().lower()

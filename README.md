@@ -133,6 +133,14 @@ Runtime settings are stored via QSettings:
 | `ui/show_root_buttons` | Show/hide root buttons strip in panel toolbar (default: true) |
 | `ui/show_address_bar` | Show/hide address bar in panel toolbar (default: true) |
 | `ui/show_navigation_buttons` | Show/hide navigation buttons group in panel toolbar (default: true) |
+| `ui/font/app/family` | App-wide base font family (`""` means system default) |
+| `ui/font/app/size_pt` | App-wide base font size in pt (`0` means system default; else 6..32) |
+| `ui/font/file_list/use_app_font` | File-list inherits app font when true (default: true) |
+| `ui/font/file_list/family` | File-list override font family (`""` keeps app base family) |
+| `ui/font/file_list/size_pt` | File-list override font size in pt (6..32) |
+| `ui/font/navigation/use_app_font` | Navigation toolbar inherits app font when true (default: true) |
+| `ui/font/navigation/family` | Navigation toolbar override family (`""` keeps app base family) |
+| `ui/font/navigation/size_pt` | Navigation toolbar override font size in pt (6..32) |
 | `prefs/session_windows` | List of window IDs for session restoration |
 | `prefs/saved_views` | Named saved view layouts (JSON) |
 | `ui/windows/{id}/panel_tree` | Panel layout tree (JSON) |

@@ -4,8 +4,8 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QColor
+from PySide6.QtCore import QSignalBlocker, QTimer, Qt
+from PySide6.QtGui import QColor, QFontDatabase
 from PySide6.QtWidgets import (
     QCheckBox,
     QColorDialog,
@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSlider,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -52,6 +53,64 @@ class _SectionEntry:
     group: QGroupBox
     terms: str
     rows: list[_RowEntry]
+
+
+class _FontSizeSpinBox(QSpinBox):
+    def __init__(
+        self,
+        *,
+        allow_system_value: bool,
+        min_size: int = 6,
+        max_size: int = 32,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._allow_system_value = bool(allow_system_value)
+        self._min_size = int(min_size)
+        self._max_size = int(max_size)
+        self.setRange(0 if self._allow_system_value else self._min_size, self._max_size)
+        self.valueChanged.connect(self._normalize_value)
+
+    def _normalize_value(self, value: int) -> None:
+        normalized = self._normalized(value)
+        if normalized == value:
+            return
+        with QSignalBlocker(self):
+            self.setValue(normalized)
+
+    def _normalized(self, value: int) -> int:
+        size = int(value)
+        if self._allow_system_value and size <= 0:
+            return 0
+        if size < self._min_size:
+            return self._min_size
+        if size > self._max_size:
+            return self._max_size
+        return size
+
+    def stepBy(self, steps: int) -> None:  # noqa: N802
+        if not self._allow_system_value:
+            super().stepBy(steps)
+            return
+
+        current = self.value()
+        if current in {1, 2, 3, 4, 5}:
+            with QSignalBlocker(self):
+                self.setValue(self._min_size if steps >= 0 else 0)
+            return
+        if current == 0 and steps > 0:
+            with QSignalBlocker(self):
+                self.setValue(self._min_size)
+            if steps > 1:
+                super().stepBy(steps - 1)
+            return
+        if current == self._min_size and steps < 0:
+            with QSignalBlocker(self):
+                self.setValue(0)
+            if steps < -1:
+                super().stepBy(steps + 1)
+            return
+        super().stepBy(steps)
 
 
 class SettingsDialog(QDialog):
@@ -198,6 +257,83 @@ class SettingsDialog(QDialog):
             description="Opacity percentage for the target panel tint.",
             terms="target panel tint intensity opacity slider",
             controls=[self.target_intensity_slider, self.target_intensity_value],
+        )
+
+        self.app_font_family_combo = self._new_font_family_combo(
+            include_base_option=True,
+            base_label="System Default",
+        )
+        self.app_font_size_spin = _FontSizeSpinBox(
+            allow_system_value=True,
+            min_size=6,
+            max_size=32,
+            parent=self,
+        )
+        self.app_font_size_spin.setSpecialValueText("System")
+        self.app_font_size_spin.valueChanged.connect(self._on_controls_changed)
+        self._add_row(
+            section=appearance_group,
+            key="app_font",
+            title="App Font",
+            description="Base font family and size used throughout the app.",
+            terms="app font family size base",
+            controls=[self.app_font_family_combo, self.app_font_size_spin],
+        )
+
+        self.file_list_use_app_font_checkbox = QCheckBox("Use app font", self)
+        self.file_list_use_app_font_checkbox.toggled.connect(
+            self._on_file_list_use_app_font_toggled
+        )
+        self.file_list_font_family_combo = self._new_font_family_combo(
+            include_base_option=True,
+            base_label="App Base",
+        )
+        self.file_list_font_size_spin = _FontSizeSpinBox(
+            allow_system_value=False,
+            min_size=6,
+            max_size=32,
+            parent=self,
+        )
+        self.file_list_font_size_spin.valueChanged.connect(self._on_controls_changed)
+        self._add_row(
+            section=appearance_group,
+            key="file_list_font",
+            title="File List Font",
+            description="Override the file list (tree view) font family and size.",
+            terms="file list tree view font family size",
+            controls=[
+                self.file_list_use_app_font_checkbox,
+                self.file_list_font_family_combo,
+                self.file_list_font_size_spin,
+            ],
+        )
+
+        self.navigation_use_app_font_checkbox = QCheckBox("Use app font", self)
+        self.navigation_use_app_font_checkbox.toggled.connect(
+            self._on_navigation_use_app_font_toggled
+        )
+        self.navigation_font_family_combo = self._new_font_family_combo(
+            include_base_option=True,
+            base_label="App Base",
+        )
+        self.navigation_font_size_spin = _FontSizeSpinBox(
+            allow_system_value=False,
+            min_size=6,
+            max_size=32,
+            parent=self,
+        )
+        self.navigation_font_size_spin.valueChanged.connect(self._on_controls_changed)
+        self._add_row(
+            section=appearance_group,
+            key="navigation_font",
+            title="Navigation Toolbar Font",
+            description="Override panel toolbar controls font family and size.",
+            terms="navigation font toolbar family size panel",
+            controls=[
+                self.navigation_use_app_font_checkbox,
+                self.navigation_font_family_combo,
+                self.navigation_font_size_spin,
+            ],
         )
 
         self.new_context_combo = QComboBox(self)
@@ -370,6 +506,36 @@ class SettingsDialog(QDialog):
         self._rows_by_key[key] = row
         self._assign_identity(row, f"settings_dialog:row:{key}", f"settings.row.{key}")
 
+    def _new_font_family_combo(
+        self, *, include_base_option: bool, base_label: str
+    ) -> QComboBox:
+        combo = QComboBox(self)
+        if include_base_option:
+            combo.addItem(base_label, "")
+        for family in QFontDatabase.families():
+            combo.addItem(family, family)
+        combo.currentIndexChanged.connect(self._on_controls_changed)
+        return combo
+
+    def _on_file_list_use_app_font_toggled(self, _checked: bool) -> None:
+        self._sync_font_override_controls()
+        self._on_controls_changed()
+
+    def _on_navigation_use_app_font_toggled(self, _checked: bool) -> None:
+        self._sync_font_override_controls()
+        self._on_controls_changed()
+
+    def _sync_font_override_controls(self) -> None:
+        file_list_override_enabled = not self.file_list_use_app_font_checkbox.isChecked()
+        self.file_list_font_family_combo.setEnabled(file_list_override_enabled)
+        self.file_list_font_size_spin.setEnabled(file_list_override_enabled)
+
+        navigation_override_enabled = (
+            not self.navigation_use_app_font_checkbox.isChecked()
+        )
+        self.navigation_font_family_combo.setEnabled(navigation_override_enabled)
+        self.navigation_font_size_spin.setEnabled(navigation_override_enabled)
+
     def _load_preferences_into_controls(self, preferences: UiPreferences) -> None:
         self._loading_ui = True
         try:
@@ -400,6 +566,25 @@ class SettingsDialog(QDialog):
             self.show_navigation_buttons_checkbox.setChecked(
                 preferences.show_navigation_buttons
             )
+            self._set_combo_value(self.app_font_family_combo, preferences.app_font_family)
+            self.app_font_size_spin.setValue(preferences.app_font_size_pt)
+            self.file_list_use_app_font_checkbox.setChecked(
+                preferences.file_list_use_app_font
+            )
+            self._set_combo_value(
+                self.file_list_font_family_combo, preferences.file_list_font_family
+            )
+            self.file_list_font_size_spin.setValue(preferences.file_list_font_size_pt)
+            self.navigation_use_app_font_checkbox.setChecked(
+                preferences.navigation_use_app_font
+            )
+            self._set_combo_value(
+                self.navigation_font_family_combo, preferences.navigation_font_family
+            )
+            self.navigation_font_size_spin.setValue(
+                preferences.navigation_font_size_pt
+            )
+            self._sync_font_override_controls()
             self._sync_slider_value_labels()
         finally:
             self._loading_ui = False
@@ -432,6 +617,18 @@ class SettingsDialog(QDialog):
             show_root_buttons=self.show_root_buttons_checkbox.isChecked(),
             show_address_bar=self.show_address_bar_checkbox.isChecked(),
             show_navigation_buttons=self.show_navigation_buttons_checkbox.isChecked(),
+            app_font_family=str(self.app_font_family_combo.currentData() or ""),
+            app_font_size_pt=self.app_font_size_spin.value(),
+            file_list_use_app_font=self.file_list_use_app_font_checkbox.isChecked(),
+            file_list_font_family=str(
+                self.file_list_font_family_combo.currentData() or ""
+            ),
+            file_list_font_size_pt=self.file_list_font_size_spin.value(),
+            navigation_use_app_font=self.navigation_use_app_font_checkbox.isChecked(),
+            navigation_font_family=str(
+                self.navigation_font_family_combo.currentData() or ""
+            ),
+            navigation_font_size_pt=self.navigation_font_size_spin.value(),
             active_panel_tint_color_hex=self._active_color_hex,
             active_panel_tint_intensity_percent=self.active_intensity_slider.value(),
             target_panel_tint_color_hex=self._target_color_hex,
@@ -467,6 +664,31 @@ class SettingsDialog(QDialog):
         self._target_color_hex = SettingsManager.DEFAULT_TARGET_PANEL_TINT_COLOR_HEX
         self._sync_color_preview(self.active_color_preview, self._active_color_hex)
         self._sync_color_preview(self.target_color_preview, self._target_color_hex)
+        self._set_combo_value(
+            self.app_font_family_combo, SettingsManager.DEFAULT_APP_FONT_FAMILY
+        )
+        self.app_font_size_spin.setValue(SettingsManager.DEFAULT_APP_FONT_SIZE_PT)
+        self.file_list_use_app_font_checkbox.setChecked(
+            SettingsManager.DEFAULT_FILE_LIST_USE_APP_FONT
+        )
+        self._set_combo_value(
+            self.file_list_font_family_combo,
+            SettingsManager.DEFAULT_FILE_LIST_FONT_FAMILY,
+        )
+        self.file_list_font_size_spin.setValue(
+            SettingsManager.DEFAULT_FILE_LIST_FONT_SIZE_PT
+        )
+        self.navigation_use_app_font_checkbox.setChecked(
+            SettingsManager.DEFAULT_NAVIGATION_USE_APP_FONT
+        )
+        self._set_combo_value(
+            self.navigation_font_family_combo,
+            SettingsManager.DEFAULT_NAVIGATION_FONT_FAMILY,
+        )
+        self.navigation_font_size_spin.setValue(
+            SettingsManager.DEFAULT_NAVIGATION_FONT_SIZE_PT
+        )
+        self._sync_font_override_controls()
         self.active_intensity_slider.setValue(
             SettingsManager.DEFAULT_ACTIVE_PANEL_TINT_INTENSITY_PERCENT
         )
