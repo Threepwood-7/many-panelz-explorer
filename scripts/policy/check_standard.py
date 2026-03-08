@@ -473,7 +473,6 @@ def collect_structure_size_guidance(
             f"{MAX_SIZE_GUIDANCE_WARNINGS} warnings."
         )
 
-
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
     errors: list[str] = []
