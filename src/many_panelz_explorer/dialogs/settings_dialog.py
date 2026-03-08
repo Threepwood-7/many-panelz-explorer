@@ -5,7 +5,7 @@ import tempfile
 import uuid
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QSignalBlocker, Qt, QTimer
 from PySide6.QtGui import QColor, QFontDatabase
@@ -16,10 +16,9 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFileDialog,
-    QGridLayout,
     QGroupBox,
-    QHeaderView,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -51,8 +50,11 @@ from ..operations import (
     resolve_system_command_paths,
 )
 from ..settings import SettingsManager, UiPreferences
+from .settings import control_builders
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ..app_controller import AppController
 
 
@@ -978,68 +980,18 @@ class SettingsDialog(QDialog):
         test_button: QPushButton | None = None,
         on_test: Callable[[], None] | None = None,
     ) -> QWidget:
-        executable_edit.textChanged.connect(self._on_controls_changed)
-        args_edit.textChanged.connect(self._on_controls_changed)
-        executable_edit.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        return control_builders.build_command_controls(
+            self,
+            executable_edit=executable_edit,
+            args_edit=args_edit,
+            default_executable=default_executable,
+            default_args=default_args,
+            discover_default_executable=discover_default_executable,
+            enable_find=enable_find,
+            extended_paths_checkbox=extended_paths_checkbox,
+            test_button=test_button,
+            on_test=on_test,
         )
-        args_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        host = QWidget(self)
-        layout = QGridLayout(host)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setHorizontalSpacing(8)
-        layout.setVerticalSpacing(6)
-
-        exe_label = QLabel("Executable", host)
-        args_label = QLabel("Args", host)
-        browse_btn = QPushButton("Browse...", host)
-        find_btn = QPushButton("Find", host)
-        reset_btn = QPushButton("Reset", host)
-        find_btn.setEnabled(bool(enable_find and discover_default_executable))
-
-        browse_btn.clicked.connect(
-            lambda: self._browse_executable(executable_edit)
-        )
-        find_btn.clicked.connect(
-            lambda: self._find_executable(
-                executable_edit,
-                default_executable=discover_default_executable,
-            )
-        )
-        reset_btn.clicked.connect(
-            lambda: self._reset_command_controls(
-                executable_edit,
-                args_edit,
-                default_executable=default_executable,
-                default_args=default_args,
-            )
-        )
-        if test_button is not None:
-            test_button.clicked.connect(on_test or (lambda: None))
-
-        actions = QWidget(host)
-        actions_layout = QHBoxLayout(actions)
-        actions_layout.setContentsMargins(0, 0, 0, 0)
-        actions_layout.setSpacing(8)
-        actions_layout.addStretch(1)
-        actions_layout.addWidget(browse_btn)
-        actions_layout.addWidget(find_btn)
-        actions_layout.addWidget(reset_btn)
-        if test_button is not None:
-            actions_layout.addWidget(test_button)
-
-        layout.addWidget(exe_label, 0, 0)
-        layout.addWidget(executable_edit, 0, 1)
-        layout.addWidget(args_label, 1, 0)
-        layout.addWidget(args_edit, 1, 1)
-        next_row = 2
-        if extended_paths_checkbox is not None:
-            layout.addWidget(extended_paths_checkbox, next_row, 1)
-            next_row += 1
-        layout.addWidget(actions, next_row, 1)
-        layout.setColumnStretch(1, 1)
-        host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        return host
 
     def _build_path_controls(
         self,
@@ -1047,37 +999,11 @@ class SettingsDialog(QDialog):
         executable_edit: QLineEdit,
         default_executable: str,
     ) -> QWidget:
-        executable_edit.textChanged.connect(self._on_controls_changed)
-        executable_edit.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        return control_builders.build_path_controls(
+            self,
+            executable_edit=executable_edit,
+            default_executable=default_executable,
         )
-        host = QWidget(self)
-        layout = QGridLayout(host)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setHorizontalSpacing(8)
-        layout.setVerticalSpacing(6)
-
-        exe_label = QLabel("Executable", host)
-        browse_btn = QPushButton("Browse...", host)
-        reset_btn = QPushButton("Reset", host)
-        browse_btn.clicked.connect(lambda: self._browse_executable(executable_edit))
-        reset_btn.clicked.connect(
-            lambda: executable_edit.setText(default_executable)
-        )
-        actions = QWidget(host)
-        actions_layout = QHBoxLayout(actions)
-        actions_layout.setContentsMargins(0, 0, 0, 0)
-        actions_layout.setSpacing(8)
-        actions_layout.addStretch(1)
-        actions_layout.addWidget(browse_btn)
-        actions_layout.addWidget(reset_btn)
-
-        layout.addWidget(exe_label, 0, 0)
-        layout.addWidget(executable_edit, 0, 1)
-        layout.addWidget(actions, 1, 1)
-        layout.setColumnStretch(1, 1)
-        host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        return host
 
     def _build_dual_text_controls(
         self,
@@ -1087,20 +1013,13 @@ class SettingsDialog(QDialog):
         second_label: str,
         second_edit: QLineEdit,
     ) -> QWidget:
-        first_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        second_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        host = QWidget(self)
-        layout = QGridLayout(host)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setHorizontalSpacing(8)
-        layout.setVerticalSpacing(6)
-        layout.addWidget(QLabel(first_label, host), 0, 0)
-        layout.addWidget(first_edit, 0, 1)
-        layout.addWidget(QLabel(second_label, host), 1, 0)
-        layout.addWidget(second_edit, 1, 1)
-        layout.setColumnStretch(1, 1)
-        host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        return host
+        return control_builders.build_dual_text_controls(
+            self,
+            first_label=first_label,
+            first_edit=first_edit,
+            second_label=second_label,
+            second_edit=second_edit,
+        )
 
     def _build_robocopy_controls(
         self,
@@ -1112,28 +1031,15 @@ class SettingsDialog(QDialog):
         extended_paths_checkbox: QCheckBox,
         test_button: QPushButton,
     ) -> QWidget:
-        host = QWidget(self)
-        layout = QVBoxLayout(host)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
-        layout.addWidget(
-            self._build_dual_text_controls(
-                first_label=first_label,
-                first_edit=first_edit,
-                second_label=second_label,
-                second_edit=second_edit,
-            )
+        return control_builders.build_robocopy_controls(
+            self,
+            first_label=first_label,
+            first_edit=first_edit,
+            second_label=second_label,
+            second_edit=second_edit,
+            extended_paths_checkbox=extended_paths_checkbox,
+            test_button=test_button,
         )
-        layout.addWidget(extended_paths_checkbox)
-        actions = QWidget(host)
-        actions_layout = QHBoxLayout(actions)
-        actions_layout.setContentsMargins(0, 0, 0, 0)
-        actions_layout.setSpacing(8)
-        actions_layout.addStretch(1)
-        actions_layout.addWidget(test_button)
-        test_button.clicked.connect(lambda: self._test_backend("copy", "robocopy"))
-        layout.addWidget(actions)
-        return host
 
     def _build_delete_shell_controls(
         self,
@@ -1147,32 +1053,17 @@ class SettingsDialog(QDialog):
         cmd_test_button: QPushButton,
         powershell_test_button: QPushButton,
     ) -> QWidget:
-        host = QWidget(self)
-        layout = QGridLayout(host)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setHorizontalSpacing(8)
-        layout.setVerticalSpacing(6)
-        layout.addWidget(QLabel(first_label, host), 0, 0)
-        layout.addWidget(first_edit, 0, 1)
-        layout.addWidget(cmd_extended_paths_checkbox, 1, 1)
-        layout.addWidget(QLabel(second_label, host), 2, 0)
-        layout.addWidget(second_edit, 2, 1)
-        layout.addWidget(powershell_extended_paths_checkbox, 3, 1)
-        actions = QWidget(host)
-        actions_layout = QHBoxLayout(actions)
-        actions_layout.setContentsMargins(0, 0, 0, 0)
-        actions_layout.setSpacing(8)
-        actions_layout.addStretch(1)
-        actions_layout.addWidget(cmd_test_button)
-        actions_layout.addWidget(powershell_test_button)
-        cmd_test_button.clicked.connect(lambda: self._test_backend("delete", "cmd_delete"))
-        powershell_test_button.clicked.connect(
-            lambda: self._test_backend("delete", "powershell_delete")
+        return control_builders.build_delete_shell_controls(
+            self,
+            first_label=first_label,
+            first_edit=first_edit,
+            second_label=second_label,
+            second_edit=second_edit,
+            cmd_extended_paths_checkbox=cmd_extended_paths_checkbox,
+            powershell_extended_paths_checkbox=powershell_extended_paths_checkbox,
+            cmd_test_button=cmd_test_button,
+            powershell_test_button=powershell_test_button,
         )
-        layout.addWidget(actions, 4, 1)
-        layout.setColumnStretch(1, 1)
-        host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        return host
 
     def _build_file_open_overrides_controls(self) -> QWidget:
         host = QWidget(self)

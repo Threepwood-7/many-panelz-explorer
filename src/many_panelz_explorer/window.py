@@ -1,21 +1,18 @@
 from __future__ import annotations
 
-import shutil
 import uuid
 from collections.abc import Callable
 from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
-from PySide6.QtCore import QByteArray, QEvent, QSignalBlocker, Qt, Signal
-from PySide6.QtGui import QAction, QCloseEvent, QFont, QKeySequence, QShortcut
+from PySide6.QtCore import QEvent, QSignalBlocker, Qt, Signal
+from PySide6.QtGui import QCloseEvent, QFont
 from PySide6.QtWidgets import (
     QApplication,
-    QDockWidget,
     QInputDialog,
     QLabel,
     QMainWindow,
-    QMenu,
     QMessageBox,
     QSplitter,
     QVBoxLayout,
@@ -23,25 +20,24 @@ from PySide6.QtWidgets import (
 )
 
 from . import widget_naming
-from .operation_queue_widgets import OperationQueuePanel
-from .operations import (
-    BACKEND_PYTHON,
-    OperationRequest,
-    SHORTCUT_BEHAVIOR_DIALOG,
-    to_windows_long_path,
-)
 from .panel_tree import (
     ORIENTATION_HORIZONTAL,
-    ORIENTATION_VERTICAL,
     LeafNode,
     PanelTreeModel,
     SplitNode,
 )
 from .panel_widget import PanelWidget
+from .ui.window import (
+    WindowLayoutCoordinator,
+    WindowOperationsCoordinator,
+    WindowPersistenceCoordinator,
+    WindowStatusCoordinator,
+    WindowUiComposer,
+)
 
 if TYPE_CHECKING:
     from .app_controller import AppController
-    from .explorer_tab import ExplorerTab
+    from .operations import OperationRequest
     from .settings import SettingsManager, UiPreferences
 
 
@@ -75,6 +71,12 @@ class ExplorerWindow(QMainWindow):
         self._show_widget_map = False
 
         self.panel_tree = PanelTreeModel()
+        self._layout_coordinator = WindowLayoutCoordinator(self)
+        self._status_coordinator = WindowStatusCoordinator(self)
+        self._operations_coordinator = WindowOperationsCoordinator(self)
+        self._persistence_coordinator = WindowPersistenceCoordinator(self)
+        self._ui_composer = WindowUiComposer(self)
+
         self._layout_rows: PanelRows = self._rows_from_tree(self.panel_tree.root)
         self.panel_widgets: dict[int, PanelWidget] = {}
 
@@ -334,265 +336,16 @@ class ExplorerWindow(QMainWindow):
 
     # ----- UI composition -----
     def _build_actions(self) -> None:
-        self._new_tab_action = QAction("&New Tab", self)
-        self._new_tab_action.setShortcut(QKeySequence("Ctrl+T"))
-        self._new_tab_action.triggered.connect(self.new_tab_in_active_panel)
-
-        self._new_vertical_panel_action = QAction("New &Vertical Panel", self)
-        self._new_vertical_panel_action.setShortcut(QKeySequence("Ctrl+P"))
-        self._new_vertical_panel_action.triggered.connect(
-            lambda: self.split_active_panel(Qt.Orientation.Horizontal)
-        )
-
-        self._new_horizontal_panel_action = QAction("New &Horizontal Panel", self)
-        self._new_horizontal_panel_action.setShortcut(QKeySequence("Ctrl+H"))
-        self._new_horizontal_panel_action.triggered.connect(
-            lambda: self.split_active_panel(Qt.Orientation.Vertical)
-        )
-
-        self._clone_vertical_panel_action = QAction(
-            "Clone Current Panel (Ver&tical)", self
-        )
-        self._clone_vertical_panel_action.triggered.connect(
-            lambda: self.clone_active_panel(Qt.Orientation.Horizontal)
-        )
-
-        self._clone_horizontal_panel_action = QAction(
-            "Clone Current Panel (Hori&zontal)", self
-        )
-        self._clone_horizontal_panel_action.triggered.connect(
-            lambda: self.clone_active_panel(Qt.Orientation.Vertical)
-        )
-
-        self._copy_to_target_action = QAction("&Copy to Target Pane", self)
-        self._copy_to_target_action.setShortcut(QKeySequence("F5"))
-        self._copy_to_target_action.triggered.connect(self._copy_selected_to_target)
-
-        self._copy_to_target_configure_action = QAction("Copy to Target Pane (Configure...)", self)
-        self._copy_to_target_configure_action.triggered.connect(
-            lambda: self._copy_selected_to_target(configure=True)
-        )
-
-        self._move_to_target_action = QAction("&Move to Target Pane", self)
-        self._move_to_target_action.setShortcut(QKeySequence("F6"))
-        self._move_to_target_action.triggered.connect(self._move_selected_to_target)
-
-        self._move_to_target_configure_action = QAction("Move to Target Pane (Configure...)", self)
-        self._move_to_target_configure_action.triggered.connect(
-            lambda: self._move_selected_to_target(configure=True)
-        )
-
-        self._delete_selection_action = QAction("&Delete Selection", self)
-        self._delete_selection_action.setShortcut(QKeySequence("F8"))
-        self._delete_selection_action.triggered.connect(self._delete_selected_items)
-
-        self._delete_selection_configure_action = QAction("Delete Selection (Configure...)", self)
-        self._delete_selection_configure_action.triggered.connect(
-            lambda: self._delete_selected_items(configure=True)
-        )
-
-        self._new_window_action = QAction("New &Window", self)
-        self._new_window_action.setShortcut(QKeySequence("Ctrl+N"))
-        self._new_window_action.triggered.connect(self.request_new_window.emit)
-
-        self._clone_window_action = QAction("Clone Current W&indow", self)
-        self._clone_window_action.triggered.connect(self.clone_current_window)
-
-        self._save_view_action = QAction("&Save View", self)
-        self._save_view_action.triggered.connect(self.save_view)
-
-        self._restore_view_action = QAction("&Restore View...", self)
-        self._restore_view_action.triggered.connect(self.restore_view)
-
-        self._replace_view_action = QAction("Re&place View", self)
-        self._replace_view_action.triggered.connect(self.replace_view)
-
-        self._close_tab_action = QAction("Close Ta&b", self)
-        self._close_tab_action.setShortcut(QKeySequence("Ctrl+W"))
-        self._close_tab_action.triggered.connect(self.close_active_tab)
-
-        self._close_panel_action = QAction("Close Pane&l", self)
-        self._close_panel_action.setShortcut(QKeySequence("Ctrl+Shift+W"))
-        self._close_panel_action.triggered.connect(self.close_active_panel)
-
-        self._close_window_action = QAction("Close Win&dow", self)
-        self._close_window_action.setShortcut(QKeySequence("Alt+W"))
-        self._close_window_action.triggered.connect(self.close)
-
-        self._exit_action = QAction("E&xit", self)
-        self._exit_action.setShortcuts([QKeySequence("Ctrl+Q"), QKeySequence("Alt+X")])
-        self._exit_action.triggered.connect(self._quit_application)
-
-        self._refresh_action = QAction("&Refresh", self)
-        self._refresh_action.setShortcut(QKeySequence("Ctrl+R"))
-        self._refresh_action.triggered.connect(self._refresh_active_panel)
-
-        self._on_top_action = QAction("On &Top", self)
-        self._on_top_action.setCheckable(True)
-        self._on_top_action.toggled.connect(self.set_on_top)
-
-        self._show_hidden_action = QAction("Show &Hidden Files", self)
-        self._show_hidden_action.setCheckable(True)
-        self._show_hidden_action.setChecked(self._show_hidden)
-        self._show_hidden_action.toggled.connect(self._toggle_show_hidden)
-
-        self._show_widget_map_action = QAction("Show &Widget Map", self)
-        self._show_widget_map_action.setCheckable(True)
-        self._show_widget_map_action.setChecked(self._show_widget_map)
-        self._show_widget_map_action.toggled.connect(self._toggle_show_widget_map)
-
-        self._align_columns_current_panel_tabs_action = QAction(
-            "Align Columns: Current Panel Tabs", self
-        )
-        self._align_columns_current_panel_tabs_action.triggered.connect(
-            self._align_columns_current_panel_tabs
-        )
-
-        self._align_columns_all_panels_tabs_action = QAction(
-            "Align Columns: All Panels and Tabs", self
-        )
-        self._align_columns_all_panels_tabs_action.triggered.connect(
-            self._align_columns_all_panels_tabs
-        )
-
-        self._show_queue_dock_action = QAction("Show Queue Dock", self)
-        self._show_queue_dock_action.setCheckable(True)
-        self._show_queue_dock_action.toggled.connect(self._toggle_queue_dock)
-
-        self._show_queue_window_action = QAction("Show Queue Window", self)
-        self._show_queue_window_action.triggered.connect(
-            self.controller.show_queue_floating_window
-        )
-
-        self._settings_action = QAction("&Settings...", self)
-        self._settings_action.setShortcut(QKeySequence("Ctrl+,"))
-        self._settings_action.triggered.connect(self._open_settings_dialog)
-
-        self._help_action = QAction("&Help", self)
-        self._help_action.setShortcut(QKeySequence("F1"))
-        self._help_action.triggered.connect(self._show_help)
+        self._ui_composer.build_actions()
 
     def _build_shortcuts(self) -> None:
-        self._next_pane_shortcut = QShortcut(QKeySequence("Tab"), self)
-        self._next_pane_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-        self._next_pane_shortcut.activated.connect(self._focus_next_panel)
-
-        self._previous_pane_shortcut = QShortcut(QKeySequence("Shift+Tab"), self)
-        self._previous_pane_shortcut.setContext(
-            Qt.ShortcutContext.WidgetWithChildrenShortcut
-        )
-        self._previous_pane_shortcut.activated.connect(self._focus_previous_panel)
-
-        self._menu_focus_shortcut = QShortcut(QKeySequence("F10"), self)
-        self._menu_focus_shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
-        self._menu_focus_shortcut.activated.connect(self._focus_menu_bar)
+        self._ui_composer.build_shortcuts()
 
     def _build_menus(self) -> None:
-        menu_bar = self.menuBar()
-        menu_bar.setNativeMenuBar(True)
-
-        file_menu = QMenu("&File", self)
-        file_menu.addAction(self._new_tab_action)
-        file_menu.addAction(self._new_vertical_panel_action)
-        file_menu.addAction(self._new_horizontal_panel_action)
-        file_menu.addAction(self._clone_vertical_panel_action)
-        file_menu.addAction(self._clone_horizontal_panel_action)
-        file_menu.addSeparator()
-        file_menu.addAction(self._copy_to_target_action)
-        file_menu.addAction(self._copy_to_target_configure_action)
-        file_menu.addAction(self._move_to_target_action)
-        file_menu.addAction(self._move_to_target_configure_action)
-        file_menu.addAction(self._delete_selection_action)
-        file_menu.addAction(self._delete_selection_configure_action)
-        file_menu.addSeparator()
-        file_menu.addAction(self._new_window_action)
-        file_menu.addAction(self._clone_window_action)
-        file_menu.addSeparator()
-        file_menu.addAction(self._save_view_action)
-        self._restore_view_menu = QMenu("&Restore View", self)
-        self._restore_view_menu.aboutToShow.connect(self._populate_restore_view_menu)
-        file_menu.addMenu(self._restore_view_menu)
-        file_menu.addAction(self._replace_view_action)
-        file_menu.addSeparator()
-        file_menu.addAction(self._close_tab_action)
-        file_menu.addAction(self._close_panel_action)
-        file_menu.addAction(self._close_window_action)
-        file_menu.addSeparator()
-        file_menu.addAction(self._exit_action)
-
-        view_menu = QMenu("&View", self)
-        view_menu.addAction(self._refresh_action)
-        view_menu.addAction(self._align_columns_current_panel_tabs_action)
-        view_menu.addAction(self._align_columns_all_panels_tabs_action)
-        view_menu.addSeparator()
-        view_menu.addAction(self._show_queue_dock_action)
-        view_menu.addAction(self._show_queue_window_action)
-        view_menu.addSeparator()
-        view_menu.addAction(self._on_top_action)
-        view_menu.addAction(self._show_hidden_action)
-        view_menu.addAction(self._show_widget_map_action)
-        view_menu.addSeparator()
-        view_menu.addAction(self._settings_action)
-
-        help_menu = QMenu("&Help", self)
-        help_menu.addAction(self._help_action)
-
-        self._menu_file_action = menu_bar.addMenu(file_menu)
-        self._menu_view_action = menu_bar.addMenu(view_menu)
-        self._menu_help_action = menu_bar.addMenu(help_menu)
-
-        self.addActions(
-            [
-                self._new_tab_action,
-                self._new_vertical_panel_action,
-                self._new_horizontal_panel_action,
-                self._clone_vertical_panel_action,
-                self._clone_horizontal_panel_action,
-                self._copy_to_target_action,
-                self._copy_to_target_configure_action,
-                self._move_to_target_action,
-                self._move_to_target_configure_action,
-                self._delete_selection_action,
-                self._delete_selection_configure_action,
-                self._new_window_action,
-                self._clone_window_action,
-                self._save_view_action,
-                self._restore_view_action,
-                self._replace_view_action,
-                self._close_tab_action,
-                self._close_panel_action,
-                self._close_window_action,
-                self._exit_action,
-                self._refresh_action,
-                self._align_columns_current_panel_tabs_action,
-                self._align_columns_all_panels_tabs_action,
-                self._show_queue_dock_action,
-                self._show_queue_window_action,
-                self._show_widget_map_action,
-                self._settings_action,
-                self._help_action,
-            ]
-        )
+        self._ui_composer.build_menus()
 
     def _build_operation_queue_widgets(self) -> None:
-        self._queue_dock = QDockWidget("Operation Queue", self)
-        self._queue_dock.setObjectName(
-            widget_naming.object_name_for_id(
-                f"{widget_naming.window_widget_id(self.window_id)}:queue_dock"
-            )
-        )
-        self._queue_panel = OperationQueuePanel(
-            manager=self.controller.operation_queue_manager,
-            model=self.controller.operation_queue_model,
-            parent=self._queue_dock,
-        )
-        self._queue_dock.setWidget(self._queue_panel)
-        self._queue_dock.setAllowedAreas(
-            Qt.DockWidgetArea.BottomDockWidgetArea
-            | Qt.DockWidgetArea.TopDockWidgetArea
-        )
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self._queue_dock)
-        self._queue_dock.visibilityChanged.connect(self._on_queue_dock_visibility_changed)
+        self._ui_composer.build_operation_queue_widgets()
 
     def _toggle_queue_dock(self, enabled: bool) -> None:
         self._queue_dock.setVisible(bool(enabled))
@@ -602,13 +355,7 @@ class ExplorerWindow(QMainWindow):
             self._show_queue_dock_action.setChecked(bool(visible))
 
     def _apply_operation_queue_visibility(self) -> None:
-        mode = str(self._operation_queue_view_mode or "").strip().lower()
-        show_dock = mode in {"dock_tab", "both"}
-        with QSignalBlocker(self._show_queue_dock_action):
-            self._show_queue_dock_action.setChecked(show_dock)
-        self._queue_dock.setVisible(show_dock)
-        if mode in {"floating_window", "both"}:
-            self.controller.show_queue_floating_window()
+        self._ui_composer.apply_operation_queue_visibility()
 
     def _on_operation_job_updated(self, job_obj: object) -> None:
         job = cast("object", job_obj)
@@ -1035,84 +782,19 @@ class ExplorerWindow(QMainWindow):
             tab.view.setFocus()
 
     def _copy_selected_to_target(self, configure: bool = False) -> None:
-        self._transfer_selected_to_target(move=False, configure=configure)
+        self._operations_coordinator.copy_selected_to_target(configure=configure)
 
     def _move_selected_to_target(self, configure: bool = False) -> None:
-        self._transfer_selected_to_target(move=True, configure=configure)
+        self._operations_coordinator.move_selected_to_target(configure=configure)
 
     def _delete_selected_items(self, configure: bool = False) -> None:
-        panel = self.active_panel()
-        if panel is None:
-            return
-        tab = panel.current_tab()
-        if tab is None:
-            return
-        selected = tab.selected_paths()
-        if not selected:
-            self.statusBar().showMessage("No items selected in source pane.", 3000)
-            return
-
-        request = self._build_operation_request(
-            kind="delete",
-            sources=[Path(path) for path in selected],
-            target_dir=None,
-            configure=configure,
-        )
-        if request is None:
-            return
-        job = self.controller.operation_queue_manager.submit(request)
-        self.statusBar().showMessage(
-            f"Delete job {job.job_id[:8]}: {job.status}.",
-            3500,
-        )
-        if job.status in {"succeeded", "failed", "cancelled"}:
-            panel.refresh_current_path()
+        self._operations_coordinator.delete_selected_items(configure=configure)
 
     def _transfer_selected_to_target(self, *, move: bool, configure: bool = False) -> None:
-        source_panel = self.active_panel()
-        source_id = self._active_panel_id
-        if source_panel is None or source_id is None:
-            return
-        source_tab = source_panel.current_tab()
-        if source_tab is None:
-            return
-
-        selected = source_tab.selected_paths()
-        if not selected:
-            self.statusBar().showMessage("No items selected in source pane.", 3000)
-            return
-
-        target_id = self._resolve_target_panel_id(source_id)
-        if target_id is None:
-            QMessageBox.information(
-                self,
-                "Target Pane",
-                "No target pane is available. Create another pane first.",
-            )
-            return
-        target_panel = self.panel_widgets.get(target_id)
-        if target_panel is None:
-            return
-        destination = target_panel.current_path()
-
-        kind = "move" if move else "copy"
-        request = self._build_operation_request(
-            kind=kind,
-            sources=[Path(path) for path in selected],
-            target_dir=destination,
+        self._operations_coordinator.transfer_selected_to_target(
+            move=move,
             configure=configure,
         )
-        if request is None:
-            return
-        job = self.controller.operation_queue_manager.submit(request)
-        verb = "Move" if move else "Copy"
-        self.statusBar().showMessage(
-            f"{verb} job {job.job_id[:8]}: {job.status}.",
-            3500,
-        )
-        if job.status in {"succeeded", "failed", "cancelled"}:
-            source_panel.refresh_current_path()
-            target_panel.refresh_current_path()
 
     def _build_operation_request(
         self,
@@ -1122,120 +804,36 @@ class ExplorerWindow(QMainWindow):
         target_dir: Path | None,
         configure: bool,
     ) -> OperationRequest | None:
-        ui_preferences = self.settings.ui_preferences()
-        use_dialog = bool(configure) or (
-            self._operation_shortcut_behavior == SHORTCUT_BEHAVIOR_DIALOG
-        )
-        if use_dialog:
-            from .dialogs.operation_dialog import OperationDialog
-
-            dialog = OperationDialog(
-                kind=kind,
-                sources=sources,
-                target_dir=target_dir,
-                preferences=ui_preferences,
-                parent=self,
-            )
-            if dialog.exec() != dialog.DialogCode.Accepted:
-                return None
-            return dialog.build_request(
-                kind=kind,
-                sources=sources,
-                target_dir=target_dir,
-                created_by=f"window:{self.window_id}",
-            )
-
-        backend_id = (
-            self._default_delete_backend
-            if kind == "delete"
-            else self._default_copy_move_backend
-        )
-        return OperationRequest(
+        return self._operations_coordinator.build_operation_request(
             kind=kind,
-            sources=tuple(sources),
+            sources=sources,
             target_dir=target_dir,
-            backend_id=backend_id,
-            dispatch_mode=self._default_operation_dispatch_mode,
-            conflict_policy=self._default_operation_conflict_policy,
-            created_by=f"window:{self.window_id}",
+            configure=configure,
         )
 
     def _copy_or_move_one(
         self, *, source: Path, destination_dir: Path, move: bool
     ) -> Literal["done", "skip", "cancel"]:
-        destination_dir = Path(destination_dir)
-        destination = destination_dir / source.name
-        if destination.exists():
-            choice = self._prompt_conflict_resolution(source, destination)
-            if choice == "cancel":
-                return "cancel"
-            if choice == "skip":
-                return "skip"
-            if choice == "rename":
-                destination = self._next_available_path(destination_dir, source.name)
-            elif choice == "overwrite":
-                if source.resolve() == destination.resolve():
-                    return "skip"
-                self._remove_existing_path(destination)
-        try:
-            source_raw = to_windows_long_path(source)
-            destination_raw = to_windows_long_path(destination)
-            if move:
-                shutil.move(source_raw, destination_raw)
-            else:
-                if source.is_dir():
-                    shutil.copytree(source_raw, destination_raw)
-                else:
-                    shutil.copy2(source_raw, destination_raw)
-        except Exception as exc:  # pragma: no cover - UI error path
-            QMessageBox.critical(self, "File Operation Failed", str(exc))
-            return "cancel"
-        return "done"
+        return self._operations_coordinator.copy_or_move_one(
+            source=source,
+            destination_dir=destination_dir,
+            move=move,
+        )
 
     def _prompt_conflict_resolution(self, source: Path, destination: Path) -> ConflictChoice:
-        dialog = QMessageBox(self)
-        dialog.setWindowTitle("Name Conflict")
-        dialog.setIcon(QMessageBox.Icon.Warning)
-        dialog.setText(
-            f'"{destination.name}" already exists in target pane.\n\n'
-            f"Source: {source}\nTarget: {destination}"
+        return self._operations_coordinator.prompt_conflict_resolution(
+            source,
+            destination,
         )
-        overwrite_button = dialog.addButton(
-            "Overwrite", QMessageBox.ButtonRole.AcceptRole
-        )
-        skip_button = dialog.addButton("Skip", QMessageBox.ButtonRole.ActionRole)
-        rename_button = dialog.addButton("Rename", QMessageBox.ButtonRole.ActionRole)
-        cancel_button = dialog.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
-        dialog.exec()
-        clicked = dialog.clickedButton()
-        if clicked is overwrite_button:
-            return "overwrite"
-        if clicked is skip_button:
-            return "skip"
-        if clicked is rename_button:
-            return "rename"
-        _ = cancel_button
-        return "cancel"
 
     def _next_available_path(self, destination_dir: Path, base_name: str) -> Path:
-        candidate = destination_dir / base_name
-        if not candidate.exists():
-            return candidate
-        stem = candidate.stem
-        suffix = candidate.suffix
-        counter = 1
-        while True:
-            candidate = destination_dir / f"{stem} ({counter}){suffix}"
-            if not candidate.exists():
-                return candidate
-            counter += 1
+        return self._operations_coordinator.next_available_path(
+            destination_dir=destination_dir,
+            base_name=base_name,
+        )
 
     def _remove_existing_path(self, path: Path) -> None:
-        raw = to_windows_long_path(path)
-        if path.is_dir() and not path.is_symlink():
-            shutil.rmtree(raw)
-            return
-        Path(raw).unlink()
+        self._operations_coordinator.remove_existing_path(path)
 
     def _resolve_target_panel_id(self, source_panel_id: int) -> int | None:
         ordered = self._ordered_panel_ids(self._layout_rows)
@@ -1272,310 +870,81 @@ class ExplorerWindow(QMainWindow):
             panel.apply_column_widths_to_panel_tabs(widths)
 
     def _update_pane_visuals(self) -> None:
-        source_id = self._active_panel_id
-        target_id = (
-            self._resolve_target_panel_id(source_id) if source_id is not None else None
-        )
-
-        for panel_id, panel in self.panel_widgets.items():
-            panel.set_role_visual_state(
-                is_active=panel_id == source_id,
-                is_target=panel_id == target_id,
-            )
-        self._set_persistent_path_status(source_id=source_id, target_id=target_id)
+        self._status_coordinator.update_pane_visuals()
 
     def _set_persistent_path_status(
         self, *, source_id: int | None, target_id: int | None
     ) -> None:
-        source_path = self._panel_path_text(source_id)
-        target_path = self._panel_path_text(target_id)
-
-        self._source_path_label.setText(f"Source path: {source_path}")
-        self._target_path_label.setText(f"Target path: {target_path}")
-
-        self._source_path_label.setToolTip("" if source_path == "(none)" else source_path)
-        self._target_path_label.setToolTip("" if target_path == "(none)" else target_path)
+        self._status_coordinator.set_persistent_path_status(
+            source_id=source_id,
+            target_id=target_id,
+        )
 
     def _panel_path_text(self, panel_id: int | None) -> str:
-        if panel_id is None:
-            return "(none)"
-        panel = self.panel_widgets.get(panel_id)
-        if panel is None:
-            return "(none)"
-        return str(panel.current_path())
+        return self._status_coordinator.panel_path_text(panel_id)
 
     # ----- persistence -----
     def _encode_geometry(self) -> str:
-        geometry = self.saveGeometry()
-        encoded = geometry.toBase64().data()
-        return bytes(encoded).decode("ascii")
+        return self._persistence_coordinator.encode_geometry()
 
     def _restore_geometry_from_b64(self, encoded: str) -> None:
-        raw = QByteArray.fromBase64(encoded.encode("ascii"))
-        if not raw.isEmpty():
-            self.restoreGeometry(raw)
+        self._persistence_coordinator.restore_geometry_from_b64(encoded)
 
     def serialize_state(self, *, include_geometry: bool = False) -> dict[str, Any]:
-        self._sync_panel_tree_from_rows()
-        payload: dict[str, Any] = {
-            "window_id": self.window_id,
-            "panel_tree": self.panel_tree.to_dict(),
-            "tabs": self._serialize_tabs_state(),
-            "active_panel_id": self._active_panel_id,
-            "on_top": self._on_top_action.isChecked(),
-        }
-        if include_geometry:
-            payload["geometry_b64"] = self._encode_geometry()
-        return payload
+        return self._persistence_coordinator.serialize_state(
+            include_geometry=include_geometry
+        )
 
     def save_to_settings(self) -> None:
-        payload = self.serialize_state()
-        self.settings.set_json(
-            self.settings.window_key(self.window_id, "panel_tree"),
-            payload["panel_tree"],
-        )
-
-        tabs_payload = {
-            "active_panel_id": payload["active_panel_id"],
-            "panels": {str(pid): state for pid, state in payload["tabs"].items()},
-        }
-        self.settings.set_json(
-            self.settings.window_key(self.window_id, "tabs"), tabs_payload
-        )
-        self.settings.set_value(
-            self.settings.window_key(self.window_id, "on_top"), payload["on_top"]
-        )
-        self.settings.set_value(
-            self.settings.window_key(self.window_id, "geometry"), self.saveGeometry()
-        )
+        self._persistence_coordinator.save_to_settings()
 
     def restore_from_settings(self) -> None:
-        panel_tree_data = self.settings.get_json(
-            self.settings.window_key(self.window_id, "panel_tree"), None
-        )
-        if isinstance(panel_tree_data, dict):
-            try:
-                self.panel_tree = PanelTreeModel.from_dict(
-                    cast("dict[str, Any]", panel_tree_data)
-                )
-            except Exception as exc:  # pragma: no cover - defensive path
-                QMessageBox.warning(
-                    self, "Restore", f"Could not restore panel tree: {exc}"
-                )
-                self.panel_tree = PanelTreeModel()
-        self._layout_rows = self._rows_from_tree(self.panel_tree.root)
-
-        tabs_payload_raw = self.settings.get_json(
-            self.settings.window_key(self.window_id, "tabs"), {}
-        )
-        tabs_payload = (
-            cast("dict[str, Any]", tabs_payload_raw)
-            if isinstance(tabs_payload_raw, dict)
-            else {}
-        )
-        raw_panels_obj = tabs_payload.get("panels", {})
-        tabs_state: TabsState = {}
-        raw_panels = (
-            cast("dict[str, Any]", raw_panels_obj)
-            if isinstance(raw_panels_obj, dict)
-            else {}
-        )
-        for panel_id_str, state in raw_panels.items():
-            try:
-                panel_id = int(panel_id_str)
-            except (TypeError, ValueError):
-                continue
-            if isinstance(state, dict):
-                tabs_state[panel_id] = state
-        self._layout_rows = self._append_missing_panel_ids(
-            self._layout_rows, list(tabs_state.keys())
-        )
-        self._sync_panel_tree_from_rows()
-
-        preferred_active = None
-        raw_active = tabs_payload.get("active_panel_id")
-        if raw_active is not None:
-            try:
-                preferred_active = int(raw_active)
-            except (TypeError, ValueError):
-                preferred_active = None
-
-        self._rebuild_from_tree(
-            tabs_state=tabs_state, preferred_active_panel=preferred_active
-        )
-
-        on_top_value = self.settings.value(
-            self.settings.window_key(self.window_id, "on_top"), False
-        )
-        on_top = (
-            on_top_value
-            if isinstance(on_top_value, bool)
-            else str(on_top_value).strip().lower() in {"1", "true", "yes", "on"}
-        )
-        self.set_on_top(bool(on_top))
-
-        geometry = self.settings.value(
-            self.settings.window_key(self.window_id, "geometry")
-        )
-        if isinstance(geometry, QByteArray):
-            self.restoreGeometry(geometry)
+        self._persistence_coordinator.restore_from_settings()
 
     def apply_cloned_state(
         self, state: dict[str, Any], *, restore_geometry: bool = False
     ) -> None:
-        panel_tree_data = state.get("panel_tree")
-        if isinstance(panel_tree_data, dict):
-            self.panel_tree = PanelTreeModel.from_dict(
-                cast("dict[str, Any]", panel_tree_data)
-            )
-        self._layout_rows = self._rows_from_tree(self.panel_tree.root)
-
-        tabs_state: TabsState = {}
-        raw_tabs = deepcopy(state.get("tabs", {}))
-        if isinstance(raw_tabs, dict):
-            for panel_id, panel_state in cast("dict[str, Any]", raw_tabs).items():
-                try:
-                    panel_id_int = int(panel_id)
-                except (TypeError, ValueError):
-                    continue
-                if isinstance(panel_state, dict):
-                    tabs_state[panel_id_int] = panel_state
-        self._layout_rows = self._append_missing_panel_ids(
-            self._layout_rows, list(tabs_state.keys())
+        self._persistence_coordinator.apply_cloned_state(
+            state,
+            restore_geometry=restore_geometry,
         )
-        self._sync_panel_tree_from_rows()
-
-        preferred_active_panel: int | None
-        raw_active_panel = state.get("active_panel_id")
-        try:
-            preferred_active_panel = (
-                int(raw_active_panel) if raw_active_panel is not None else None
-            )
-        except (TypeError, ValueError):
-            preferred_active_panel = None
-
-        self._rebuild_from_tree(
-            tabs_state=tabs_state,
-            preferred_active_panel=preferred_active_panel,
-        )
-        self.set_on_top(bool(state.get("on_top", False)))
-        if restore_geometry:
-            geometry_b64 = state.get("geometry_b64")
-            if isinstance(geometry_b64, str) and geometry_b64:
-                self._restore_geometry_from_b64(geometry_b64)
 
     def _new_panel_state(self, panel_id: int, seed_path: Path) -> PanelState:
-        return {
-            "panel_id": panel_id,
-            "current_index": 0,
-            "tabs": [{"path": str(seed_path)}],
-        }
+        return self._layout_coordinator.new_panel_state(panel_id, seed_path)
 
     def _default_panel_state(self, panel_id: int) -> PanelState:
-        panel = self.panel_widgets.get(panel_id)
-        path = panel.current_path() if panel is not None else Path.home()
-        return self._new_panel_state(panel_id, path)
+        return self._layout_coordinator.default_panel_state(panel_id)
 
     def _find_panel_position(
         self, panel_id: int, rows: PanelRows
     ) -> tuple[int | None, int | None]:
-        for row_index, row in enumerate(rows):
-            for col_index, row_panel_id in enumerate(row):
-                if row_panel_id == panel_id:
-                    return row_index, col_index
-        return None, None
+        return self._layout_coordinator.find_panel_position(panel_id, rows)
 
     def _allocate_panel_id(self, rows: PanelRows, tabs_state: TabsState) -> int:
-        ids = set(self._ordered_panel_ids(rows)) | set(tabs_state.keys())
-        return (max(ids) + 1) if ids else 1
+        return self._layout_coordinator.allocate_panel_id(rows, tabs_state)
 
     @staticmethod
     def _ordered_panel_ids(rows: PanelRows) -> list[int]:
-        ordered: list[int] = []
-        for row in rows:
-            ordered.extend(row)
-        return ordered
+        return WindowLayoutCoordinator.ordered_panel_ids(rows)
 
     def _normalize_rows(self, rows: PanelRows) -> PanelRows:
-        normalized: PanelRows = []
-        seen: set[int] = set()
-        for row in rows:
-            cleaned_row: list[int] = []
-            for panel_id in row:
-                panel_id_int = int(panel_id)
-                if panel_id_int in seen:
-                    continue
-                cleaned_row.append(panel_id_int)
-                seen.add(panel_id_int)
-            if cleaned_row:
-                normalized.append(cleaned_row)
-        if not normalized:
-            return [[1]]
-        return normalized
+        return self._layout_coordinator.normalize_rows(rows)
 
     def _append_missing_panel_ids(
         self, rows: PanelRows, panel_ids: list[int]
     ) -> PanelRows:
-        normalized_rows = self._normalize_rows(rows)
-        present = set(self._ordered_panel_ids(normalized_rows))
-        missing = [int(panel_id) for panel_id in panel_ids if int(panel_id) not in present]
-        if missing:
-            normalized_rows.append(missing)
-        return self._normalize_rows(normalized_rows)
+        return self._layout_coordinator.append_missing_panel_ids(rows, panel_ids)
 
     def _rows_from_tree(self, node: LeafNode | SplitNode | None) -> PanelRows:
-        if node is None:
-            return [[1]]
-
-        def split_into_rows(tree_node: LeafNode | SplitNode) -> list[LeafNode | SplitNode]:
-            if isinstance(tree_node, LeafNode):
-                return [tree_node]
-            if tree_node.orientation == ORIENTATION_VERTICAL:
-                return split_into_rows(tree_node.left) + split_into_rows(tree_node.right)
-            return [tree_node]
-
-        def flatten_row(tree_node: LeafNode | SplitNode) -> list[int]:
-            if isinstance(tree_node, LeafNode):
-                return [tree_node.panel_id]
-            if tree_node.orientation != ORIENTATION_HORIZONTAL:
-                raise ValueError("row contains vertical split")
-            return flatten_row(tree_node.left) + flatten_row(tree_node.right)
-
-        try:
-            rows = [flatten_row(row_node) for row_node in split_into_rows(node)]
-        except ValueError:
-            rows = [self.panel_tree.leaf_ids()]
-        return self._normalize_rows(rows)
+        return self._layout_coordinator.rows_from_tree(node)
 
     def _sync_panel_tree_from_rows(self) -> None:
-        self._layout_rows = self._normalize_rows(self._layout_rows)
-        root = self._build_tree_root_from_rows(self._layout_rows)
-        self.panel_tree = PanelTreeModel(root=root if root is not None else LeafNode(1))
+        self._layout_coordinator.sync_panel_tree_from_rows()
 
     def _build_tree_root_from_rows(
         self, rows: PanelRows
     ) -> LeafNode | SplitNode | None:
-        if not rows:
-            return None
-
-        def build_row(row: list[int]) -> LeafNode | SplitNode:
-            if len(row) == 1:
-                return LeafNode(panel_id=row[0])
-            return SplitNode(
-                orientation=ORIENTATION_HORIZONTAL,
-                ratio=1.0 / float(len(row)),
-                left=LeafNode(panel_id=row[0]),
-                right=build_row(row[1:]),
-            )
-
-        if len(rows) == 1:
-            return build_row(rows[0])
-        return SplitNode(
-            orientation=ORIENTATION_VERTICAL,
-            ratio=1.0 / float(len(rows)),
-            left=build_row(rows[0]),
-            right=cast("LeafNode | SplitNode", self._build_tree_root_from_rows(rows[1:])),
-        )
+        return self._layout_coordinator.build_tree_root_from_rows(rows)
 
     def default_close_warning(self) -> bool:
         if len(self.panel_widgets) > 1:
