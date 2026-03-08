@@ -532,7 +532,7 @@ class PanelWidget(QWidget):
             button = QPushButton(_root_display_text(root_path))
             button.setMinimumWidth(0)
             button.setSizePolicy(
-                QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+                QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
             )
             button.setToolTip(_strip_windows_long_path(str(root_path)))
             button.setCheckable(True)

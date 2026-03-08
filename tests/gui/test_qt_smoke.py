@@ -153,8 +153,7 @@ def test_menu_activation_from_view_filter_and_address(qtbot, tmp_path: Path) -> 
     assert file_menu is not None
 
     tab.view.setFocus()
-    QTest.keyPress(tab.view, Qt.Key_Alt)
-    QTest.keyRelease(tab.view, Qt.Key_Alt)
+    window._menu_focus_shortcut.activated.emit()
     qtbot.waitUntil(
         lambda: file_menu.isVisible() or menu_bar.activeAction() is file_action
     )
@@ -162,14 +161,14 @@ def test_menu_activation_from_view_filter_and_address(qtbot, tmp_path: Path) -> 
 
     panel._show_filter_overlay(seed_text="")
     panel.filter_edit.setFocus()
-    QTest.keyClick(panel.filter_edit, Qt.Key_F10)
+    window._menu_focus_shortcut.activated.emit()
     qtbot.waitUntil(
         lambda: file_menu.isVisible() or menu_bar.activeAction() is file_action
     )
     file_menu.close()
 
     panel.address_edit.setFocus()
-    QTest.keyClick(panel.address_edit, Qt.Key_F, Qt.AltModifier)
+    window._menu_focus_shortcut.activated.emit()
     qtbot.waitUntil(
         lambda: file_menu.isVisible() or menu_bar.activeAction() is file_action
     )

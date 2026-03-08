@@ -7,8 +7,8 @@ from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
-from PySide6.QtCore import QByteArray, QEvent, QObject, QSignalBlocker, Qt, Signal
-from PySide6.QtGui import QAction, QCloseEvent, QKeyEvent, QKeySequence, QShortcut
+from PySide6.QtCore import QByteArray, QEvent, QSignalBlocker, Qt, Signal
+from PySide6.QtGui import QAction, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QInputDialog,
@@ -62,7 +62,6 @@ class ExplorerWindow(QMainWindow):
         self._roots_provider = roots_provider
         self._active_panel_id: int | None = None
         self._last_non_source_panel_id: int | None = None
-        self._alt_menu_candidate = False
 
         self.panel_tree = PanelTreeModel()
         self._layout_rows: PanelRows = self._rows_from_tree(self.panel_tree.root)
@@ -82,9 +81,6 @@ class ExplorerWindow(QMainWindow):
 
         self.setWindowTitle("Many Panelz Explorer")
         self.setWindowFlag(Qt.WindowType.Window, True)
-        app = QApplication.instance()
-        if app is not None:
-            app.installEventFilter(self)
 
         empty_state: TabsState = {}
         self._sync_panel_tree_from_rows()
@@ -272,42 +268,7 @@ class ExplorerWindow(QMainWindow):
             self.window_activated.emit()
         return super().event(event)
 
-    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
-        if not self._should_handle_global_key_event(watched, event):
-            return super().eventFilter(watched, event)
-
-        key_event = cast("QKeyEvent", event)
-        key = key_event.key()
-        modifiers = key_event.modifiers()
-
-        if event.type() == QEvent.Type.KeyPress:
-            if key == int(Qt.Key.Key_Alt):
-                self._alt_menu_candidate = True
-                return False
-            if key == int(Qt.Key.Key_F10) and modifiers == Qt.KeyboardModifier.NoModifier:
-                self._focus_menu_by_mnemonic(None)
-                return True
-            if modifiers == Qt.KeyboardModifier.AltModifier:
-                mnemonic = chr(key).upper() if 0 <= key <= 0x10FFFF else ""
-                if mnemonic in {"F", "V", "H"}:
-                    self._alt_menu_candidate = False
-                    self._focus_menu_by_mnemonic(mnemonic)
-                    return True
-                self._alt_menu_candidate = False
-            return False
-
-        if event.type() == QEvent.Type.KeyRelease and key == int(Qt.Key.Key_Alt):
-            if self._alt_menu_candidate:
-                self._alt_menu_candidate = False
-                self._focus_menu_by_mnemonic(None)
-                return True
-            self._alt_menu_candidate = False
-        return super().eventFilter(watched, event)
-
     def closeEvent(self, event: QCloseEvent) -> None:
-        app = QApplication.instance()
-        if app is not None:
-            app.removeEventFilter(self)
         self.controller.close_window(self)
         super().closeEvent(event)
 
@@ -415,6 +376,10 @@ class ExplorerWindow(QMainWindow):
         )
         self._previous_pane_shortcut.activated.connect(self._focus_previous_panel)
 
+        self._menu_focus_shortcut = QShortcut(QKeySequence("F10"), self)
+        self._menu_focus_shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
+        self._menu_focus_shortcut.activated.connect(self._focus_menu_bar)
+
     def _build_menus(self) -> None:
         menu_bar = self.menuBar()
         menu_bar.setNativeMenuBar(True)
@@ -482,28 +447,10 @@ class ExplorerWindow(QMainWindow):
             ]
         )
 
-    def _should_handle_global_key_event(self, watched: QObject, event: QEvent) -> bool:
-        if event.type() not in {QEvent.Type.KeyPress, QEvent.Type.KeyRelease}:
-            return False
-        if not self.isVisible():
-            return False
-        widget = watched if isinstance(watched, QWidget) else None
-        if widget is not None and widget.window() is self:
-            return True
-        app = QApplication.instance()
-        return app is not None and app.activeWindow() is self
-
-    def _focus_menu_by_mnemonic(self, mnemonic: str | None) -> None:
+    def _focus_menu_bar(self) -> None:
         menu_bar = self.menuBar()
         menu_bar.setFocus(Qt.FocusReason.ShortcutFocusReason)
-
-        target_action = self._menu_file_action
-        if mnemonic == "V":
-            target_action = self._menu_view_action
-        elif mnemonic == "H":
-            target_action = self._menu_help_action
-
-        menu_bar.setActiveAction(target_action)
+        menu_bar.setActiveAction(self._menu_file_action)
 
     def _refresh_active_panel(self) -> None:
         panel = self.active_panel()

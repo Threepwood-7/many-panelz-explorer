@@ -471,14 +471,17 @@ def test_root_buttons_host_remains_visible_under_narrow_width(
 ) -> None:
     root = tmp_path / "root"
     root.mkdir()
-    child = root / "child"
-    child.mkdir()
+    roots: list[Path] = []
+    for name in ["AA", "BB", "CC", "DD", "EE", "FF", "GG"]:
+        path = root / name
+        path.mkdir()
+        roots.append(path)
 
     panel = PanelWidget(
         panel_id=1,
         default_path=root,
         show_hidden=True,
-        roots_provider=lambda _current: [root, child],
+        roots_provider=lambda _current: [root, *roots],
     )
     qtbot.addWidget(panel)
     panel.resize(260, 180)
@@ -488,3 +491,4 @@ def test_root_buttons_host_remains_visible_under_narrow_width(
 
     assert panel.root_buttons_host.width() > 0
     assert panel.root_buttons
+    assert max(button.width() for button in panel.root_buttons) > 0
