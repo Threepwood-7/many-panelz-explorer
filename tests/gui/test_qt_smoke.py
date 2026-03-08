@@ -234,31 +234,3 @@ def test_window_does_not_create_menu_overlap_widgets(qtbot, tmp_path: Path) -> N
     )
     assert hit is menu_bar
 
-
-def test_menu_overlap_widget_is_removed_by_cleanup(qtbot, tmp_path: Path) -> None:
-    settings = SettingsManager()
-    roots_provider = _test_roots_provider(tmp_path)
-    window = ExplorerWindow(
-        controller=_ControllerStub(),
-        settings=settings,
-        window_id="smoke-menu-overlap-cleanup",
-        roots_provider=roots_provider,
-    )
-    qtbot.addWidget(window)
-    window.show()
-
-    menu_bar = window.menuBar()
-    file_action = menu_bar.actions()[0]
-
-    overlap = QWidget(window)
-    overlap.setGeometry(0, 0, 120, 30)
-    overlap.show()
-    qtbot.waitUntil(lambda: overlap.isVisible())
-
-    window._neutralize_menu_overlap_widgets()
-    assert overlap.isHidden()
-
-    hit = QApplication.widgetAt(
-        menu_bar.mapToGlobal(menu_bar.actionGeometry(file_action).center())
-    )
-    assert hit is menu_bar

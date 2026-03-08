@@ -81,7 +81,6 @@ class ExplorerWindow(QMainWindow):
 
         self.setWindowTitle("Many Panelz Explorer")
         self.setWindowFlag(Qt.WindowType.Window, True)
-        self._neutralize_menu_overlap_widgets()
 
         empty_state: TabsState = {}
         self._sync_panel_tree_from_rows()
@@ -453,26 +452,6 @@ class ExplorerWindow(QMainWindow):
         menu_bar.setFocus(Qt.FocusReason.ShortcutFocusReason)
         menu_bar.setActiveAction(self._menu_file_action)
 
-    def _neutralize_menu_overlap_widgets(self) -> None:
-        menu_bar = self.menuBar()
-        menu_rect = menu_bar.geometry()
-        direct_children = self.findChildren(
-            QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly
-        )
-        protected = {self._central, menu_bar, self.statusBar()}
-        for child in direct_children:
-            if child in protected:
-                continue
-            if type(child) is not QWidget:
-                continue
-            if not child.isVisible():
-                continue
-            if child.geometry().intersects(menu_rect):
-                # Defensive cleanup for accidental top-level placeholders that can
-                # block menubar mouse hits.
-                child.hide()
-                child.deleteLater()
-
     def _refresh_active_panel(self) -> None:
         panel = self.active_panel()
         if panel is not None:
@@ -565,7 +544,6 @@ class ExplorerWindow(QMainWindow):
 
         self._clear_layout()
         self._central_layout.addWidget(root_widget)
-        self._neutralize_menu_overlap_widgets()
 
         target_active = preferred_active_panel
         if target_active is None or target_active not in self.panel_widgets:
