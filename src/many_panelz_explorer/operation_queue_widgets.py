@@ -19,10 +19,11 @@ from PySide6.QtWidgets import (
 from shiboken6 import isValid
 
 from . import file_ops
-from .operations import OperationJob, is_scripted_backend
+from ._operations.discovery import is_scripted_backend
+from ._operations.types import OperationJob
 
 if TYPE_CHECKING:
-    from .operations import OperationQueueManager
+    from ._operations.queue_manager import OperationQueueManager
 
 
 _HEADERS = [

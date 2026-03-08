@@ -6,11 +6,8 @@ from typing import TYPE_CHECKING, Literal
 
 from PySide6.QtWidgets import QMessageBox
 
-from ...operations import (
-    SHORTCUT_BEHAVIOR_DIALOG,
-    OperationRequest,
-    to_windows_long_path,
-)
+from ..._operations.path_helpers import to_windows_long_path
+from ..._operations.types import SHORTCUT_BEHAVIOR_DIALOG, OperationRequest
 
 if TYPE_CHECKING:
     from ...window import ExplorerWindow

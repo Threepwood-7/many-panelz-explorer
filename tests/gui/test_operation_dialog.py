@@ -8,7 +8,7 @@ pytest.importorskip("PySide6")
 pytest.importorskip("pytestqt")
 
 from many_panelz_explorer.dialogs.operation_dialog import OperationDialog
-from many_panelz_explorer.settings import UiPreferences
+from many_panelz_explorer._settings.models import UiPreferences
 
 
 def test_operation_dialog_has_no_test_backend_action(qtbot) -> None:

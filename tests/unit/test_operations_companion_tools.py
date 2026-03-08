@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from many_panelz_explorer.operations import (
+from many_panelz_explorer._operations.discovery import (
+    resolve_companion_tool_paths,
+    resolve_system_command_paths,
+)
+from many_panelz_explorer._operations.types import (
     COMPANION_TOOL_NOT_FOUND,
     DEFAULT_SYSTEM_CMD_FALLBACK,
     DEFAULT_SYSTEM_ROBOCOPY_FALLBACK,
@@ -10,8 +14,6 @@ from many_panelz_explorer.operations import (
     DEFAULT_TERA_COPY_EXE,
     DEFAULT_UNSTOPPABLE_EXE,
     OperationExecutionPreferences,
-    resolve_system_command_paths,
-    resolve_companion_tool_paths,
 )
 
 
@@ -37,7 +39,7 @@ def test_companion_resolution_uses_common_locations(monkeypatch, tmp_path: Path)
     monkeypatch.setenv("APPDATA", "")
     monkeypatch.setenv("PATH", "")
     monkeypatch.setattr(
-        "many_panelz_explorer.operations._common_tool_search_dirs",
+        "many_panelz_explorer._operations.discovery.common_tool_search_dirs",
         lambda: [program_files],
     )
 
@@ -56,7 +58,7 @@ def test_companion_resolution_sets_placeholder_when_missing(
     monkeypatch.setenv("APPDATA", "")
     monkeypatch.setenv("PATH", "")
     monkeypatch.setattr(
-        "many_panelz_explorer.operations._common_tool_search_dirs",
+        "many_panelz_explorer._operations.discovery.common_tool_search_dirs",
         lambda: [tmp_path / "missing"],
     )
 

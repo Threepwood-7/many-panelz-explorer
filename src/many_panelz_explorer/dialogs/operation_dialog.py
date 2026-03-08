@@ -18,10 +18,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..operations import OperationRequest
+from .._operations.types import OperationRequest
 
 if TYPE_CHECKING:
-    from ..settings import UiPreferences
+    from .._settings.models import UiPreferences
 
 
 @dataclass(frozen=True)

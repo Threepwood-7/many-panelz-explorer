@@ -3,19 +3,21 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from many_panelz_explorer.operations import (
+from many_panelz_explorer._operations.artifacts import (
+    expand_template,
+    run_script,
+    write_script,
+)
+from many_panelz_explorer._operations.path_helpers import to_windows_arg_path
+from many_panelz_explorer._operations.types import (
     OperationArtifacts,
-    _expand_template,
-    _run_script,
-    _write_script,
-    to_windows_arg_path,
 )
 
 
 def test_to_windows_arg_path_switches_extended_prefix(monkeypatch, tmp_path: Path) -> None:
     source = tmp_path / "alpha.txt"
     source.write_text("x", encoding="utf-8")
-    monkeypatch.setattr("many_panelz_explorer.operations.os.name", "nt", raising=False)
+    monkeypatch.setattr("many_panelz_explorer._operations.path_helpers.os.name", "nt", raising=False)
 
     plain = to_windows_arg_path(source, use_extended_paths=False)
     extended = to_windows_arg_path(source, use_extended_paths=True)
@@ -31,19 +33,19 @@ def test_expand_template_uses_configured_path_mode(
     target = tmp_path / "target"
     source.write_text("x", encoding="utf-8")
     target.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setattr("many_panelz_explorer.operations.os.name", "nt", raising=False)
+    monkeypatch.setattr("many_panelz_explorer._operations.path_helpers.os.name", "nt", raising=False)
 
-    plain = _expand_template(
+    plain = expand_template(
         "{sources} {target}",
         kind="copy",
-        sources=[source],
+        sources=(source,),
         target_dir=target,
         use_extended_paths=False,
     )
-    extended = _expand_template(
+    extended = expand_template(
         "{sources} {target}",
         kind="copy",
-        sources=[source],
+        sources=(source,),
         target_dir=target,
         use_extended_paths=True,
     )
@@ -58,7 +60,7 @@ def test_write_script_uses_utf8_without_bom_and_sets_chcp_first(tmp_path: Path) 
         metadata_path=tmp_path / "job.json",
         log_path=tmp_path / "output.log",
     )
-    script_path = _write_script(artifacts, ["echo hello"])
+    script_path = write_script(artifacts, ["echo hello"])
     raw = script_path.read_bytes()
 
     assert raw.startswith(b"\xef\xbb\xbf") is False
@@ -88,8 +90,8 @@ def test_run_script_does_not_redirect_companion_output(
         captured["kwargs"] = kwargs
         return _FakeProcess()
 
-    monkeypatch.setattr("many_panelz_explorer.operations.subprocess.Popen", _fake_popen)
-    result = _run_script(
+    monkeypatch.setattr("many_panelz_explorer._operations.artifacts.subprocess.Popen", _fake_popen)
+    result = run_script(
         script_path,
         log_path,
         cmd_path=str(cmd_exe),

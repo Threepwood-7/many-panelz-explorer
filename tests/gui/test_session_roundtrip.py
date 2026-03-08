@@ -8,12 +8,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6")
 pytest.importorskip("pytestqt")
 
+from many_panelz_explorer._operations.queue_manager import OperationQueueManager
+from many_panelz_explorer._operations.types import OperationExecutionPreferences
+from many_panelz_explorer._settings.manager import SettingsManager
 from many_panelz_explorer.operation_queue_widgets import OperationQueueTableModel
-from many_panelz_explorer.operations import (
-    OperationExecutionPreferences,
-    OperationQueueManager,
-)
-from many_panelz_explorer.settings import SettingsManager
 from many_panelz_explorer.window import ExplorerWindow
 
 

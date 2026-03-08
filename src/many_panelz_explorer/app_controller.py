@@ -15,14 +15,15 @@ from .constants import (
     SETTINGS_ORG_NAME,
 )
 from . import file_ops
-from .operation_queue_widgets import OperationQueuePanel, OperationQueueTableModel
-from .operations import (
-    OperationExecutionPreferences,
-    OperationQueueManager,
+from ._operations.discovery import (
     resolve_companion_tool_paths,
     resolve_system_command_paths,
 )
-from .settings import SettingsManager, UiPreferences
+from ._operations.queue_manager import OperationQueueManager
+from ._operations.types import OperationExecutionPreferences
+from ._settings.manager import SettingsManager
+from ._settings.models import UiPreferences
+from .operation_queue_widgets import OperationQueuePanel, OperationQueueTableModel
 from .window import ExplorerWindow
 
 if TYPE_CHECKING:

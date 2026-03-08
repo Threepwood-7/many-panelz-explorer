@@ -11,15 +11,16 @@ pytest.importorskip("pytestqt")
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
+from many_panelz_explorer._operations.discovery import resolve_companion_tool_paths
+from many_panelz_explorer._operations.queue_manager import OperationQueueManager
+from many_panelz_explorer._operations.types import (
+    OperationExecutionPreferences,
+    OperationResult,
+)
+from many_panelz_explorer._settings.manager import SettingsManager
+from many_panelz_explorer._settings.models import UiPreferences
 from many_panelz_explorer.dialogs.settings_dialog import SettingsDialog
 from many_panelz_explorer.operation_queue_widgets import OperationQueueTableModel
-from many_panelz_explorer.operations import (
-    OperationExecutionPreferences,
-    OperationQueueManager,
-    OperationResult,
-    resolve_companion_tool_paths,
-)
-from many_panelz_explorer.settings import SettingsManager, UiPreferences
 from many_panelz_explorer.window import ExplorerWindow
 
 

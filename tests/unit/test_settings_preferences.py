@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from many_panelz_explorer.settings import SettingsManager, UiPreferences
+from many_panelz_explorer._settings.manager import SettingsManager
+from many_panelz_explorer._settings.models import UiPreferences
 
 
 def _tracked_keys() -> list[str]:

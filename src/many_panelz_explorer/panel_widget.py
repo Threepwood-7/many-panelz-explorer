@@ -797,8 +797,6 @@ class PanelWidget(QWidget):
     ) -> None:
         if self._syncing_column_widths or self._restoring_state:
             return
-        if tab is not self.current_tab():
-            return
         if not widths:
             return
 

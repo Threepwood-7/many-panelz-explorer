@@ -12,12 +12,10 @@ from PySide6.QtCore import QDir, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QWidget
 
+from many_panelz_explorer._operations.queue_manager import OperationQueueManager
+from many_panelz_explorer._operations.types import OperationExecutionPreferences
+from many_panelz_explorer._settings.manager import SettingsManager
 from many_panelz_explorer.operation_queue_widgets import OperationQueueTableModel
-from many_panelz_explorer.operations import (
-    OperationExecutionPreferences,
-    OperationQueueManager,
-)
-from many_panelz_explorer.settings import SettingsManager
 from many_panelz_explorer.window import ExplorerWindow
 
 

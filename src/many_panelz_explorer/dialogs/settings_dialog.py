@@ -36,20 +36,23 @@ from PySide6.QtWidgets import (
 )
 
 from .. import widget_naming
-from ..constants import APP_DISPLAY_NAME, APP_VERSION
-from ..operations import (
+from .._operations.discovery import (
+    discover_single_companion_tool,
+    resolve_companion_tool_paths,
+    resolve_system_command_paths,
+)
+from .._operations.executors import execute_operation_request
+from .._operations.types import (
     DEFAULT_RIMRAF_EXE,
     DEFAULT_TERA_COPY_EXE,
     DEFAULT_UNSTOPPABLE_EXE,
     OperationArtifacts,
     OperationExecutionPreferences,
     OperationRequest,
-    discover_single_companion_tool,
-    execute_operation_request,
-    resolve_companion_tool_paths,
-    resolve_system_command_paths,
 )
-from ..settings import SettingsManager, UiPreferences
+from .._settings.manager import SettingsManager
+from .._settings.models import UiPreferences
+from ..constants import APP_DISPLAY_NAME, APP_VERSION
 from .settings import control_builders
 
 if TYPE_CHECKING:

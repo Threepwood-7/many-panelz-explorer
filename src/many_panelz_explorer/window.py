@@ -37,8 +37,9 @@ from .ui.window import (
 
 if TYPE_CHECKING:
     from .app_controller import AppController
-    from .operations import OperationRequest
-    from .settings import SettingsManager, UiPreferences
+    from ._operations.types import OperationRequest
+    from ._settings.manager import SettingsManager
+    from ._settings.models import UiPreferences
 
 
 type PanelState = dict[str, Any]

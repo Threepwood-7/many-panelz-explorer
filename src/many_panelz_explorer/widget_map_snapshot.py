@@ -4,16 +4,31 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Sequence, cast
+from typing import cast
 
 from PySide6.QtWidgets import QApplication
 
-from .settings import SettingsManager
+from ._operations.queue_manager import OperationQueueManager
+from ._operations.types import OperationExecutionPreferences
+from ._settings.manager import SettingsManager
+from .operation_queue_widgets import OperationQueueTableModel
 from .window import ExplorerWindow
 
 
 class _ControllerStub:
+    def __init__(self) -> None:
+        self.operation_queue_manager = OperationQueueManager(
+            preferences=OperationExecutionPreferences()
+        )
+        self.operation_queue_model = OperationQueueTableModel(self.operation_queue_manager)
+
     def close_window(self, _window: ExplorerWindow) -> None:
+        return
+
+    def show_queue_floating_window(self):
+        return None
+
+    def broadcast_column_widths(self, *_args, **_kwargs) -> None:
         return
 
 
@@ -76,7 +91,7 @@ def generate_widget_map_image(
             app.quit()
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = list(argv) if argv is not None else sys.argv[1:]
     output = (
         Path(args[0])
