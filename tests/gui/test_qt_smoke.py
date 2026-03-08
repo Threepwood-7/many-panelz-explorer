@@ -12,12 +12,29 @@ from PySide6.QtCore import QDir, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QWidget
 
+from many_panelz_explorer.operation_queue_widgets import OperationQueueTableModel
+from many_panelz_explorer.operations import (
+    OperationExecutionPreferences,
+    OperationQueueManager,
+)
 from many_panelz_explorer.settings import SettingsManager
 from many_panelz_explorer.window import ExplorerWindow
 
 
 class _ControllerStub:
+    def __init__(self) -> None:
+        self.operation_queue_manager = OperationQueueManager(
+            preferences=OperationExecutionPreferences()
+        )
+        self.operation_queue_model = OperationQueueTableModel(self.operation_queue_manager)
+
     def close_window(self, _window) -> None:
+        return
+
+    def show_queue_floating_window(self):
+        return None
+
+    def broadcast_column_widths(self, *_a, **_k) -> None:
         return
 
 

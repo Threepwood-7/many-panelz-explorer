@@ -12,6 +12,11 @@ pytest.importorskip("pytestqt")
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QInputDialog, QMessageBox
 
+from many_panelz_explorer.operation_queue_widgets import OperationQueueTableModel
+from many_panelz_explorer.operations import (
+    OperationExecutionPreferences,
+    OperationQueueManager,
+)
 from many_panelz_explorer.settings import SettingsManager, UiPreferences
 from many_panelz_explorer.window import ExplorerWindow
 
@@ -19,6 +24,10 @@ from many_panelz_explorer.window import ExplorerWindow
 class _ControllerStub:
     def __init__(self) -> None:
         self.closed_windows: list[ExplorerWindow] = []
+        self.operation_queue_manager = OperationQueueManager(
+            preferences=OperationExecutionPreferences()
+        )
+        self.operation_queue_model = OperationQueueTableModel(self.operation_queue_manager)
 
     def close_window(self, _window) -> None:
         self.closed_windows.append(_window)
@@ -32,6 +41,9 @@ class _ControllerStub:
         source_tab: object | None = None,
     ) -> None:
         _ = widths, source_window, source_panel_id, source_tab
+
+    def show_queue_floating_window(self):
+        return None
 
 
 class _ControllerBroadcastStub(_ControllerStub):
@@ -507,15 +519,16 @@ def test_copy_to_target_uses_last_active_non_source_panel(
     source_panel.current_tab().set_path(src_dir)
     target_panel.current_tab().set_path(dst_dir)
 
-    monkeypatch.setattr(
-        source_panel.current_tab(), "selected_paths", lambda: [src_file]
-    )
+    monkeypatch.setattr(source_panel.current_tab(), "selected_paths", lambda: [src_file])
     captured: list[Path] = []
-    monkeypatch.setattr(
-        window,
-        "_copy_or_move_one",
-        lambda **kwargs: captured.append(Path(kwargs["destination_dir"])) or "done",
-    )
+    queue_manager = window.controller.operation_queue_manager
+    original_submit = queue_manager.submit
+
+    def _capture_submit(request):
+        captured.append(Path(request.target_dir) if request.target_dir is not None else Path())
+        return original_submit(request)
+
+    monkeypatch.setattr(queue_manager, "submit", _capture_submit)
 
     window._set_active_panel(preferred_target_id)
     window._set_active_panel(source_id)
@@ -743,6 +756,8 @@ def test_column_width_auto_align_all_panels_tabs_syncs_all_open_windows(
     target_tab = target_panel.current_tab()
     assert target_tab is not None
 
+    source_panel.tabs.setCurrentWidget(source_primary)
+    qtbot.waitUntil(lambda: source_panel.current_tab() is source_primary)
     source_primary.view.setColumnWidth(0, 390)
     qtbot.waitUntil(lambda: source_secondary.view.columnWidth(0) == 390)
     qtbot.waitUntil(lambda: target_tab.view.columnWidth(0) == 390)

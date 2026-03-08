@@ -142,6 +142,13 @@ Runtime settings are stored via QSettings:
 | `ui/font/navigation/use_app_font` | Navigation toolbar inherits app font when true (default: true) |
 | `ui/font/navigation/family` | Navigation toolbar override family (`""` keeps app base family) |
 | `ui/font/navigation/size_pt` | Navigation toolbar override font size in pt (6..32) |
+| `ops/default_copy_move_backend` | Default copy/move backend (`python_builtin`, `windows_explorer`, `robocopy`, `teracopy`, `unstoppable`, `external_copymove`) |
+| `ops/default_delete_backend` | Default delete backend (`recycle_bin`, `permanent_native`, `cmd_delete`, `powershell_delete`, `rimraf`, `external_delete`) |
+| `ops/default_dispatch_mode` | Default dispatch mode (`queue`, `launch_now_no_wait`, `run_now_wait`) |
+| `ops/default_conflict_policy` | Default copy/move conflict policy (`overwrite`, `skip`, `rename`, `cancel`) |
+| `ops/shortcut_behavior` | F5/F6/F8 behavior (`direct_enqueue`, `always_dialog`) |
+| `ops/queue_view_mode` | Queue UI mode (`dock_tab`, `floating_window`, `both`) |
+| `ops/backends/*` | Backend executable/template settings for robocopy, TeraCopy, Unstoppable, generic external, cmd/powershell delete, and rimraf |
 | `prefs/session_windows` | List of window IDs for session restoration |
 | `prefs/saved_views` | Named saved view layouts (JSON) |
 | `ui/windows/{id}/panel_tree` | Panel layout tree (JSON) |
@@ -187,8 +194,11 @@ Runtime settings are stored via QSettings:
 - Clone Current Panel (Vertical)
 - Clone Current Panel (Horizontal)
 - Copy to Target Pane (F5)
+- Copy to Target Pane (Configure...)
 - Move to Target Pane (F6)
+- Move to Target Pane (Configure...)
 - Delete Selection (F8)
+- Delete Selection (Configure...)
 - New Window (Ctrl+N)
 - Clone Current Window
 - Save View / Restore View / Replace View
@@ -199,6 +209,8 @@ Runtime settings are stored via QSettings:
 - Refresh (Ctrl+R)
 - Align Columns: Current Panel Tabs
 - Align Columns: All Panels and Tabs
+- Show Queue Dock
+- Show Queue Window
 - On top (checkable toggle)
 - Show hidden files (checkable toggle)
 - Settings... (Ctrl+,)
@@ -233,9 +245,12 @@ many-panelz-explorer/
 |       |-- fast_dir_model.py        # Worker-threaded directory listing/sort model
 |       |-- panel_tree.py            # Pure data model for binary split tree layout
 |       |-- file_ops.py              # File operations: copy/move/delete, ZIP, rename
+|       |-- operations.py            # Multi-backend operation engine + queue manager
+|       |-- operation_queue_widgets.py # Shared queue table/model/widgets
 |       |-- settings.py              # QSettings wrapper with JSON support
 |       |-- mounts.py                # Platform-specific root/drive discovery
 |       `-- dialogs/
+|           |-- operation_dialog.py  # Per-operation configuration dialog
 |           `-- properties_dialog.py # File/folder properties dialog
 |-- scripts/
 |   |-- policy/

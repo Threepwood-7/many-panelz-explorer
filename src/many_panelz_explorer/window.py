@@ -11,6 +11,7 @@ from PySide6.QtCore import QByteArray, QEvent, QSignalBlocker, Qt, Signal
 from PySide6.QtGui import QAction, QCloseEvent, QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
+    QDockWidget,
     QInputDialog,
     QLabel,
     QMainWindow,
@@ -21,8 +22,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from . import file_ops
 from . import widget_naming
+from .operation_queue_widgets import OperationQueuePanel
+from .operations import (
+    BACKEND_PYTHON,
+    OperationRequest,
+    SHORTCUT_BEHAVIOR_DIALOG,
+    to_windows_long_path,
+)
 from .panel_tree import (
     ORIENTATION_HORIZONTAL,
     ORIENTATION_VERTICAL,
@@ -108,10 +115,24 @@ class ExplorerWindow(QMainWindow):
         self._target_panel_tint_intensity_percent = (
             ui_preferences.target_panel_tint_intensity_percent
         )
+        self._default_copy_move_backend = ui_preferences.default_copy_move_backend
+        self._default_delete_backend = ui_preferences.default_delete_backend
+        self._default_operation_dispatch_mode = (
+            ui_preferences.default_operation_dispatch_mode
+        )
+        self._default_operation_conflict_policy = (
+            ui_preferences.default_operation_conflict_policy
+        )
+        self._operation_shortcut_behavior = ui_preferences.operation_shortcut_behavior
+        self._operation_queue_view_mode = ui_preferences.operation_queue_view_mode
 
         self._build_actions()
         self._build_menus()
         self._build_shortcuts()
+        self._build_operation_queue_widgets()
+        self.controller.operation_queue_manager.job_updated.connect(
+            self._on_operation_job_updated
+        )
 
         self.setWindowTitle("Many Panelz Explorer")
         window_widget_id = widget_naming.window_widget_id(self.window_id)
@@ -123,6 +144,7 @@ class ExplorerWindow(QMainWindow):
         empty_state: TabsState = {}
         self._sync_panel_tree_from_rows()
         self._rebuild_from_tree(tabs_state=empty_state, preferred_active_panel=None)
+        self._apply_operation_queue_visibility()
 
     # ----- public API -----
     def split_active_panel(self, orientation: Qt.Orientation) -> None:
@@ -346,13 +368,28 @@ class ExplorerWindow(QMainWindow):
         self._copy_to_target_action.setShortcut(QKeySequence("F5"))
         self._copy_to_target_action.triggered.connect(self._copy_selected_to_target)
 
+        self._copy_to_target_configure_action = QAction("Copy to Target Pane (Configure...)", self)
+        self._copy_to_target_configure_action.triggered.connect(
+            lambda: self._copy_selected_to_target(configure=True)
+        )
+
         self._move_to_target_action = QAction("&Move to Target Pane", self)
         self._move_to_target_action.setShortcut(QKeySequence("F6"))
         self._move_to_target_action.triggered.connect(self._move_selected_to_target)
 
+        self._move_to_target_configure_action = QAction("Move to Target Pane (Configure...)", self)
+        self._move_to_target_configure_action.triggered.connect(
+            lambda: self._move_selected_to_target(configure=True)
+        )
+
         self._delete_selection_action = QAction("&Delete Selection", self)
         self._delete_selection_action.setShortcut(QKeySequence("F8"))
         self._delete_selection_action.triggered.connect(self._delete_selected_items)
+
+        self._delete_selection_configure_action = QAction("Delete Selection (Configure...)", self)
+        self._delete_selection_configure_action.triggered.connect(
+            lambda: self._delete_selected_items(configure=True)
+        )
 
         self._new_window_action = QAction("New &Window", self)
         self._new_window_action.setShortcut(QKeySequence("Ctrl+N"))
@@ -418,6 +455,15 @@ class ExplorerWindow(QMainWindow):
             self._align_columns_all_panels_tabs
         )
 
+        self._show_queue_dock_action = QAction("Show Queue Dock", self)
+        self._show_queue_dock_action.setCheckable(True)
+        self._show_queue_dock_action.toggled.connect(self._toggle_queue_dock)
+
+        self._show_queue_window_action = QAction("Show Queue Window", self)
+        self._show_queue_window_action.triggered.connect(
+            self.controller.show_queue_floating_window
+        )
+
         self._settings_action = QAction("&Settings...", self)
         self._settings_action.setShortcut(QKeySequence("Ctrl+,"))
         self._settings_action.triggered.connect(self._open_settings_dialog)
@@ -453,8 +499,11 @@ class ExplorerWindow(QMainWindow):
         file_menu.addAction(self._clone_horizontal_panel_action)
         file_menu.addSeparator()
         file_menu.addAction(self._copy_to_target_action)
+        file_menu.addAction(self._copy_to_target_configure_action)
         file_menu.addAction(self._move_to_target_action)
+        file_menu.addAction(self._move_to_target_configure_action)
         file_menu.addAction(self._delete_selection_action)
+        file_menu.addAction(self._delete_selection_configure_action)
         file_menu.addSeparator()
         file_menu.addAction(self._new_window_action)
         file_menu.addAction(self._clone_window_action)
@@ -475,6 +524,9 @@ class ExplorerWindow(QMainWindow):
         view_menu.addAction(self._refresh_action)
         view_menu.addAction(self._align_columns_current_panel_tabs_action)
         view_menu.addAction(self._align_columns_all_panels_tabs_action)
+        view_menu.addSeparator()
+        view_menu.addAction(self._show_queue_dock_action)
+        view_menu.addAction(self._show_queue_window_action)
         view_menu.addSeparator()
         view_menu.addAction(self._on_top_action)
         view_menu.addAction(self._show_hidden_action)
@@ -497,8 +549,11 @@ class ExplorerWindow(QMainWindow):
                 self._clone_vertical_panel_action,
                 self._clone_horizontal_panel_action,
                 self._copy_to_target_action,
+                self._copy_to_target_configure_action,
                 self._move_to_target_action,
+                self._move_to_target_configure_action,
                 self._delete_selection_action,
+                self._delete_selection_configure_action,
                 self._new_window_action,
                 self._clone_window_action,
                 self._save_view_action,
@@ -511,11 +566,69 @@ class ExplorerWindow(QMainWindow):
                 self._refresh_action,
                 self._align_columns_current_panel_tabs_action,
                 self._align_columns_all_panels_tabs_action,
+                self._show_queue_dock_action,
+                self._show_queue_window_action,
                 self._show_widget_map_action,
                 self._settings_action,
                 self._help_action,
             ]
         )
+
+    def _build_operation_queue_widgets(self) -> None:
+        self._queue_dock = QDockWidget("Operation Queue", self)
+        self._queue_dock.setObjectName(
+            widget_naming.object_name_for_id(
+                f"{widget_naming.window_widget_id(self.window_id)}:queue_dock"
+            )
+        )
+        self._queue_panel = OperationQueuePanel(
+            manager=self.controller.operation_queue_manager,
+            model=self.controller.operation_queue_model,
+            parent=self._queue_dock,
+        )
+        self._queue_dock.setWidget(self._queue_panel)
+        self._queue_dock.setAllowedAreas(
+            Qt.DockWidgetArea.BottomDockWidgetArea
+            | Qt.DockWidgetArea.TopDockWidgetArea
+        )
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self._queue_dock)
+        self._queue_dock.visibilityChanged.connect(self._on_queue_dock_visibility_changed)
+
+    def _toggle_queue_dock(self, enabled: bool) -> None:
+        self._queue_dock.setVisible(bool(enabled))
+
+    def _on_queue_dock_visibility_changed(self, visible: bool) -> None:
+        with QSignalBlocker(self._show_queue_dock_action):
+            self._show_queue_dock_action.setChecked(bool(visible))
+
+    def _apply_operation_queue_visibility(self) -> None:
+        mode = str(self._operation_queue_view_mode or "").strip().lower()
+        show_dock = mode in {"dock_tab", "both"}
+        with QSignalBlocker(self._show_queue_dock_action):
+            self._show_queue_dock_action.setChecked(show_dock)
+        self._queue_dock.setVisible(show_dock)
+        if mode in {"floating_window", "both"}:
+            self.controller.show_queue_floating_window()
+
+    def _on_operation_job_updated(self, job_obj: object) -> None:
+        job = cast("object", job_obj)
+        if not hasattr(job, "request") or not hasattr(job, "status"):
+            return
+        request = cast("Any", job).request
+        created_by = str(getattr(request, "created_by", ""))
+        if not created_by.startswith(f"window:{self.window_id}"):
+            return
+        status = str(getattr(job, "status", ""))
+        if status not in {"succeeded", "failed", "cancelled"}:
+            return
+        panel = self.active_panel()
+        if panel is not None:
+            panel.refresh_current_path()
+        target_id = self._resolve_target_panel_id(self._active_panel_id) if self._active_panel_id is not None else None
+        if target_id is not None:
+            target_panel = self.panel_widgets.get(target_id)
+            if target_panel is not None:
+                target_panel.refresh_current_path()
 
     def _focus_menu_bar(self) -> None:
         menu_bar = self.menuBar()
@@ -791,6 +904,16 @@ class ExplorerWindow(QMainWindow):
         self._target_panel_tint_intensity_percent = (
             preferences.target_panel_tint_intensity_percent
         )
+        self._default_copy_move_backend = preferences.default_copy_move_backend
+        self._default_delete_backend = preferences.default_delete_backend
+        self._default_operation_dispatch_mode = (
+            preferences.default_operation_dispatch_mode
+        )
+        self._default_operation_conflict_policy = (
+            preferences.default_operation_conflict_policy
+        )
+        self._operation_shortcut_behavior = preferences.operation_shortcut_behavior
+        self._operation_queue_view_mode = preferences.operation_queue_view_mode
 
         with QSignalBlocker(self._show_hidden_action):
             self._show_hidden_action.setChecked(self._show_hidden)
@@ -816,6 +939,7 @@ class ExplorerWindow(QMainWindow):
                 target_color_hex=self._target_panel_tint_color_hex,
                 target_intensity_percent=self._target_panel_tint_intensity_percent,
             )
+        self._apply_operation_queue_visibility()
         self._update_pane_visuals()
 
     def _effective_panel_fonts(self) -> tuple[QFont, QFont]:
@@ -910,13 +1034,13 @@ class ExplorerWindow(QMainWindow):
         if tab is not None:
             tab.view.setFocus()
 
-    def _copy_selected_to_target(self) -> None:
-        self._transfer_selected_to_target(move=False)
+    def _copy_selected_to_target(self, configure: bool = False) -> None:
+        self._transfer_selected_to_target(move=False, configure=configure)
 
-    def _move_selected_to_target(self) -> None:
-        self._transfer_selected_to_target(move=True)
+    def _move_selected_to_target(self, configure: bool = False) -> None:
+        self._transfer_selected_to_target(move=True, configure=configure)
 
-    def _delete_selected_items(self) -> None:
+    def _delete_selected_items(self, configure: bool = False) -> None:
         panel = self.active_panel()
         if panel is None:
             return
@@ -928,26 +1052,23 @@ class ExplorerWindow(QMainWindow):
             self.statusBar().showMessage("No items selected in source pane.", 3000)
             return
 
-        names = "\n".join(path.name for path in selected[:10])
-        confirm = QMessageBox.question(
-            self,
-            "Delete to Recycle Bin",
-            f"Move selected items to Recycle Bin?\n\n{names}",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
+        request = self._build_operation_request(
+            kind="delete",
+            sources=[Path(path) for path in selected],
+            target_dir=None,
+            configure=configure,
         )
-        if confirm != QMessageBox.StandardButton.Yes:
+        if request is None:
             return
-        try:
-            file_ops.delete_to_recycle_bin(selected)
+        job = self.controller.operation_queue_manager.submit(request)
+        self.statusBar().showMessage(
+            f"Delete job {job.job_id[:8]}: {job.status}.",
+            3500,
+        )
+        if job.status in {"succeeded", "failed", "cancelled"}:
             panel.refresh_current_path()
-            self.statusBar().showMessage(
-                f"Deleted {len(selected)} item(s) from source pane.", 4000
-            )
-        except Exception as exc:  # pragma: no cover - UI error path
-            QMessageBox.critical(self, "Delete Failed", str(exc))
 
-    def _transfer_selected_to_target(self, *, move: bool) -> None:
+    def _transfer_selected_to_target(self, *, move: bool, configure: bool = False) -> None:
         source_panel = self.active_panel()
         source_id = self._active_panel_id
         if source_panel is None or source_id is None:
@@ -974,31 +1095,76 @@ class ExplorerWindow(QMainWindow):
             return
         destination = target_panel.current_path()
 
-        transferred = 0
-        for source_path in selected:
-            outcome = self._copy_or_move_one(
-                source=Path(source_path), destination_dir=destination, move=move
-            )
-            if outcome == "cancel":
-                break
-            if outcome == "done":
-                transferred += 1
-
-        if transferred > 0:
+        kind = "move" if move else "copy"
+        request = self._build_operation_request(
+            kind=kind,
+            sources=[Path(path) for path in selected],
+            target_dir=destination,
+            configure=configure,
+        )
+        if request is None:
+            return
+        job = self.controller.operation_queue_manager.submit(request)
+        verb = "Move" if move else "Copy"
+        self.statusBar().showMessage(
+            f"{verb} job {job.job_id[:8]}: {job.status}.",
+            3500,
+        )
+        if job.status in {"succeeded", "failed", "cancelled"}:
             source_panel.refresh_current_path()
             target_panel.refresh_current_path()
-            verb = "Moved" if move else "Copied"
-            self.statusBar().showMessage(
-                f"{verb} {transferred} item(s) from pane {source_id} to pane {target_id}.",
-                4000,
+
+    def _build_operation_request(
+        self,
+        *,
+        kind: str,
+        sources: list[Path],
+        target_dir: Path | None,
+        configure: bool,
+    ) -> OperationRequest | None:
+        ui_preferences = self.settings.ui_preferences()
+        use_dialog = bool(configure) or (
+            self._operation_shortcut_behavior == SHORTCUT_BEHAVIOR_DIALOG
+        )
+        if use_dialog:
+            from .dialogs.operation_dialog import OperationDialog
+
+            dialog = OperationDialog(
+                kind=kind,
+                sources=sources,
+                target_dir=target_dir,
+                preferences=ui_preferences,
+                parent=self,
             )
+            if dialog.exec() != dialog.DialogCode.Accepted:
+                return None
+            return dialog.build_request(
+                kind=kind,
+                sources=sources,
+                target_dir=target_dir,
+                created_by=f"window:{self.window_id}",
+            )
+
+        backend_id = (
+            self._default_delete_backend
+            if kind == "delete"
+            else self._default_copy_move_backend
+        )
+        return OperationRequest(
+            kind=kind,
+            sources=tuple(sources),
+            target_dir=target_dir,
+            backend_id=backend_id,
+            dispatch_mode=self._default_operation_dispatch_mode,
+            conflict_policy=self._default_operation_conflict_policy,
+            created_by=f"window:{self.window_id}",
+        )
 
     def _copy_or_move_one(
         self, *, source: Path, destination_dir: Path, move: bool
     ) -> Literal["done", "skip", "cancel"]:
         destination_dir = Path(destination_dir)
         destination = destination_dir / source.name
-
         if destination.exists():
             choice = self._prompt_conflict_resolution(source, destination)
             if choice == "cancel":
@@ -1011,15 +1177,16 @@ class ExplorerWindow(QMainWindow):
                 if source.resolve() == destination.resolve():
                     return "skip"
                 self._remove_existing_path(destination)
-
         try:
+            source_raw = to_windows_long_path(source)
+            destination_raw = to_windows_long_path(destination)
             if move:
-                shutil.move(str(source), str(destination))
+                shutil.move(source_raw, destination_raw)
             else:
                 if source.is_dir():
-                    shutil.copytree(source, destination)
+                    shutil.copytree(source_raw, destination_raw)
                 else:
-                    shutil.copy2(source, destination)
+                    shutil.copy2(source_raw, destination_raw)
         except Exception as exc:  # pragma: no cover - UI error path
             QMessageBox.critical(self, "File Operation Failed", str(exc))
             return "cancel"
@@ -1064,10 +1231,11 @@ class ExplorerWindow(QMainWindow):
             counter += 1
 
     def _remove_existing_path(self, path: Path) -> None:
+        raw = to_windows_long_path(path)
         if path.is_dir() and not path.is_symlink():
-            shutil.rmtree(path)
+            shutil.rmtree(raw)
             return
-        path.unlink()
+        Path(raw).unlink()
 
     def _resolve_target_panel_id(self, source_panel_id: int) -> int | None:
         ordered = self._ordered_panel_ids(self._layout_rows)
@@ -1098,13 +1266,10 @@ class ExplorerWindow(QMainWindow):
         source_panel_id: int | None = None,
         source_tab: object | None = None,
     ) -> None:
+        _ = source_panel_id, source_tab
         for panel_id, panel in self.panel_widgets.items():
-            panel_source_tab = (
-                cast("ExplorerTab | None", source_tab)
-                if panel_id == source_panel_id
-                else None
-            )
-            panel.apply_column_widths_to_panel_tabs(widths, source_tab=panel_source_tab)
+            _ = panel_id
+            panel.apply_column_widths_to_panel_tabs(widths)
 
     def _update_pane_visuals(self) -> None:
         source_id = self._active_panel_id

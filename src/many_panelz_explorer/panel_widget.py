@@ -781,11 +781,15 @@ class PanelWidget(QWidget):
     ) -> None:
         if self._syncing_column_widths or self._restoring_state:
             return
+        if tab is not self.current_tab():
+            return
         if not widths:
             return
 
         normalized = self._coerce_column_widths(widths)
         if not normalized:
+            return
+        if normalized == self._column_widths:
             return
         self._column_widths = normalized
         self._pending_column_widths_sync = list(normalized)

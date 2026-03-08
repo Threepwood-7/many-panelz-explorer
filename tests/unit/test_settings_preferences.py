@@ -25,6 +25,39 @@ def _tracked_keys() -> list[str]:
         SettingsManager.ACTIVE_PANEL_TINT_INTENSITY_KEY,
         SettingsManager.TARGET_PANEL_TINT_COLOR_KEY,
         SettingsManager.TARGET_PANEL_TINT_INTENSITY_KEY,
+        SettingsManager.DEFAULT_COPY_MOVE_BACKEND_KEY,
+        SettingsManager.DEFAULT_DELETE_BACKEND_KEY,
+        SettingsManager.DEFAULT_OPERATION_DISPATCH_MODE_KEY,
+        SettingsManager.DEFAULT_OPERATION_CONFLICT_POLICY_KEY,
+        SettingsManager.OPERATION_SHORTCUT_BEHAVIOR_KEY,
+        SettingsManager.OPERATION_QUEUE_VIEW_MODE_KEY,
+        SettingsManager.DEFAULT_EDITOR_EXECUTABLE_KEY,
+        SettingsManager.DEFAULT_VIEWER_EXECUTABLE_KEY,
+        SettingsManager.FILE_OPEN_OVERRIDES_JSON_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_ROBOCOPY_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_TERACOPY_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_UNSTOPPABLE_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_EXTERNAL_COPYMOVE_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_CMD_DELETE_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_POWERSHELL_DELETE_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_RIMRAF_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_EXTERNAL_DELETE_KEY,
+        SettingsManager.SCRIPT_EDITOR_EXECUTABLE_KEY,
+        SettingsManager.TERACOPY_EXECUTABLE_KEY,
+        SettingsManager.TERACOPY_ARGS_TEMPLATE_KEY,
+        SettingsManager.UNSTOPPABLE_EXECUTABLE_KEY,
+        SettingsManager.UNSTOPPABLE_ARGS_TEMPLATE_KEY,
+        SettingsManager.GENERIC_COPYMOVE_EXECUTABLE_KEY,
+        SettingsManager.GENERIC_COPYMOVE_ARGS_TEMPLATE_KEY,
+        SettingsManager.GENERIC_DELETE_EXECUTABLE_KEY,
+        SettingsManager.GENERIC_DELETE_ARGS_TEMPLATE_KEY,
+        SettingsManager.ROBOCOPY_COPY_ARGS_KEY,
+        SettingsManager.ROBOCOPY_MOVE_ARGS_KEY,
+        SettingsManager.CMD_DELETE_ARGS_KEY,
+        SettingsManager.POWERSHELL_DELETE_ARGS_KEY,
+        SettingsManager.RIMRAF_EXECUTABLE_KEY,
+        SettingsManager.RIMRAF_ARGS_TEMPLATE_KEY,
+        SettingsManager.OPS_COMPANION_BOOTSTRAP_DONE_KEY,
     ]
 
 
@@ -66,6 +99,38 @@ def test_ui_preferences_round_trip() -> None:
             active_panel_tint_intensity_percent=80,
             target_panel_tint_color_hex="#123456",
             target_panel_tint_intensity_percent=33,
+            default_copy_move_backend="robocopy",
+            default_delete_backend="powershell_delete",
+            default_operation_dispatch_mode="run_now_wait",
+            default_operation_conflict_policy="overwrite",
+            operation_shortcut_behavior="always_dialog",
+            operation_queue_view_mode="both",
+            default_editor_executable=r"C:\tools\editor.exe",
+            default_viewer_executable=r"C:\tools\viewer.exe",
+            file_open_overrides_json='{".txt": {"editor": "txtedit.exe", "viewer": "txtview.exe"}}',
+            use_extended_paths_robocopy=True,
+            use_extended_paths_teracopy=True,
+            use_extended_paths_unstoppable=True,
+            use_extended_paths_external_copymove=True,
+            use_extended_paths_cmd_delete=True,
+            use_extended_paths_powershell_delete=True,
+            use_extended_paths_rimraf=True,
+            use_extended_paths_external_delete=True,
+            script_editor_executable=r"C:\tools\my-editor.exe",
+            teracopy_executable="TeraCopy.exe",
+            teracopy_args_template="{operation} {sources} {target} /close",
+            unstoppable_executable="UnstoppableCopier.exe",
+            unstoppable_args_template="{operation} {sources} {target}",
+            generic_copymove_executable="my-copy.exe",
+            generic_copymove_args_template="{operation} {sources} {target}",
+            generic_delete_executable="my-del.exe",
+            generic_delete_args_template="{operation} {sources}",
+            robocopy_copy_args="/E /R:0 /W:0",
+            robocopy_move_args="/E /MOVE /R:0 /W:0",
+            cmd_delete_args="/Q",
+            powershell_delete_args="-Force",
+            rimraf_executable="rimraf",
+            rimraf_args_template="--glob=false",
         )
         settings.set_ui_preferences(expected)
         settings.sync()
@@ -99,6 +164,38 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.set_value(SettingsManager.TARGET_PANEL_TINT_COLOR_KEY, "#12")
         settings.set_value(SettingsManager.ACTIVE_PANEL_TINT_INTENSITY_KEY, "oops")
         settings.set_value(SettingsManager.TARGET_PANEL_TINT_INTENSITY_KEY, "nope")
+        settings.set_value(SettingsManager.DEFAULT_COPY_MOVE_BACKEND_KEY, "invalid")
+        settings.set_value(SettingsManager.DEFAULT_DELETE_BACKEND_KEY, "invalid")
+        settings.set_value(SettingsManager.DEFAULT_OPERATION_DISPATCH_MODE_KEY, "invalid")
+        settings.set_value(SettingsManager.DEFAULT_OPERATION_CONFLICT_POLICY_KEY, "invalid")
+        settings.set_value(SettingsManager.OPERATION_SHORTCUT_BEHAVIOR_KEY, "invalid")
+        settings.set_value(SettingsManager.OPERATION_QUEUE_VIEW_MODE_KEY, "invalid")
+        settings.remove(SettingsManager.DEFAULT_EDITOR_EXECUTABLE_KEY)
+        settings.remove(SettingsManager.DEFAULT_VIEWER_EXECUTABLE_KEY)
+        settings.set_value(SettingsManager.FILE_OPEN_OVERRIDES_JSON_KEY, "not-json")
+        settings.set_value(SettingsManager.USE_EXTENDED_PATHS_ROBOCOPY_KEY, "")
+        settings.set_value(SettingsManager.USE_EXTENDED_PATHS_TERACOPY_KEY, "")
+        settings.set_value(SettingsManager.USE_EXTENDED_PATHS_UNSTOPPABLE_KEY, "")
+        settings.set_value(SettingsManager.USE_EXTENDED_PATHS_EXTERNAL_COPYMOVE_KEY, "")
+        settings.set_value(SettingsManager.USE_EXTENDED_PATHS_CMD_DELETE_KEY, "")
+        settings.set_value(SettingsManager.USE_EXTENDED_PATHS_POWERSHELL_DELETE_KEY, "")
+        settings.set_value(SettingsManager.USE_EXTENDED_PATHS_RIMRAF_KEY, "")
+        settings.set_value(SettingsManager.USE_EXTENDED_PATHS_EXTERNAL_DELETE_KEY, "")
+        settings.remove(SettingsManager.SCRIPT_EDITOR_EXECUTABLE_KEY)
+        settings.remove(SettingsManager.TERACOPY_EXECUTABLE_KEY)
+        settings.remove(SettingsManager.TERACOPY_ARGS_TEMPLATE_KEY)
+        settings.remove(SettingsManager.UNSTOPPABLE_EXECUTABLE_KEY)
+        settings.remove(SettingsManager.UNSTOPPABLE_ARGS_TEMPLATE_KEY)
+        settings.remove(SettingsManager.GENERIC_COPYMOVE_EXECUTABLE_KEY)
+        settings.remove(SettingsManager.GENERIC_COPYMOVE_ARGS_TEMPLATE_KEY)
+        settings.remove(SettingsManager.GENERIC_DELETE_EXECUTABLE_KEY)
+        settings.remove(SettingsManager.GENERIC_DELETE_ARGS_TEMPLATE_KEY)
+        settings.remove(SettingsManager.ROBOCOPY_COPY_ARGS_KEY)
+        settings.remove(SettingsManager.ROBOCOPY_MOVE_ARGS_KEY)
+        settings.remove(SettingsManager.CMD_DELETE_ARGS_KEY)
+        settings.remove(SettingsManager.POWERSHELL_DELETE_ARGS_KEY)
+        settings.remove(SettingsManager.RIMRAF_EXECUTABLE_KEY)
+        settings.remove(SettingsManager.RIMRAF_ARGS_TEMPLATE_KEY)
 
         loaded = settings.ui_preferences()
         assert loaded.new_context_mode == "clone_active_path"
@@ -152,6 +249,48 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
             loaded.target_panel_tint_intensity_percent
             == SettingsManager.DEFAULT_TARGET_PANEL_TINT_INTENSITY_PERCENT
         )
+        assert loaded.default_copy_move_backend == SettingsManager.DEFAULT_COPY_MOVE_BACKEND
+        assert loaded.default_delete_backend == SettingsManager.DEFAULT_DELETE_BACKEND
+        assert (
+            loaded.default_operation_dispatch_mode
+            == SettingsManager.DEFAULT_OPERATION_DISPATCH_MODE
+        )
+        assert (
+            loaded.default_operation_conflict_policy
+            == SettingsManager.DEFAULT_OPERATION_CONFLICT_POLICY
+        )
+        assert (
+            loaded.operation_shortcut_behavior
+            == SettingsManager.DEFAULT_OPERATION_SHORTCUT_BEHAVIOR
+        )
+        assert (
+            loaded.operation_queue_view_mode
+            == SettingsManager.DEFAULT_OPERATION_QUEUE_VIEW_MODE
+        )
+        assert (
+            loaded.default_editor_executable
+            == SettingsManager.DEFAULT_DEFAULT_EDITOR_EXECUTABLE
+        )
+        assert (
+            loaded.default_viewer_executable
+            == SettingsManager.DEFAULT_DEFAULT_VIEWER_EXECUTABLE
+        )
+        assert (
+            loaded.file_open_overrides_json
+            == SettingsManager.DEFAULT_FILE_OPEN_OVERRIDES_JSON
+        )
+        assert loaded.use_extended_paths_robocopy is False
+        assert loaded.use_extended_paths_teracopy is False
+        assert loaded.use_extended_paths_unstoppable is False
+        assert loaded.use_extended_paths_external_copymove is False
+        assert loaded.use_extended_paths_cmd_delete is False
+        assert loaded.use_extended_paths_powershell_delete is False
+        assert loaded.use_extended_paths_rimraf is False
+        assert loaded.use_extended_paths_external_delete is False
+        assert (
+            loaded.script_editor_executable
+            == SettingsManager.DEFAULT_SCRIPT_EDITOR_EXECUTABLE
+        )
     finally:
         _restore(settings, before)
 
@@ -194,5 +333,17 @@ def test_ui_preferences_column_auto_align_mode_defaults_when_unset() -> None:
             loaded.column_width_auto_align_mode
             == SettingsManager.DEFAULT_COLUMN_WIDTH_AUTO_ALIGN_MODE
         )
+    finally:
+        _restore(settings, before)
+
+
+def test_ops_companion_bootstrap_flag_round_trip() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    try:
+        settings.remove(SettingsManager.OPS_COMPANION_BOOTSTRAP_DONE_KEY)
+        assert settings.ops_companion_bootstrap_done is False
+        settings.ops_companion_bootstrap_done = True
+        assert settings.ops_companion_bootstrap_done is True
     finally:
         _restore(settings, before)

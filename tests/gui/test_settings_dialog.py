@@ -12,6 +12,13 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
 from many_panelz_explorer.dialogs.settings_dialog import SettingsDialog
+from many_panelz_explorer.operation_queue_widgets import OperationQueueTableModel
+from many_panelz_explorer.operations import (
+    OperationExecutionPreferences,
+    OperationQueueManager,
+    OperationResult,
+    resolve_companion_tool_paths,
+)
 from many_panelz_explorer.settings import SettingsManager, UiPreferences
 from many_panelz_explorer.window import ExplorerWindow
 
@@ -25,6 +32,10 @@ class _ControllerSettingsStub:
         self._default_app_font = QFont(app.font())
         self.windows: list[ExplorerWindow] = []
         self.preview_calls: list[UiPreferences] = []
+        self.operation_queue_manager = OperationQueueManager(
+            preferences=OperationExecutionPreferences()
+        )
+        self.operation_queue_model = OperationQueueTableModel(self.operation_queue_manager)
 
     def close_window(self, _window: ExplorerWindow) -> None:
         return
@@ -34,6 +45,44 @@ class _ControllerSettingsStub:
 
     def preview_ui_preferences(self, preferences: UiPreferences) -> None:
         self.preview_calls.append(preferences)
+        self.operation_queue_manager.set_preferences(
+            resolve_companion_tool_paths(
+                OperationExecutionPreferences(
+                    default_copy_move_backend=preferences.default_copy_move_backend,
+                    default_delete_backend=preferences.default_delete_backend,
+                    default_dispatch_mode=preferences.default_operation_dispatch_mode,
+                    default_conflict_policy=preferences.default_operation_conflict_policy,
+                    shortcut_behavior=preferences.operation_shortcut_behavior,
+                    queue_view_mode=preferences.operation_queue_view_mode,
+                    default_editor_executable=preferences.default_editor_executable,
+                    default_viewer_executable=preferences.default_viewer_executable,
+                    file_open_overrides_json=preferences.file_open_overrides_json,
+                    use_extended_paths_robocopy=preferences.use_extended_paths_robocopy,
+                    use_extended_paths_teracopy=preferences.use_extended_paths_teracopy,
+                    use_extended_paths_unstoppable=preferences.use_extended_paths_unstoppable,
+                    use_extended_paths_external_copymove=preferences.use_extended_paths_external_copymove,
+                    use_extended_paths_cmd_delete=preferences.use_extended_paths_cmd_delete,
+                    use_extended_paths_powershell_delete=preferences.use_extended_paths_powershell_delete,
+                    use_extended_paths_rimraf=preferences.use_extended_paths_rimraf,
+                    use_extended_paths_external_delete=preferences.use_extended_paths_external_delete,
+                    script_editor_executable=preferences.default_editor_executable,
+                    teracopy_executable=preferences.teracopy_executable,
+                    teracopy_args_template=preferences.teracopy_args_template,
+                    unstoppable_executable=preferences.unstoppable_executable,
+                    unstoppable_args_template=preferences.unstoppable_args_template,
+                    generic_copymove_executable=preferences.generic_copymove_executable,
+                    generic_copymove_args_template=preferences.generic_copymove_args_template,
+                    generic_delete_executable=preferences.generic_delete_executable,
+                    generic_delete_args_template=preferences.generic_delete_args_template,
+                    robocopy_copy_args=preferences.robocopy_copy_args,
+                    robocopy_move_args=preferences.robocopy_move_args,
+                    cmd_delete_args=preferences.cmd_delete_args,
+                    powershell_delete_args=preferences.powershell_delete_args,
+                    rimraf_executable=preferences.rimraf_executable,
+                    rimraf_args_template=preferences.rimraf_args_template,
+                )
+            )
+        )
         self._apply_application_font(preferences)
         for window in list(self.windows):
             window.apply_ui_preferences(preferences)
@@ -67,6 +116,9 @@ class _ControllerSettingsStub:
             font.setPointSize(int(preferences.app_font_size_pt))
         self._app.setFont(font)
 
+    def show_queue_floating_window(self):
+        return None
+
 
 def _test_roots_provider(tmp_path: Path):
     root = tmp_path / "roots"
@@ -96,6 +148,38 @@ def _tracked_keys() -> list[str]:
         SettingsManager.ACTIVE_PANEL_TINT_INTENSITY_KEY,
         SettingsManager.TARGET_PANEL_TINT_COLOR_KEY,
         SettingsManager.TARGET_PANEL_TINT_INTENSITY_KEY,
+        SettingsManager.DEFAULT_COPY_MOVE_BACKEND_KEY,
+        SettingsManager.DEFAULT_DELETE_BACKEND_KEY,
+        SettingsManager.DEFAULT_OPERATION_DISPATCH_MODE_KEY,
+        SettingsManager.DEFAULT_OPERATION_CONFLICT_POLICY_KEY,
+        SettingsManager.OPERATION_SHORTCUT_BEHAVIOR_KEY,
+        SettingsManager.OPERATION_QUEUE_VIEW_MODE_KEY,
+        SettingsManager.DEFAULT_EDITOR_EXECUTABLE_KEY,
+        SettingsManager.DEFAULT_VIEWER_EXECUTABLE_KEY,
+        SettingsManager.FILE_OPEN_OVERRIDES_JSON_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_ROBOCOPY_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_TERACOPY_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_UNSTOPPABLE_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_EXTERNAL_COPYMOVE_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_CMD_DELETE_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_POWERSHELL_DELETE_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_RIMRAF_KEY,
+        SettingsManager.USE_EXTENDED_PATHS_EXTERNAL_DELETE_KEY,
+        SettingsManager.SCRIPT_EDITOR_EXECUTABLE_KEY,
+        SettingsManager.TERACOPY_EXECUTABLE_KEY,
+        SettingsManager.TERACOPY_ARGS_TEMPLATE_KEY,
+        SettingsManager.UNSTOPPABLE_EXECUTABLE_KEY,
+        SettingsManager.UNSTOPPABLE_ARGS_TEMPLATE_KEY,
+        SettingsManager.GENERIC_COPYMOVE_EXECUTABLE_KEY,
+        SettingsManager.GENERIC_COPYMOVE_ARGS_TEMPLATE_KEY,
+        SettingsManager.GENERIC_DELETE_EXECUTABLE_KEY,
+        SettingsManager.GENERIC_DELETE_ARGS_TEMPLATE_KEY,
+        SettingsManager.ROBOCOPY_COPY_ARGS_KEY,
+        SettingsManager.ROBOCOPY_MOVE_ARGS_KEY,
+        SettingsManager.CMD_DELETE_ARGS_KEY,
+        SettingsManager.POWERSHELL_DELETE_ARGS_KEY,
+        SettingsManager.RIMRAF_EXECUTABLE_KEY,
+        SettingsManager.RIMRAF_ARGS_TEMPLATE_KEY,
     ]
 
 
@@ -476,3 +560,180 @@ def test_settings_checkbox_changes_sync_existing_windows(
     assert second_panel.back_btn.isVisible() is False
     assert first_panel.current_tab().view.font().pointSize() == 15
     assert second_panel.current_tab().view.font().pointSize() == 15
+
+
+def test_settings_dialog_has_larger_minimum_size_and_operations_controls(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-size-ops",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    assert dialog.minimumWidth() >= 1080
+    assert dialog.minimumHeight() >= 760
+    dialog.search_edit.setText("teracopy executable")
+    qtbot.waitUntil(lambda: dialog._rows_by_key["teracopy_command"].isVisible())
+    assert dialog.teracopy_executable_edit.isVisible() is True
+    assert dialog.teracopy_args_edit.isVisible() is True
+
+
+def test_settings_dialog_has_left_section_tree_and_search_sync(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-tree",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    assert dialog._section_tree.topLevelItemCount() >= 5
+    operations_item = dialog._section_tree_items["operations"]
+    dialog._section_tree.setCurrentItem(operations_item)
+    qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is operations_item)
+
+    dialog.search_edit.setText("version")
+    qtbot.waitUntil(lambda: dialog._rows_by_key["about_version"].isVisible())
+    assert dialog._section_tree_items["operations"].isHidden() is True
+    assert dialog._section_tree_items["about"].isHidden() is False
+
+
+def test_settings_dialog_command_textboxes_expand_with_resize(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-width",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    dialog.search_edit.setText("teracopy command")
+    qtbot.waitUntil(lambda: dialog._rows_by_key["teracopy_command"].isVisible())
+    initial_width = dialog.teracopy_executable_edit.width()
+    dialog.resize(dialog.width() + 260, dialog.height())
+    qtbot.waitUntil(lambda: dialog.teracopy_executable_edit.width() > initial_width)
+
+
+def test_settings_dialog_open_with_and_extended_path_settings_persist(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-open-with",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    dialog.default_editor_executable_edit.setText(r"C:\tools\editor.exe")
+    dialog.default_viewer_executable_edit.setText(r"C:\tools\viewer.exe")
+    dialog.add_override_row_btn.click()
+    row = dialog.file_open_overrides_table.rowCount() - 1
+    dialog.file_open_overrides_table.item(row, 0).setText(".log")
+    dialog.file_open_overrides_table.item(row, 1).setText(r"C:\tools\logedit.exe")
+    dialog.file_open_overrides_table.item(row, 2).setText(r"C:\tools\logview.exe")
+    dialog.use_extended_paths_robocopy_checkbox.setChecked(True)
+    dialog.use_extended_paths_external_delete_checkbox.setChecked(True)
+    dialog._apply_and_commit()
+
+    persisted = isolated_settings.ui_preferences()
+    assert persisted.default_editor_executable == r"C:\tools\editor.exe"
+    assert persisted.default_viewer_executable == r"C:\tools\viewer.exe"
+    assert '".log"' in persisted.file_open_overrides_json
+    assert persisted.use_extended_paths_robocopy is True
+    assert persisted.use_extended_paths_external_delete is True
+
+
+def test_settings_dialog_removes_central_extended_paths_row(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-extended-paths-layout",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    assert "backend_extended_paths" not in dialog._rows_by_key
+    assert dialog.use_extended_paths_teracopy_checkbox.isVisible() is True
+    assert dialog.use_extended_paths_robocopy_checkbox.isVisible() is True
+
+
+def test_settings_dialog_backend_test_uses_unsaved_values(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager, monkeypatch
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-backend-test-unsaved",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    captured: dict[str, object] = {}
+
+    def _fake_execute(request, *, wait, preferences, artifacts):
+        captured["request"] = request
+        captured["wait"] = wait
+        captured["preferences"] = preferences
+        captured["artifacts"] = artifacts
+        return OperationResult(status="succeeded", message="ok", processed_count=2)
+
+    monkeypatch.setattr(
+        "many_panelz_explorer.dialogs.settings_dialog.execute_operation_request",
+        _fake_execute,
+    )
+    monkeypatch.setattr(
+        "many_panelz_explorer.dialogs.settings_dialog.QMessageBox.information",
+        lambda *_args: captured.setdefault("info", True),
+    )
+
+    unsaved_path = r"C:\tools\teracopy-custom.exe"
+    dialog.teracopy_executable_edit.setText(unsaved_path)
+    dialog.teracopy_test_btn.click()
+
+    request = captured["request"]
+    preferences = captured["preferences"]
+    assert request.backend_id == "teracopy"
+    assert request.kind == "copy"
+    assert captured["wait"] is True
+    assert preferences.teracopy_executable == unsaved_path
+    assert captured["info"] is True

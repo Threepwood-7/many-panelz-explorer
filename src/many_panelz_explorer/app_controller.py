@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, cast
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMainWindow
 from threep_commons.paths import configure_qsettings, resolve_app_data_dir
 
 from .constants import (
@@ -13,6 +13,14 @@ from .constants import (
     APP_IDENTITY,
     SETTINGS_APP_NAME,
     SETTINGS_ORG_NAME,
+)
+from . import file_ops
+from .operation_queue_widgets import OperationQueuePanel, OperationQueueTableModel
+from .operations import (
+    OperationExecutionPreferences,
+    OperationQueueManager,
+    resolve_companion_tool_paths,
+    resolve_system_command_paths,
 )
 from .settings import SettingsManager, UiPreferences
 from .window import ExplorerWindow
@@ -37,8 +45,21 @@ class AppController:
         self._default_app_font = QFont(self.app.font())
 
         self.settings = SettingsManager()
-        self._apply_application_font(self.settings.ui_preferences())
+        self._bootstrap_companion_tools_once()
+        initial_preferences = self.settings.ui_preferences()
+        self._apply_application_font(initial_preferences)
+        self._apply_file_open_routing(initial_preferences)
+        self.operation_queue_manager = OperationQueueManager(
+            preferences=self._preferences_to_operation_execution(
+                initial_preferences
+            ),
+            parent=self.app,
+        )
+        self.operation_queue_model = OperationQueueTableModel(
+            self.operation_queue_manager
+        )
         self.windows: list[ExplorerWindow] = []
+        self._queue_windows: list[QMainWindow] = []
         self._is_raising_windows = False
         self._activation_pass_done_for_current_active_state = False
         self._last_closed_window_id: str | None = None
@@ -155,6 +176,10 @@ class AppController:
 
     def preview_ui_preferences(self, preferences: UiPreferences) -> None:
         self._apply_application_font(preferences)
+        self._apply_file_open_routing(preferences)
+        self.operation_queue_manager.set_preferences(
+            self._preferences_to_operation_execution(preferences)
+        )
         for window in list(self.windows):
             window.apply_ui_preferences(preferences)
 
@@ -190,3 +215,102 @@ class AppController:
         if size_pt > 0:
             font.setPointSize(size_pt)
         return font
+
+    def _apply_file_open_routing(self, preferences: UiPreferences) -> None:
+        file_ops.configure_open_routing(
+            default_editor_executable=preferences.default_editor_executable,
+            default_viewer_executable=preferences.default_viewer_executable,
+            overrides_json=preferences.file_open_overrides_json,
+        )
+
+    def show_queue_floating_window(self) -> QMainWindow:
+        for existing in list(self._queue_windows):
+            if existing.isVisible():
+                existing.raise_()
+                existing.activateWindow()
+                return existing
+        window = QMainWindow()
+        window.setWindowTitle("Operation Queue")
+        panel = OperationQueuePanel(
+            manager=self.operation_queue_manager,
+            model=self.operation_queue_model,
+            parent=window,
+        )
+        window.setCentralWidget(panel)
+        window.resize(900, 380)
+        window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        window.destroyed.connect(
+            lambda _obj=None, w=window: self._on_queue_window_destroyed(w)
+        )
+        self._queue_windows.append(window)
+        window.show()
+        window.raise_()
+        return window
+
+    def _on_queue_window_destroyed(self, window: QMainWindow) -> None:
+        if window in self._queue_windows:
+            self._queue_windows.remove(window)
+
+    def _preferences_to_operation_execution(
+        self,
+        preferences: UiPreferences,
+    ) -> OperationExecutionPreferences:
+        resolved_cmd, resolved_robocopy = resolve_system_command_paths()
+        return OperationExecutionPreferences(
+            default_copy_move_backend=preferences.default_copy_move_backend,
+            default_delete_backend=preferences.default_delete_backend,
+            default_dispatch_mode=preferences.default_operation_dispatch_mode,
+            default_conflict_policy=preferences.default_operation_conflict_policy,
+            shortcut_behavior=preferences.operation_shortcut_behavior,
+            queue_view_mode=preferences.operation_queue_view_mode,
+            default_editor_executable=preferences.default_editor_executable,
+            default_viewer_executable=preferences.default_viewer_executable,
+            file_open_overrides_json=preferences.file_open_overrides_json,
+            use_extended_paths_robocopy=preferences.use_extended_paths_robocopy,
+            use_extended_paths_teracopy=preferences.use_extended_paths_teracopy,
+            use_extended_paths_unstoppable=preferences.use_extended_paths_unstoppable,
+            use_extended_paths_external_copymove=preferences.use_extended_paths_external_copymove,
+            use_extended_paths_cmd_delete=preferences.use_extended_paths_cmd_delete,
+            use_extended_paths_powershell_delete=preferences.use_extended_paths_powershell_delete,
+            use_extended_paths_rimraf=preferences.use_extended_paths_rimraf,
+            use_extended_paths_external_delete=preferences.use_extended_paths_external_delete,
+            script_editor_executable=preferences.default_editor_executable,
+            teracopy_executable=preferences.teracopy_executable,
+            teracopy_args_template=preferences.teracopy_args_template,
+            unstoppable_executable=preferences.unstoppable_executable,
+            unstoppable_args_template=preferences.unstoppable_args_template,
+            generic_copymove_executable=preferences.generic_copymove_executable,
+            generic_copymove_args_template=preferences.generic_copymove_args_template,
+            generic_delete_executable=preferences.generic_delete_executable,
+            generic_delete_args_template=preferences.generic_delete_args_template,
+            robocopy_copy_args=preferences.robocopy_copy_args,
+            robocopy_move_args=preferences.robocopy_move_args,
+            cmd_delete_args=preferences.cmd_delete_args,
+            powershell_delete_args=preferences.powershell_delete_args,
+            rimraf_executable=preferences.rimraf_executable,
+            rimraf_args_template=preferences.rimraf_args_template,
+            resolved_cmd_path=resolved_cmd,
+            resolved_robocopy_path=resolved_robocopy,
+        )
+
+    def _bootstrap_companion_tools_once(self) -> None:
+        if self.settings.ops_companion_bootstrap_done:
+            return
+        preferences = self.settings.ui_preferences()
+        resolved = resolve_companion_tool_paths(
+            self._preferences_to_operation_execution(preferences)
+        )
+        changed = False
+        if preferences.teracopy_executable != resolved.teracopy_executable:
+            self.settings.teracopy_executable = resolved.teracopy_executable
+            changed = True
+        if preferences.unstoppable_executable != resolved.unstoppable_executable:
+            self.settings.unstoppable_executable = resolved.unstoppable_executable
+            changed = True
+        if preferences.rimraf_executable != resolved.rimraf_executable:
+            self.settings.rimraf_executable = resolved.rimraf_executable
+            changed = True
+        self.settings.ops_companion_bootstrap_done = True
+        changed = True
+        if changed:
+            self.settings.sync()
