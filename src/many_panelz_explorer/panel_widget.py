@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-from PySide6.QtCore import QEvent, QObject, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QObject, QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import QKeyEvent, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
@@ -128,20 +128,6 @@ class PanelWidget(QWidget):
 
         toolbar = QHBoxLayout()
 
-        self.back_btn = QPushButton("<")
-        self.back_btn.setMinimumWidth(0)
-        self.back_btn.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
-        self.back_btn.clicked.connect(self._go_back)
-        toolbar.addWidget(self.back_btn)
-
-        self.forward_btn = QPushButton(">")
-        self.forward_btn.setMinimumWidth(0)
-        self.forward_btn.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
-        )
-        self.forward_btn.clicked.connect(self._go_forward)
-        toolbar.addWidget(self.forward_btn)
-
         self.refresh_btn = QPushButton("Refresh")
         self.refresh_btn.setMinimumWidth(0)
         self.refresh_btn.setSizePolicy(
@@ -177,16 +163,30 @@ class PanelWidget(QWidget):
         )
         toolbar.addWidget(self.address_edit, 1)
 
+        self.back_btn = QPushButton("<")
+        self.back_btn.setMinimumWidth(28)
+        self.back_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.back_btn.clicked.connect(self._go_back)
+        toolbar.addWidget(self.back_btn)
+
+        self.forward_btn = QPushButton(">")
+        self.forward_btn.setMinimumWidth(28)
+        self.forward_btn.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+        )
+        self.forward_btn.clicked.connect(self._go_forward)
+        toolbar.addWidget(self.forward_btn)
+
         self.up_btn = QPushButton("..")
-        self.up_btn.setMinimumWidth(0)
-        self.up_btn.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        self.up_btn.setMinimumWidth(32)
+        self.up_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.up_btn.clicked.connect(self._go_up)
         toolbar.addWidget(self.up_btn)
 
         self.root_btn = QPushButton("\\")
-        self.root_btn.setMinimumWidth(0)
+        self.root_btn.setMinimumWidth(28)
         self.root_btn.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
         self.root_btn.clicked.connect(self._go_root)
         toolbar.addWidget(self.root_btn)
@@ -290,7 +290,9 @@ class PanelWidget(QWidget):
         return tab
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
-        if obj is self and event.type() == QEvent.Type.Resize:
+        if event.type() == QEvent.Type.Resize and (
+            obj is self or self._is_active_files_list_source(obj)
+        ):
             self._position_filter_overlay()
             return super().eventFilter(obj, event)
         if event.type() == QEvent.Type.KeyPress:
@@ -311,7 +313,9 @@ class PanelWidget(QWidget):
             ):
                 self._show_history_menu()
                 return True
-            if self._should_start_inline_filter(key_event):
+            if self._is_active_files_list_source(
+                obj
+            ) and self._should_start_inline_filter(key_event):
                 self._show_filter_overlay(seed_text=key_event.text())
                 return True
         return super().eventFilter(obj, event)
@@ -738,9 +742,32 @@ class PanelWidget(QWidget):
             tab.clear_inline_filter()
 
     def _position_filter_overlay(self) -> None:
+        margin = 8
+        height = 30
+        tab = self.current_tab()
+        if tab is not None:
+            view = tab.view
+            view_top_left = view.mapTo(self, QPoint(0, 0))
+            view_width = max(1, view.width())
+            view_height = max(1, view.height())
+            desired_width = max(220, int(view_width * 0.35))
+            max_width = max(1, view_width - (margin * 2))
+            width = min(desired_width, max_width)
+            x = max(
+                view_top_left.x() + margin,
+                view_top_left.x() + view_width - margin - width,
+            )
+            y = max(
+                view_top_left.y() + margin,
+                view_top_left.y() + view_height - margin - height,
+            )
+            self.filter_edit.setGeometry(x, y, width, height)
+            self.filter_edit.raise_()
+            return
+
         width = max(220, int(self.width() * 0.35))
-        x = max(8, self.width() - width - 8)
-        self.filter_edit.setGeometry(x, 8, width, 30)
+        x = max(margin, self.width() - width - margin)
+        self.filter_edit.setGeometry(x, margin, width, height)
         self.filter_edit.raise_()
 
     def _show_filter_overlay(self, *, seed_text: str) -> None:
@@ -772,6 +799,12 @@ class PanelWidget(QWidget):
         if len(text) != 1 or text.isspace():
             return False
         return text.isprintable()
+
+    def _is_active_files_list_source(self, obj: QObject) -> bool:
+        tab = self.current_tab()
+        if tab is None:
+            return False
+        return obj is tab.view
 
     def _focus_current_view(self) -> None:
         tab = self.current_tab()

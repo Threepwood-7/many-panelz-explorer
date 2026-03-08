@@ -8,7 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6")
 pytest.importorskip("pytestqt")
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
 
 import many_panelz_explorer.panel_widget as panel_widget_module
@@ -421,6 +421,91 @@ def test_type_to_focus_shows_transient_filter_overlay(qtbot, tmp_path: Path) -> 
     assert tab.model.nameFilters() == ["*a*"]
 
     QTest.keyClick(panel.filter_edit, Qt.Key_Escape)
+    assert panel.filter_edit.isVisible() is False
+    assert tab.model.nameFilters() == []
+
+
+def test_filter_overlay_appears_in_bottom_right_of_file_list(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "alpha.txt").write_text("a", encoding="utf-8")
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.resize(920, 520)
+    panel.show()
+    tab = panel.add_tab(root)
+    tab.view.setFocus()
+
+    QTest.keyClick(tab.view, Qt.Key_A)
+    qtbot.waitUntil(lambda: panel.filter_edit.isVisible())
+
+    overlay_rect = panel.filter_edit.geometry()
+    view_top_left = tab.view.mapTo(panel, QPoint(0, 0))
+    view_right = view_top_left.x() + tab.view.width()
+    view_bottom = view_top_left.y() + tab.view.height()
+
+    assert overlay_rect.right() <= view_right
+    assert overlay_rect.bottom() <= view_bottom
+    assert abs((view_right - overlay_rect.right()) - 8) <= 2
+    assert abs((view_bottom - overlay_rect.bottom()) - 8) <= 2
+
+
+def test_type_to_focus_does_not_show_filter_overlay_from_address_bar(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "alpha.txt").write_text("a", encoding="utf-8")
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    tab = panel.add_tab(root)
+    assert tab.model.nameFilters() == []
+
+    panel.address_edit.setFocus()
+    QTest.keyClick(panel.address_edit, Qt.Key_A)
+
+    qtbot.wait(50)
+    assert panel.filter_edit.isVisible() is False
+    assert tab.model.nameFilters() == []
+
+
+def test_type_to_focus_does_not_show_filter_overlay_from_toolbar_button(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "alpha.txt").write_text("a", encoding="utf-8")
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    tab = panel.add_tab(root)
+    assert tab.model.nameFilters() == []
+
+    panel.back_btn.setFocus()
+    QTest.keyClick(panel.back_btn, Qt.Key_A)
+
+    qtbot.wait(50)
     assert panel.filter_edit.isVisible() is False
     assert tab.model.nameFilters() == []
 
