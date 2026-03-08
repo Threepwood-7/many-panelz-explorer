@@ -8,7 +8,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6")
 pytest.importorskip("pytestqt")
 
-from PySide6.QtCore import QDir
+from PySide6.QtCore import QDir, Qt
+from PySide6.QtTest import QTest
 
 from many_panelz_explorer.settings import SettingsManager
 from many_panelz_explorer.window import ExplorerWindow
@@ -53,7 +54,11 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
 
     assert window._new_horizontal_panel_action.shortcut().toString() == "Ctrl+H"
     window._new_horizontal_panel_action.trigger()
-    assert len(window.panel_widgets) == 3
+    assert len(window.panel_widgets) == 4
+
+    assert window._copy_to_target_action.shortcut().toString() == "F5"
+    assert window._move_to_target_action.shortcut().toString() == "F6"
+    assert window._delete_selection_action.shortcut().toString() == "F8"
 
     assert window._close_window_action.shortcut().toString() == "Alt+W"
     exit_shortcuts = {seq.toString() for seq in window._exit_action.shortcuts()}
@@ -90,7 +95,7 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
         (action for action in view_menu.actions() if action.text() == "&Refresh"), None
     )
     assert refresh_action is not None
-    assert refresh_action.shortcut().toString() == "F5"
+    assert refresh_action.shortcut().toString() == "Ctrl+R"
 
     help_menu = window.menuBar().actions()[2].menu()
     assert help_menu is not None
@@ -121,3 +126,77 @@ def test_hidden_action_updates_model_filter(qtbot, tmp_path: Path) -> None:
 
     window._show_hidden_action.setChecked(True)
     assert tab.model.filter() & QDir.Hidden
+
+
+def test_menu_activation_from_view_filter_and_address(qtbot, tmp_path: Path) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="smoke-menu-activation",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+    window.activateWindow()
+    window.raise_()
+
+    panel = window.active_panel()
+    assert panel is not None
+    tab = panel.current_tab()
+    assert tab is not None
+
+    menu_bar = window.menuBar()
+    file_action = menu_bar.actions()[0]
+    file_menu = menu_bar.actions()[0].menu()
+    assert file_menu is not None
+
+    tab.view.setFocus()
+    QTest.keyPress(tab.view, Qt.Key_Alt)
+    QTest.keyRelease(tab.view, Qt.Key_Alt)
+    qtbot.waitUntil(
+        lambda: file_menu.isVisible() or menu_bar.activeAction() is file_action
+    )
+    file_menu.close()
+
+    panel._show_filter_overlay(seed_text="")
+    panel.filter_edit.setFocus()
+    QTest.keyClick(panel.filter_edit, Qt.Key_F10)
+    qtbot.waitUntil(
+        lambda: file_menu.isVisible() or menu_bar.activeAction() is file_action
+    )
+    file_menu.close()
+
+    panel.address_edit.setFocus()
+    QTest.keyClick(panel.address_edit, Qt.Key_F, Qt.AltModifier)
+    qtbot.waitUntil(
+        lambda: file_menu.isVisible() or menu_bar.activeAction() is file_action
+    )
+    file_menu.close()
+
+
+def test_menu_mouse_click_opens_each_main_menu(qtbot, tmp_path: Path) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="smoke-menu-click",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+    window.activateWindow()
+    window.raise_()
+
+    menu_bar = window.menuBar()
+    for action in menu_bar.actions()[:3]:
+        menu = action.menu()
+        assert menu is not None
+        target = menu_bar.actionGeometry(action).center()
+        QTest.mouseClick(menu_bar, Qt.LeftButton, Qt.NoModifier, target)
+        qtbot.waitUntil(
+            lambda m=menu, a=action: m.isVisible() or menu_bar.activeAction() is a
+        )
+        menu.close()

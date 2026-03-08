@@ -142,7 +142,7 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
     assert cloned_panel_vertical.tabs.currentIndex() == source_current_index
 
     window._clone_horizontal_panel_action.trigger()
-    assert len(window.panel_widgets) == 3
+    assert len(window.panel_widgets) == 4
     cloned_panel_horizontal = window.active_panel()
     assert cloned_panel_horizontal is not None
     assert cloned_panel_horizontal.tab_count() == source_tab_count
@@ -324,3 +324,159 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     qtbot.addWidget(restored)
     assert len(restored.panel_widgets) == 2
     assert restored._on_top_action.isChecked() is True
+
+
+def test_split_behaviour_uses_full_width_rows(qtbot, tmp_path: Path) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="rows-contract",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    assert [len(row) for row in window._layout_rows] == [1]
+
+    window._new_vertical_panel_action.trigger()
+    assert [len(row) for row in window._layout_rows] == [2]
+
+    window._new_horizontal_panel_action.trigger()
+    assert [len(row) for row in window._layout_rows] == [2, 2]
+
+    window._new_vertical_panel_action.trigger()
+    assert [len(row) for row in window._layout_rows] == [2, 3]
+
+
+def test_copy_to_target_uses_last_active_non_source_panel(
+    qtbot, tmp_path: Path, monkeypatch
+) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="target-resolution",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    window._new_vertical_panel_action.trigger()
+    window._new_horizontal_panel_action.trigger()
+    assert len(window.panel_widgets) == 4
+
+    ordered_ids = [pid for row in window._layout_rows for pid in row]
+    source_id = ordered_ids[0]
+    preferred_target_id = ordered_ids[-1]
+    source_panel = window.panel_widgets[source_id]
+    target_panel = window.panel_widgets[preferred_target_id]
+
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    src_file = src_dir / "a.txt"
+    src_file.write_text("a", encoding="utf-8")
+    dst_dir = tmp_path / "dst"
+    dst_dir.mkdir()
+
+    source_panel.current_tab().set_path(src_dir)
+    target_panel.current_tab().set_path(dst_dir)
+
+    monkeypatch.setattr(
+        source_panel.current_tab(), "selected_paths", lambda: [src_file]
+    )
+    captured: list[Path] = []
+    monkeypatch.setattr(
+        window,
+        "_copy_or_move_one",
+        lambda **kwargs: captured.append(Path(kwargs["destination_dir"])) or "done",
+    )
+
+    window._set_active_panel(preferred_target_id)
+    window._set_active_panel(source_id)
+    window._copy_to_target_action.trigger()
+
+    assert captured == [dst_dir]
+    assert source_panel._pane_role == "active"
+    assert target_panel._pane_role == "target"
+
+
+def test_copy_or_move_conflict_choices(qtbot, tmp_path: Path, monkeypatch) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="conflict-policy",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    source = tmp_path / "source.txt"
+    source.write_text("src", encoding="utf-8")
+    destination_dir = tmp_path / "dest"
+    destination_dir.mkdir()
+    existing = destination_dir / "source.txt"
+    existing.write_text("dst", encoding="utf-8")
+
+    monkeypatch.setattr(window, "_prompt_conflict_resolution", lambda *_a, **_k: "skip")
+    assert window._copy_or_move_one(
+        source=source, destination_dir=destination_dir, move=False
+    ) == "skip"
+    assert existing.read_text(encoding="utf-8") == "dst"
+
+    monkeypatch.setattr(window, "_prompt_conflict_resolution", lambda *_a, **_k: "rename")
+    assert window._copy_or_move_one(
+        source=source, destination_dir=destination_dir, move=False
+    ) == "done"
+    assert (destination_dir / "source (1).txt").exists()
+
+    monkeypatch.setattr(
+        window, "_prompt_conflict_resolution", lambda *_a, **_k: "overwrite"
+    )
+    source.write_text("new", encoding="utf-8")
+    assert window._copy_or_move_one(
+        source=source, destination_dir=destination_dir, move=False
+    ) == "done"
+    assert existing.read_text(encoding="utf-8") == "new"
+
+    monkeypatch.setattr(window, "_prompt_conflict_resolution", lambda *_a, **_k: "cancel")
+    assert window._copy_or_move_one(
+        source=source, destination_dir=destination_dir, move=False
+    ) == "cancel"
+
+
+def test_column_width_sync_stays_within_active_pane_tabs(
+    qtbot, tmp_path: Path
+) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="column-sync-scope",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    window._new_vertical_panel_action.trigger()
+    ordered_ids = [pid for row in window._layout_rows for pid in row]
+    assert len(ordered_ids) >= 2
+    first_panel = window.panel_widgets[ordered_ids[0]]
+    second_panel = window.panel_widgets[ordered_ids[1]]
+
+    first_primary = first_panel.current_tab()
+    first_secondary = first_panel.add_tab(first_panel.current_path())
+    second_tab = second_panel.current_tab()
+    assert first_primary is not None
+    assert first_secondary is not None
+    assert second_tab is not None
+
+    second_original = second_tab.view.columnWidth(0)
+    first_primary.view.setColumnWidth(0, 360)
+    qtbot.waitUntil(lambda: first_secondary.view.columnWidth(0) == 360)
+    assert second_tab.view.columnWidth(0) == second_original

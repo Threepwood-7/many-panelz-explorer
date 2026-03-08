@@ -20,12 +20,13 @@ A multi-panel, Windows-focused file explorer built with PySide6. Supports splitt
 
 ## Features
 
-- **Multi-panel layout** - split views with horizontal and vertical pane arrangements using a binary tree-based layout system
+- **Multi-pane layout** - full-width row-based pane arrangements with tree-backed persistence
 - **Tabbed navigation** - multiple tabs per panel for managing different folder contexts
-- **Panel management** - create, split (vertical/horizontal), clone, and close panels freely
+- **Pane management** - create/clone horizontal rows and add vertical panes within active rows
 - **File operations** - copy, cut, paste, rename, delete (to Recycle Bin via send2trash)
 - **Folder operations** - create new folders, ZIP create/extract
 - **Navigation** - back/forward/up buttons, address bar, root/drive buttons, history menu
+- **Commander-style pane actions** - F5 copy to target pane, F6 move to target pane, F8 delete
 - **Saved views** - save and restore named workspace layouts across sessions
 - **Multi-window sessions** - persistent window state (geometry, panels, tabs) restored on restart
 - **Selection memory** - remembers selected files when navigating back to a previously visited folder
@@ -134,14 +135,19 @@ Runtime settings are stored via QSettings:
 |---|---|
 | **Window/Panel Management** | |
 | Ctrl+T | New tab in active panel |
-| Ctrl+P | New vertical panel (horizontal split) |
-| Ctrl+H | New horizontal panel (vertical split) |
+| Ctrl+P | New vertical panel (active row only) |
+| Ctrl+H | New horizontal panel (new full-width row) |
 | Ctrl+N | New window |
 | Ctrl+W | Close tab |
 | Ctrl+Shift+W | Close panel |
 | Alt+W | Close window |
 | Ctrl+Q / Alt+X | Exit application |
-| F5 | Refresh active panel |
+| F5 | Copy selected to target pane |
+| F6 | Move selected to target pane |
+| F8 | Delete selected |
+| Tab / Shift+Tab | Cycle active pane |
+| Ctrl+R | Refresh active pane |
+| Alt / F10 | Focus File menu |
 | F1 | Show help |
 | **Navigation** | |
 | Alt+Left | Back |
@@ -159,6 +165,9 @@ Runtime settings are stored via QSettings:
 - New Horizontal Panel (Ctrl+H)
 - Clone Current Panel (Vertical)
 - Clone Current Panel (Horizontal)
+- Copy to Target Pane (F5)
+- Move to Target Pane (F6)
+- Delete Selection (F8)
 - New Window (Ctrl+N)
 - Clone Current Window
 - Save View / Restore View / Replace View
@@ -166,7 +175,7 @@ Runtime settings are stored via QSettings:
 - Exit (Ctrl+Q, Alt+X)
 
 **View**:
-- Refresh (F5)
+- Refresh (Ctrl+R)
 - On top (checkable toggle)
 - Show hidden files (checkable toggle)
 
@@ -197,6 +206,7 @@ many-panelz-explorer/
 |       |-- window.py                # Main QMainWindow with menu bar and panel layout
 |       |-- panel_widget.py          # Panel container: tabs, toolbar, focus handling
 |       |-- explorer_tab.py          # Individual file browser tab with QTreeView
+|       |-- fast_dir_model.py        # Worker-threaded directory listing/sort model
 |       |-- panel_tree.py            # Pure data model for binary split tree layout
 |       |-- file_ops.py              # File operations: copy/move/delete, ZIP, rename
 |       |-- settings.py              # QSettings wrapper with JSON support
@@ -225,14 +235,15 @@ many-panelz-explorer/
 
 - `src/` layout with `many_panelz_explorer` package.
 - `AppController` manages multiple windows, session save/restore, and window activation loop guards.
-- **Binary tree layout model** (`panel_tree.py`): pure data model (`LeafNode`/`SplitNode`) for splittable panel arrangements, serializable to JSON with no Qt dependencies.
+- **Row-first layout model** with tree serialization (`panel_tree.py`): runtime behavior enforces full-width rows, while state remains serialized as `LeafNode`/`SplitNode` JSON.
 - `Window` (`window.py`) is the main QMainWindow with menu bar and panel layout management.
 - `PanelWidget` contains tabs, toolbar (back/forward/address bar/root buttons), and focus handling.
 - `ExplorerTab` is an individual file browser tab with `QTreeView`, context menu, and file operations.
-- **Single-threaded** Qt event loop — no background workers. File operations are synchronous with error handling via `_run_action()` wrappers.
+- `fast_dir_model.py` uses worker-threaded directory scans to keep folder listing responsive on large paths.
+- File operations remain synchronous in the UI thread, with error handling via `_run_action()` wrappers.
 - `mounts.py` provides platform-specific root/drive discovery (Windows kernel32 APIs, Qt volume info, POSIX fallback).
 - All UI state (panel tree, tabs, geometry) serialized as JSON/base64 in QSettings for persistence.
-- Selection restoration uses a timer-based retry loop (8 attempts, 25ms delay) since `QFileSystemModel` may not have indexed files immediately after directory load.
+- Selection restoration uses a timer-based retry loop (8 attempts, 25ms delay) while async directory loads complete.
 
 ## Development
 

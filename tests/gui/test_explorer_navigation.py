@@ -1,4 +1,5 @@
 import os
+import time
 from pathlib import Path
 
 import pytest
@@ -115,7 +116,9 @@ def test_back_and_up_restore_previous_selection(qtbot, tmp_path: Path) -> None:
 
     QTest.keyClick(tab.view, Qt.Key_Left)
     assert tab.current_path() == a
-    assert Path(tab.model.filePath(tab.view.currentIndex())) == child
+    qtbot.waitUntil(
+        lambda: Path(tab.model.filePath(tab.view.currentIndex())) == child
+    )
 
     other_index = tab.model.index(str(other))
     tab.view.selectionModel().setCurrentIndex(other_index, flags)
@@ -124,7 +127,9 @@ def test_back_and_up_restore_previous_selection(qtbot, tmp_path: Path) -> None:
 
     QTest.keyClick(tab.view, Qt.Key_Left, Qt.AltModifier)
     assert tab.current_path() == a
-    assert Path(tab.model.filePath(tab.view.currentIndex())) == other
+    qtbot.waitUntil(
+        lambda: Path(tab.model.filePath(tab.view.currentIndex())) == other
+    )
 
 
 def test_file_columns_format_and_directories_first(qtbot, tmp_path: Path) -> None:
@@ -191,3 +196,48 @@ def test_parent_entry_shown_except_at_drive_root(qtbot, tmp_path: Path) -> None:
             tab.model.data(tab.model.index(0, 0, tab.view.rootIndex()), Qt.DisplayRole)
         )
         assert first_root_name != ".."
+
+
+def test_non_name_sort_columns_use_compatibility_fallback(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "sort-root"
+    root.mkdir()
+    small = root / "small.txt"
+    large = root / "large.txt"
+    small.write_bytes(b"a")
+    large.write_bytes(b"b" * 50)
+
+    tab = ExplorerTab(initial_path=root)
+    qtbot.addWidget(tab)
+    tab.show()
+    qtbot.waitUntil(lambda: tab.model.index(str(large)).isValid())
+
+    tab.view.sortByColumn(2, Qt.SortOrder.DescendingOrder)
+    qtbot.waitUntil(
+        lambda: Path(tab.model.filePath(tab.model.index(1, 0))) == large,
+    )
+    assert Path(tab.model.filePath(tab.model.index(2, 0))) == small
+
+
+def test_large_directory_loading_is_async_and_responsive(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "large-root"
+    root.mkdir()
+    for index in range(5000):
+        (root / f"item-{index:04d}.txt").write_text("", encoding="utf-8")
+
+    tab = ExplorerTab(initial_path=tmp_path)
+    qtbot.addWidget(tab)
+    tab.show()
+
+    started = time.perf_counter()
+    tab.set_path(root)
+    elapsed = time.perf_counter() - started
+    assert elapsed < 0.3
+
+    qtbot.waitUntil(
+        lambda: tab.model.rowCount(tab.view.rootIndex()) >= 5000,
+        timeout=20000,
+    )

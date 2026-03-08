@@ -298,10 +298,15 @@ def test_column_widths_sync_across_tabs_in_panel(qtbot, tmp_path: Path) -> None:
     assert first_tab is not None
     assert second_tab is not None
 
+    original_width = second_tab.view.columnWidth(0)
     first_tab.view.setColumnWidth(0, 420)
+    qtbot.wait(40)
+    assert second_tab.view.columnWidth(0) == original_width
     qtbot.waitUntil(lambda: second_tab.view.columnWidth(0) == 420)
 
     second_tab.view.setColumnWidth(2, 260)
+    qtbot.wait(40)
+    assert first_tab.view.columnWidth(2) != 260
     qtbot.waitUntil(lambda: first_tab.view.columnWidth(2) == 260)
 
 
@@ -367,3 +372,119 @@ def test_column_widths_persist_in_panel_state(qtbot, tmp_path: Path) -> None:
     assert restored_tab.view.columnWidth(1) == 140
     assert restored_tab.view.columnWidth(2) == 220
     assert restored_tab.view.columnWidth(3) == 180
+
+
+def test_panel_controls_do_not_enforce_minimum_widths(qtbot, tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        show_root_dropdown=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    panel.add_tab(root)
+
+    assert panel.minimumWidth() == 0
+    assert panel.root_combo.minimumWidth() == 0
+    assert panel.address_edit.minimumWidth() == 0
+    assert panel.tabs.minimumWidth() == 0
+    assert panel.tabs.tabBar().minimumWidth() == 0
+    assert panel.tabs.tabBar().elideMode() == Qt.TextElideMode.ElideRight
+    assert panel.tabs.tabBar().usesScrollButtons() is False
+
+
+def test_type_to_focus_shows_transient_filter_overlay(qtbot, tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "alpha.txt").write_text("a", encoding="utf-8")
+    (root / "beta.txt").write_text("b", encoding="utf-8")
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    tab = panel.add_tab(root)
+    tab.view.setFocus()
+
+    QTest.keyClick(tab.view, Qt.Key_A)
+    qtbot.waitUntil(lambda: panel.filter_edit.isVisible())
+    assert panel.filter_edit.text().lower() == "a"
+    assert tab.model.nameFilters() == ["*a*"]
+
+    QTest.keyClick(panel.filter_edit, Qt.Key_Escape)
+    assert panel.filter_edit.isVisible() is False
+    assert tab.model.nameFilters() == []
+
+
+def test_root_controls_fallback_when_provider_returns_empty(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    panel.add_tab(root)
+
+    assert panel.root_buttons
+    assert panel._root_paths
+
+
+def test_root_controls_fallback_when_provider_raises(qtbot, tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+
+    def _raising_provider(_current):
+        raise RuntimeError("roots unavailable")
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=_raising_provider,
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    panel.add_tab(root)
+
+    assert panel.root_buttons
+    assert panel._root_paths
+
+
+def test_root_buttons_host_remains_visible_under_narrow_width(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    child = root / "child"
+    child.mkdir()
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [root, child],
+    )
+    qtbot.addWidget(panel)
+    panel.resize(260, 180)
+    panel.show()
+    panel.add_tab(root)
+    qtbot.waitUntil(lambda: panel.root_buttons_host.isVisible())
+
+    assert panel.root_buttons_host.width() > 0
+    assert panel.root_buttons

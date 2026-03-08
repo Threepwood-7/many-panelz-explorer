@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import TYPE_CHECKING, cast
 
 from PySide6.QtCore import (
     QDir,
@@ -10,7 +10,6 @@ from PySide6.QtCore import (
     QItemSelectionModel,
     QModelIndex,
     QObject,
-    QPersistentModelIndex,
     QPoint,
     Qt,
     QTimer,
@@ -20,7 +19,6 @@ from PySide6.QtGui import QAction, QKeyEvent, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
-    QFileSystemModel,
     QInputDialog,
     QMenu,
     QMessageBox,
@@ -28,71 +26,14 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from shiboken6 import isValid
 
 from . import file_ops
 from .dialogs.properties_dialog import PropertiesDialog
+from .fast_dir_model import FastDirModel
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-
-class ExplorerFileSystemModel(QFileSystemModel):
-    _COLUMN_HEADERS: ClassVar[dict[int, str]] = {
-        0: "Name",
-        1: "Ext",
-        2: "Size",
-        3: "Date",
-    }
-
-    def data(
-        self,
-        index: QModelIndex | QPersistentModelIndex,
-        role: int = int(Qt.ItemDataRole.DisplayRole),
-    ) -> object:
-        if not index.isValid():
-            return super().data(index, role)
-
-        if role == int(Qt.ItemDataRole.DisplayRole):
-            info = self.fileInfo(index)
-            column = index.column()
-
-            if column == 0:
-                name = str(super().data(index, role))
-                if name == "..":
-                    return ".."
-                return f"[{name}]" if info.isDir() else name
-            if column == 1:
-                if info.isDir():
-                    return ""
-                return Path(info.fileName()).suffix.lstrip(".")
-            if column == 2:
-                if info.isDir():
-                    return ""
-                return f"{int(info.size()):,}"
-            if column == 3:
-                modified = info.lastModified()
-                return (
-                    modified.toString("yyyy-MM-dd HH:mm") if modified.isValid() else ""
-                )
-
-        if role == int(Qt.ItemDataRole.TextAlignmentRole) and index.column() == 2:
-            return int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-
-        return super().data(index, role)
-
-    def headerData(
-        self,
-        section: int,
-        orientation: Qt.Orientation,
-        role: int = int(Qt.ItemDataRole.DisplayRole),
-    ) -> object:
-        if (
-            orientation == Qt.Orientation.Horizontal
-            and role == int(Qt.ItemDataRole.DisplayRole)
-            and section in self._COLUMN_HEADERS
-        ):
-            return self._COLUMN_HEADERS[section]
-        return super().headerData(section, orientation, role)
 
 
 class ExplorerTab(QWidget):
@@ -115,11 +56,12 @@ class ExplorerTab(QWidget):
         self._syncing_column_widths = False
         self._pending_column_widths: list[int] = []
         self._show_parent_entry = True
+        self._inline_filter_text = ""
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
 
-        self.model = ExplorerFileSystemModel(self)
+        self.model = FastDirModel(self)
         self.model.setReadOnly(False)
         self._apply_hidden_filter()
         self.model.directoryLoaded.connect(self._on_directory_loaded)
@@ -135,9 +77,9 @@ class ExplorerTab(QWidget):
         self.view.doubleClicked.connect(self._on_item_activated)
         self.view.activated.connect(self._on_item_activated)
         self.view.setDragEnabled(True)
-        self.view.setAcceptDrops(True)
-        self.view.setDropIndicatorShown(True)
-        self.view.setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)
+        self.view.setAcceptDrops(False)
+        self.view.setDropIndicatorShown(False)
+        self.view.setDragDropMode(QAbstractItemView.DragDropMode.DragOnly)
         self.view.setSortingEnabled(True)
         self.view.header().sectionResized.connect(self._on_column_resized)
         self.view.installEventFilter(self)
@@ -213,6 +155,24 @@ class ExplorerTab(QWidget):
     def refresh(self) -> None:
         self.set_path(self.current_path(), push_history=False)
 
+    def set_inline_filter(self, text: str) -> None:
+        normalized = str(text or "").strip()
+        if normalized == self._inline_filter_text:
+            return
+        self._inline_filter_text = normalized
+        if self._inline_filter_text:
+            self.model.setNameFilterDisables(False)
+            self.model.setNameFilters([f"*{self._inline_filter_text}*"])
+        else:
+            self.model.setNameFilters([])
+            self.model.setNameFilterDisables(True)
+
+    def clear_inline_filter(self) -> None:
+        self.set_inline_filter("")
+
+    def inline_filter_text(self) -> str:
+        return self._inline_filter_text
+
     def go_back(self) -> None:
         if self._history_index <= 0:
             return
@@ -250,7 +210,14 @@ class ExplorerTab(QWidget):
 
     def selected_paths(self) -> list[Path]:
         rows = self.view.selectionModel().selectedRows()
-        return [Path(self.model.filePath(idx)) for idx in rows]
+        paths: list[Path] = []
+        for idx in rows:
+            if self.model.is_parent_index(idx):
+                continue
+            file_path = self.model.filePath(idx)
+            if file_path:
+                paths.append(Path(file_path))
+        return paths
 
     def column_widths(self) -> list[int]:
         header = self.view.header()
@@ -277,7 +244,10 @@ class ExplorerTab(QWidget):
             self._syncing_column_widths = False
 
     def _on_item_activated(self, index: QModelIndex) -> None:
-        path = Path(self.model.filePath(index))
+        file_path = self.model.filePath(index)
+        if not file_path:
+            return
+        path = Path(file_path)
         if path.is_dir():
             self.set_path(path)
             return
@@ -508,6 +478,12 @@ class ExplorerTab(QWidget):
         if self._show_hidden:
             filters |= QDir.Filter.Hidden | QDir.Filter.System
         self.model.setFilter(filters)
+        if self._inline_filter_text:
+            self.model.setNameFilterDisables(False)
+            self.model.setNameFilters([f"*{self._inline_filter_text}*"])
+        else:
+            self.model.setNameFilters([])
+            self.model.setNameFilterDisables(True)
 
     def _should_show_parent_entry(self, path: Path) -> bool:
         if path.parent == path:
@@ -542,6 +518,8 @@ class ExplorerTab(QWidget):
         index = selected_rows[0] if selected_rows else self.view.currentIndex()
         if not index.isValid():
             return None
+        if self.model.is_parent_index(index):
+            return None
         return Path(self.model.filePath(index))
 
     def _remember_selection_for_path(self, path: Path) -> None:
@@ -563,7 +541,7 @@ class ExplorerTab(QWidget):
 
         self._selection_restore_token += 1
         token = self._selection_restore_token
-        self._try_restore_selection(candidate, token, attempts_remaining=8)
+        self._try_restore_selection(candidate, token, attempts_remaining=40)
 
     def _try_restore_selection(
         self,
@@ -574,8 +552,10 @@ class ExplorerTab(QWidget):
     ) -> None:
         if token != self._selection_restore_token:
             return
+        if not isValid(self) or not isValid(self.model) or not isValid(self.view):
+            return
 
-        index = self.model.index(str(candidate))
+        index = self.model.index_for_path(candidate)
         if index.isValid():
             selection_model = self.view.selectionModel()
             flags = (

@@ -4,14 +4,16 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-from PySide6.QtCore import QEvent, QObject, Qt, Signal
+from PySide6.QtCore import QEvent, QObject, Qt, QTimer, Signal
 from PySide6.QtGui import QKeyEvent, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
+    QLayout,
     QLineEdit,
     QMenu,
     QPushButton,
+    QSizePolicy,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -42,6 +44,10 @@ def _is_path_under_root(path: Path, root: Path) -> bool:
         return True
     prefix = norm_root if norm_root.endswith(os.sep) else f"{norm_root}{os.sep}"
     return norm_path.startswith(prefix)
+
+
+def _path_key(path: Path) -> str:
+    return os.path.normcase(os.path.normpath(str(path)))
 
 
 def _is_windows() -> bool:
@@ -79,6 +85,8 @@ class _FocusWatcher(QObject):
 
 
 class PanelWidget(QWidget):
+    COLUMN_SYNC_DEBOUNCE_MS = 120
+
     activated = Signal()
     became_empty = Signal()
 
@@ -100,64 +108,117 @@ class PanelWidget(QWidget):
         self._root_paths: list[Path] = []
         self._column_widths: list[int] = []
         self._syncing_column_widths = False
+        self._pending_column_widths_sync: list[int] = []
+        self._pending_column_widths_source_tab: ExplorerTab | None = None
         self._restoring_state = False
         self.root_buttons: list[QPushButton] = []
         self._history_menu: QMenu | None = None
+        self._pane_role = "normal"
+
+        self.setObjectName("panelWidget")
+        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
 
         self.focus_watcher = _FocusWatcher(self)
         self.focus_watcher.focused.connect(self.activated)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
+        root.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
 
         toolbar = QHBoxLayout()
 
         self.back_btn = QPushButton("<")
+        self.back_btn.setMinimumWidth(0)
+        self.back_btn.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.back_btn.clicked.connect(self._go_back)
         toolbar.addWidget(self.back_btn)
 
         self.forward_btn = QPushButton(">")
+        self.forward_btn.setMinimumWidth(0)
+        self.forward_btn.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+        )
         self.forward_btn.clicked.connect(self._go_forward)
         toolbar.addWidget(self.forward_btn)
 
         self.refresh_btn = QPushButton("Refresh")
+        self.refresh_btn.setMinimumWidth(0)
+        self.refresh_btn.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+        )
         self.refresh_btn.clicked.connect(self._refresh)
         toolbar.addWidget(self.refresh_btn)
 
         self.root_buttons_host = QWidget()
+        self.root_buttons_host.setMinimumWidth(0)
+        self.root_buttons_host.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
+        )
         self.root_buttons_layout = QHBoxLayout(self.root_buttons_host)
         self.root_buttons_layout.setContentsMargins(0, 0, 0, 0)
         self.root_buttons_layout.setSpacing(4)
-        toolbar.addWidget(self.root_buttons_host)
+        toolbar.addWidget(self.root_buttons_host, 1)
 
         self.root_combo = QComboBox()
-        self.root_combo.setMinimumWidth(180)
         self.root_combo.activated.connect(self._on_root_selected)
         self.root_combo.setVisible(self._show_root_dropdown)
+        self.root_combo.setMinimumWidth(0)
+        self.root_combo.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+        )
         toolbar.addWidget(self.root_combo)
 
         self.address_edit = QLineEdit()
         self.address_edit.returnPressed.connect(self._on_address_submitted)
+        self.address_edit.setMinimumWidth(0)
+        self.address_edit.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+        )
         toolbar.addWidget(self.address_edit, 1)
 
         self.up_btn = QPushButton("..")
+        self.up_btn.setMinimumWidth(0)
+        self.up_btn.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.up_btn.clicked.connect(self._go_up)
         toolbar.addWidget(self.up_btn)
 
         self.root_btn = QPushButton("\\")
+        self.root_btn.setMinimumWidth(0)
+        self.root_btn.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+        )
         self.root_btn.clicked.connect(self._go_root)
         toolbar.addWidget(self.root_btn)
 
         root.addLayout(toolbar)
 
         self.tabs = QTabWidget()
+        self.tabs.setMinimumWidth(0)
+        self.tabs.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
         self.tabs.setTabsClosable(True)
         self.tabs.currentChanged.connect(self._on_current_changed)
         self.tabs.tabCloseRequested.connect(self._close_tab_at)
         self.tabs.installEventFilter(self.focus_watcher)
         self.tabs.installEventFilter(self)
+        tab_bar = self.tabs.tabBar()
+        tab_bar.setElideMode(Qt.TextElideMode.ElideRight)
+        tab_bar.setExpanding(True)
+        tab_bar.setUsesScrollButtons(False)
+        tab_bar.setMinimumWidth(0)
 
         root.addWidget(self.tabs)
+
+        self.filter_edit = QLineEdit(self)
+        self.filter_edit.setPlaceholderText("Filter active pane...")
+        self.filter_edit.setVisible(False)
+        self.filter_edit.setMinimumWidth(0)
+        self.filter_edit.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+        )
+        self.filter_edit.textChanged.connect(self._on_filter_text_changed)
+        self.filter_edit.installEventFilter(self)
+        self.installEventFilter(self)
 
         self.back_btn.installEventFilter(self.focus_watcher)
         self.forward_btn.installEventFilter(self.focus_watcher)
@@ -174,8 +235,17 @@ class PanelWidget(QWidget):
             Qt.ShortcutContext.WidgetWithChildrenShortcut
         )
         self._alt_down_shortcut.activated.connect(self._show_history_menu)
+        self._ctrl_f_shortcut = QShortcut("Ctrl+F", self)
+        self._ctrl_f_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self._ctrl_f_shortcut.activated.connect(
+            lambda: self._show_filter_overlay(seed_text="")
+        )
+        self._column_sync_timer = QTimer(self)
+        self._column_sync_timer.setSingleShot(True)
+        self._column_sync_timer.timeout.connect(self._flush_pending_column_width_sync)
 
         self._sync_toolbar_for_current_tab()
+        self._apply_visual_role()
 
     def add_tab(self, path: Path) -> ExplorerTab:
         source_tab = self.current_tab()
@@ -220,13 +290,29 @@ class PanelWidget(QWidget):
         return tab
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        if obj is self and event.type() == QEvent.Type.Resize:
+            self._position_filter_overlay()
+            return super().eventFilter(obj, event)
         if event.type() == QEvent.Type.KeyPress:
             key_event = cast("QKeyEvent", event)
+            if obj is self.filter_edit and key_event.key() in {
+                int(Qt.Key.Key_Escape),
+                int(Qt.Key.Key_Return),
+                int(Qt.Key.Key_Enter),
+            }:
+                if key_event.key() == int(Qt.Key.Key_Escape):
+                    self.clear_inline_filter()
+                self._hide_filter_overlay()
+                self._focus_current_view()
+                return True
             if (
                 key_event.modifiers() == Qt.KeyboardModifier.AltModifier
                 and key_event.key() == int(Qt.Key.Key_Down)
             ):
                 self._show_history_menu()
+                return True
+            if self._should_start_inline_filter(key_event):
+                self._show_filter_overlay(seed_text=key_event.text())
                 return True
         return super().eventFilter(obj, event)
 
@@ -327,6 +413,8 @@ class PanelWidget(QWidget):
             tab = self.current_tab()
             if tab is not None and self._column_widths:
                 tab.apply_column_widths(self._column_widths)
+            if tab is not None and self.filter_edit.isVisible():
+                tab.set_inline_filter(self.filter_edit.text())
         self._sync_toolbar_for_current_tab()
 
     def _on_tab_path_changed(self, tab: ExplorerTab) -> None:
@@ -349,7 +437,18 @@ class PanelWidget(QWidget):
         if not normalized:
             return
         self._column_widths = normalized
-        self._apply_column_widths_to_all_tabs(self._column_widths, source_tab=tab)
+        self._pending_column_widths_sync = list(normalized)
+        self._pending_column_widths_source_tab = tab
+        self._column_sync_timer.start(self.COLUMN_SYNC_DEBOUNCE_MS)
+
+    def _flush_pending_column_width_sync(self) -> None:
+        if not self._pending_column_widths_sync:
+            return
+        source_tab = self._pending_column_widths_source_tab
+        widths = list(self._pending_column_widths_sync)
+        self._pending_column_widths_sync = []
+        self._pending_column_widths_source_tab = None
+        self._apply_column_widths_to_all_tabs(widths, source_tab=source_tab)
 
     def _apply_column_widths_to_all_tabs(
         self,
@@ -408,6 +507,8 @@ class PanelWidget(QWidget):
         self.refresh_btn.setEnabled(True)
         self.address_edit.setText(_strip_windows_long_path(str(tab.current_path())))
         self._rebuild_root_controls(tab.current_path())
+        if self.filter_edit.isVisible():
+            tab.set_inline_filter(self.filter_edit.text())
 
     def _rebuild_root_controls(self, current_path: Path | None) -> None:
         roots = self._safe_roots(current_path)
@@ -429,6 +530,10 @@ class PanelWidget(QWidget):
         self.root_buttons = []
         for root_path in roots:
             button = QPushButton(_root_display_text(root_path))
+            button.setMinimumWidth(0)
+            button.setSizePolicy(
+                QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+            )
             button.setToolTip(_strip_windows_long_path(str(root_path)))
             button.setCheckable(True)
             button.setChecked(
@@ -477,9 +582,12 @@ class PanelWidget(QWidget):
 
     def _safe_roots(self, current_path: Path | None) -> list[Path]:
         try:
-            roots = [Path(p) for p in self._roots_provider(current_path)]
+            provided_roots = [Path(p) for p in self._roots_provider(current_path)]
         except Exception:
-            return []
+            provided_roots = []
+        roots = self._existing_unique_paths(provided_roots)
+        if not roots:
+            roots = self._fallback_roots(current_path)
         return sorted(
             roots,
             key=lambda p: (
@@ -487,6 +595,41 @@ class PanelWidget(QWidget):
                 _strip_windows_long_path(str(p)).lower(),
             ),
         )
+
+    def _existing_unique_paths(self, paths: list[Path]) -> list[Path]:
+        unique: list[Path] = []
+        seen: set[str] = set()
+        for candidate in paths:
+            path = Path(candidate).expanduser()
+            if not path.exists() or not path.is_dir():
+                continue
+            key = _path_key(path)
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(path)
+        return unique
+
+    def _fallback_roots(self, current_path: Path | None) -> list[Path]:
+        candidates: list[Path] = []
+        if current_path is not None:
+            current = Path(current_path).expanduser()
+            candidates.append(current)
+            if current.anchor:
+                candidates.append(Path(current.anchor))
+
+        home = Path.home()
+        candidates.append(home)
+        if home.anchor:
+            candidates.append(Path(home.anchor))
+
+        root_path = Path(os.sep)
+        candidates.append(root_path)
+
+        fallback = self._existing_unique_paths(candidates)
+        if fallback:
+            return fallback
+        return [home]
 
     def _go_back(self) -> None:
         tab = self.current_tab()
@@ -576,3 +719,72 @@ class PanelWidget(QWidget):
 
         self._history_menu = menu
         menu.popup(self.address_edit.mapToGlobal(self.address_edit.rect().bottomLeft()))
+
+    def set_role_visual_state(self, *, is_active: bool, is_target: bool) -> None:
+        if is_active:
+            self._pane_role = "active"
+        elif is_target:
+            self._pane_role = "target"
+        else:
+            self._pane_role = "normal"
+        self._apply_visual_role()
+
+    def clear_inline_filter(self) -> None:
+        self.filter_edit.blockSignals(True)
+        self.filter_edit.setText("")
+        self.filter_edit.blockSignals(False)
+        tab = self.current_tab()
+        if tab is not None:
+            tab.clear_inline_filter()
+
+    def _position_filter_overlay(self) -> None:
+        width = max(220, int(self.width() * 0.35))
+        x = max(8, self.width() - width - 8)
+        self.filter_edit.setGeometry(x, 8, width, 30)
+        self.filter_edit.raise_()
+
+    def _show_filter_overlay(self, *, seed_text: str) -> None:
+        self._position_filter_overlay()
+        self.filter_edit.setVisible(True)
+        self.filter_edit.raise_()
+        self.filter_edit.setFocus()
+        if seed_text:
+            self.filter_edit.setText(self.filter_edit.text() + seed_text)
+            self.filter_edit.setCursorPosition(len(self.filter_edit.text()))
+
+    def _hide_filter_overlay(self) -> None:
+        self.filter_edit.setVisible(False)
+
+    def _on_filter_text_changed(self, text: str) -> None:
+        tab = self.current_tab()
+        if tab is not None:
+            tab.set_inline_filter(text)
+
+    def _should_start_inline_filter(self, key_event: QKeyEvent) -> bool:
+        if key_event.modifiers() not in {
+            Qt.KeyboardModifier.NoModifier,
+            Qt.KeyboardModifier.ShiftModifier,
+        }:
+            return False
+        text = key_event.text()
+        if not text:
+            return False
+        if len(text) != 1 or text.isspace():
+            return False
+        return text.isprintable()
+
+    def _focus_current_view(self) -> None:
+        tab = self.current_tab()
+        if tab is not None:
+            tab.view.setFocus()
+
+    def _apply_visual_role(self) -> None:
+        if self._pane_role == "active":
+            color = "#f4b400"
+        elif self._pane_role == "target":
+            color = "#0088cc"
+        else:
+            color = "#555555"
+        self.setStyleSheet(
+            f"QWidget#panelWidget {{ border: 2px solid {color}; border-radius: 2px; }}"
+        )

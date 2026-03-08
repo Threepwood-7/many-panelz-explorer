@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import shutil
 import uuid
 from collections.abc import Callable
 from copy import deepcopy
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
-from PySide6.QtCore import QByteArray, QEvent, QSignalBlocker, Qt, Signal
-from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
+from PySide6.QtCore import QByteArray, QEvent, QObject, QSignalBlocker, Qt, Signal
+from PySide6.QtGui import QAction, QCloseEvent, QKeyEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QInputDialog,
@@ -19,7 +20,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from . import file_ops
 from .panel_tree import (
+    ORIENTATION_HORIZONTAL,
+    ORIENTATION_VERTICAL,
     LeafNode,
     PanelTreeModel,
     SplitNode,
@@ -33,7 +37,9 @@ if TYPE_CHECKING:
 
 type PanelState = dict[str, Any]
 type TabsState = dict[int, PanelState]
+type PanelRows = list[list[int]]
 type RootsProvider = Callable[[Path | None], list[Path]]
+type ConflictChoice = Literal["overwrite", "skip", "rename", "cancel"]
 
 
 class ExplorerWindow(QMainWindow):
@@ -55,25 +61,33 @@ class ExplorerWindow(QMainWindow):
         self._initial_path = initial_path or Path.home()
         self._roots_provider = roots_provider
         self._active_panel_id: int | None = None
-        self._splitter_nodes: dict[QSplitter, SplitNode] = {}
+        self._last_non_source_panel_id: int | None = None
+        self._alt_menu_candidate = False
 
         self.panel_tree = PanelTreeModel()
+        self._layout_rows: PanelRows = self._rows_from_tree(self.panel_tree.root)
         self.panel_widgets: dict[int, PanelWidget] = {}
 
         self._central = QWidget(self)
         self._central_layout = QVBoxLayout(self._central)
         self._central_layout.setContentsMargins(0, 0, 0, 0)
         self.setCentralWidget(self._central)
+        self.statusBar().showMessage("")
 
         self._show_hidden = self.settings.show_hidden_default
 
         self._build_actions()
         self._build_menus()
+        self._build_shortcuts()
 
         self.setWindowTitle("Many Panelz Explorer")
         self.setWindowFlag(Qt.WindowType.Window, True)
+        app = QApplication.instance()
+        if app is not None:
+            app.installEventFilter(self)
 
         empty_state: TabsState = {}
+        self._sync_panel_tree_from_rows()
         self._rebuild_from_tree(tabs_state=empty_state, preferred_active_panel=None)
 
     # ----- public API -----
@@ -83,20 +97,38 @@ class ExplorerWindow(QMainWindow):
             return
 
         tabs_state = self._serialize_tabs_state()
-        orientation_value = 1 if orientation == Qt.Orientation.Horizontal else 2
-        new_panel_id = self.panel_tree.split_leaf(
-            self._active_panel_id, orientation_value
-        )
+        rows = deepcopy(self._layout_rows)
+        row_index, column_index = self._find_panel_position(self._active_panel_id, rows)
+        if row_index is None or column_index is None:
+            return
 
         seed_path = self._resolve_new_context_path(active_panel.current_path())
-        tabs_state[new_panel_id] = {
-            "panel_id": new_panel_id,
-            "current_index": 0,
-            "tabs": [{"path": str(seed_path)}],
-        }
+        preferred_active_panel: int | None = None
+        is_horizontal_split = (
+            orientation == Qt.Orientation.Horizontal
+            or orientation == ORIENTATION_HORIZONTAL
+        )
+        if is_horizontal_split:
+            # New vertical pane: mutate only active row.
+            new_panel_id = self._allocate_panel_id(rows, tabs_state)
+            rows[row_index].insert(column_index + 1, new_panel_id)
+            tabs_state[new_panel_id] = self._new_panel_state(new_panel_id, seed_path)
+            preferred_active_panel = new_panel_id
+        else:
+            # New horizontal pane: create full-width row mirroring active row shape.
+            source_row = rows[row_index]
+            new_row: list[int] = []
+            for _source_panel_id in source_row:
+                new_panel_id = self._allocate_panel_id(rows, tabs_state)
+                new_row.append(new_panel_id)
+                tabs_state[new_panel_id] = self._new_panel_state(new_panel_id, seed_path)
+            rows.insert(row_index + 1, new_row)
+            preferred_active_panel = new_row[0] if new_row else None
 
+        self._layout_rows = self._normalize_rows(rows)
+        self._sync_panel_tree_from_rows()
         self._rebuild_from_tree(
-            tabs_state=tabs_state, preferred_active_panel=new_panel_id
+            tabs_state=tabs_state, preferred_active_panel=preferred_active_panel
         )
 
     def new_tab_in_active_panel(self) -> None:
@@ -111,29 +143,48 @@ class ExplorerWindow(QMainWindow):
             return
 
         tabs_state = self._serialize_tabs_state()
-        source_state = tabs_state.get(self._active_panel_id)
+        rows = deepcopy(self._layout_rows)
+        row_index, column_index = self._find_panel_position(self._active_panel_id, rows)
+        if row_index is None or column_index is None:
+            return
 
-        orientation_value = 1 if orientation == Qt.Orientation.Horizontal else 2
-        new_panel_id = self.panel_tree.split_leaf(
-            self._active_panel_id, orientation_value
+        source_state = tabs_state.get(self._active_panel_id) or self._default_panel_state(
+            self._active_panel_id
         )
+        preferred_active_panel: int | None = None
 
-        if source_state is None:
-            source_panel = self.active_panel()
-            source_path = (
-                source_panel.current_path() if source_panel is not None else Path.home()
-            )
-            source_state = {
-                "panel_id": self._active_panel_id,
-                "current_index": 0,
-                "tabs": [{"path": str(source_path)}],
-            }
+        is_horizontal_split = (
+            orientation == Qt.Orientation.Horizontal
+            or orientation == ORIENTATION_HORIZONTAL
+        )
+        if is_horizontal_split:
+            # Clone vertically: duplicate active pane state in current row.
+            new_panel_id = self._allocate_panel_id(rows, tabs_state)
+            rows[row_index].insert(column_index + 1, new_panel_id)
+            cloned_state = cast("PanelState", deepcopy(source_state))
+            cloned_state["panel_id"] = new_panel_id
+            tabs_state[new_panel_id] = cloned_state
+            preferred_active_panel = new_panel_id
+        else:
+            # Clone horizontally: duplicate full active row with per-column state.
+            source_row = list(rows[row_index])
+            new_row: list[int] = []
+            for source_panel_id in source_row:
+                source_panel_state = tabs_state.get(
+                    source_panel_id
+                ) or self._default_panel_state(source_panel_id)
+                new_panel_id = self._allocate_panel_id(rows, tabs_state)
+                new_row.append(new_panel_id)
+                cloned_state = cast("PanelState", deepcopy(source_panel_state))
+                cloned_state["panel_id"] = new_panel_id
+                tabs_state[new_panel_id] = cloned_state
+            rows.insert(row_index + 1, new_row)
+            preferred_active_panel = new_row[0] if new_row else None
 
-        cloned_state = cast("PanelState", deepcopy(source_state))
-        cloned_state["panel_id"] = new_panel_id
-        tabs_state[new_panel_id] = cloned_state
+        self._layout_rows = self._normalize_rows(rows)
+        self._sync_panel_tree_from_rows()
         self._rebuild_from_tree(
-            tabs_state=tabs_state, preferred_active_panel=new_panel_id
+            tabs_state=tabs_state, preferred_active_panel=preferred_active_panel
         )
 
     def close_active_tab(self) -> None:
@@ -221,7 +272,42 @@ class ExplorerWindow(QMainWindow):
             self.window_activated.emit()
         return super().event(event)
 
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if not self._should_handle_global_key_event(watched, event):
+            return super().eventFilter(watched, event)
+
+        key_event = cast("QKeyEvent", event)
+        key = key_event.key()
+        modifiers = key_event.modifiers()
+
+        if event.type() == QEvent.Type.KeyPress:
+            if key == int(Qt.Key.Key_Alt):
+                self._alt_menu_candidate = True
+                return False
+            if key == int(Qt.Key.Key_F10) and modifiers == Qt.KeyboardModifier.NoModifier:
+                self._focus_menu_by_mnemonic(None)
+                return True
+            if modifiers == Qt.KeyboardModifier.AltModifier:
+                mnemonic = chr(key).upper() if 0 <= key <= 0x10FFFF else ""
+                if mnemonic in {"F", "V", "H"}:
+                    self._alt_menu_candidate = False
+                    self._focus_menu_by_mnemonic(mnemonic)
+                    return True
+                self._alt_menu_candidate = False
+            return False
+
+        if event.type() == QEvent.Type.KeyRelease and key == int(Qt.Key.Key_Alt):
+            if self._alt_menu_candidate:
+                self._alt_menu_candidate = False
+                self._focus_menu_by_mnemonic(None)
+                return True
+            self._alt_menu_candidate = False
+        return super().eventFilter(watched, event)
+
     def closeEvent(self, event: QCloseEvent) -> None:
+        app = QApplication.instance()
+        if app is not None:
+            app.removeEventFilter(self)
         self.controller.close_window(self)
         super().closeEvent(event)
 
@@ -257,6 +343,18 @@ class ExplorerWindow(QMainWindow):
             lambda: self.clone_active_panel(Qt.Orientation.Vertical)
         )
 
+        self._copy_to_target_action = QAction("&Copy to Target Pane", self)
+        self._copy_to_target_action.setShortcut(QKeySequence("F5"))
+        self._copy_to_target_action.triggered.connect(self._copy_selected_to_target)
+
+        self._move_to_target_action = QAction("&Move to Target Pane", self)
+        self._move_to_target_action.setShortcut(QKeySequence("F6"))
+        self._move_to_target_action.triggered.connect(self._move_selected_to_target)
+
+        self._delete_selection_action = QAction("&Delete Selection", self)
+        self._delete_selection_action.setShortcut(QKeySequence("F8"))
+        self._delete_selection_action.triggered.connect(self._delete_selected_items)
+
         self._new_window_action = QAction("New &Window", self)
         self._new_window_action.setShortcut(QKeySequence("Ctrl+N"))
         self._new_window_action.triggered.connect(self.request_new_window.emit)
@@ -290,7 +388,7 @@ class ExplorerWindow(QMainWindow):
         self._exit_action.triggered.connect(self._quit_application)
 
         self._refresh_action = QAction("&Refresh", self)
-        self._refresh_action.setShortcut(QKeySequence("F5"))
+        self._refresh_action.setShortcut(QKeySequence("Ctrl+R"))
         self._refresh_action.triggered.connect(self._refresh_active_panel)
 
         self._on_top_action = QAction("On &Top", self)
@@ -306,8 +404,20 @@ class ExplorerWindow(QMainWindow):
         self._help_action.setShortcut(QKeySequence("F1"))
         self._help_action.triggered.connect(self._show_help)
 
+    def _build_shortcuts(self) -> None:
+        self._next_pane_shortcut = QShortcut(QKeySequence("Tab"), self)
+        self._next_pane_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self._next_pane_shortcut.activated.connect(self._focus_next_panel)
+
+        self._previous_pane_shortcut = QShortcut(QKeySequence("Shift+Tab"), self)
+        self._previous_pane_shortcut.setContext(
+            Qt.ShortcutContext.WidgetWithChildrenShortcut
+        )
+        self._previous_pane_shortcut.activated.connect(self._focus_previous_panel)
+
     def _build_menus(self) -> None:
         menu_bar = self.menuBar()
+        menu_bar.setNativeMenuBar(True)
 
         file_menu = QMenu("&File", self)
         file_menu.addAction(self._new_tab_action)
@@ -315,6 +425,11 @@ class ExplorerWindow(QMainWindow):
         file_menu.addAction(self._new_horizontal_panel_action)
         file_menu.addAction(self._clone_vertical_panel_action)
         file_menu.addAction(self._clone_horizontal_panel_action)
+        file_menu.addSeparator()
+        file_menu.addAction(self._copy_to_target_action)
+        file_menu.addAction(self._move_to_target_action)
+        file_menu.addAction(self._delete_selection_action)
+        file_menu.addSeparator()
         file_menu.addAction(self._new_window_action)
         file_menu.addAction(self._clone_window_action)
         file_menu.addSeparator()
@@ -339,9 +454,9 @@ class ExplorerWindow(QMainWindow):
         help_menu = QMenu("&Help", self)
         help_menu.addAction(self._help_action)
 
-        menu_bar.addMenu(file_menu)
-        menu_bar.addMenu(view_menu)
-        menu_bar.addMenu(help_menu)
+        self._menu_file_action = menu_bar.addMenu(file_menu)
+        self._menu_view_action = menu_bar.addMenu(view_menu)
+        self._menu_help_action = menu_bar.addMenu(help_menu)
 
         self.addActions(
             [
@@ -350,6 +465,9 @@ class ExplorerWindow(QMainWindow):
                 self._new_horizontal_panel_action,
                 self._clone_vertical_panel_action,
                 self._clone_horizontal_panel_action,
+                self._copy_to_target_action,
+                self._move_to_target_action,
+                self._delete_selection_action,
                 self._new_window_action,
                 self._clone_window_action,
                 self._save_view_action,
@@ -364,6 +482,29 @@ class ExplorerWindow(QMainWindow):
             ]
         )
 
+    def _should_handle_global_key_event(self, watched: QObject, event: QEvent) -> bool:
+        if event.type() not in {QEvent.Type.KeyPress, QEvent.Type.KeyRelease}:
+            return False
+        if not self.isVisible():
+            return False
+        widget = watched if isinstance(watched, QWidget) else None
+        if widget is not None and widget.window() is self:
+            return True
+        app = QApplication.instance()
+        return app is not None and app.activeWindow() is self
+
+    def _focus_menu_by_mnemonic(self, mnemonic: str | None) -> None:
+        menu_bar = self.menuBar()
+        menu_bar.setFocus(Qt.FocusReason.ShortcutFocusReason)
+
+        target_action = self._menu_file_action
+        if mnemonic == "V":
+            target_action = self._menu_view_action
+        elif mnemonic == "H":
+            target_action = self._menu_help_action
+
+        menu_bar.setActiveAction(target_action)
+
     def _refresh_active_panel(self) -> None:
         panel = self.active_panel()
         if panel is not None:
@@ -374,7 +515,11 @@ class ExplorerWindow(QMainWindow):
             self,
             "Help",
             "Keyboard shortcuts:\n"
-            "F5: Refresh active panel\n"
+            "F5: Copy to target pane\n"
+            "F6: Move to target pane\n"
+            "F8: Delete selection\n"
+            "Tab / Shift+Tab: Switch active pane\n"
+            "Alt or F10: Focus main menu\n"
             "Ctrl+Q / Alt+X: Exit application",
         )
 
@@ -412,10 +557,17 @@ class ExplorerWindow(QMainWindow):
         tabs_state: TabsState,
         preferred_active_panel: int | None,
     ) -> None:
-        self._splitter_nodes = {}
+        normalized_rows = self._normalize_rows(self._layout_rows)
+        panel_ids = self._ordered_panel_ids(normalized_rows)
+        if not panel_ids:
+            normalized_rows = [[1]]
+            panel_ids = [1]
+
+        self._layout_rows = normalized_rows
+        self._sync_panel_tree_from_rows()
 
         new_panel_widgets: dict[int, PanelWidget] = {}
-        for panel_id in self.panel_tree.leaf_ids():
+        for panel_id in panel_ids:
             panel_state = tabs_state.get(panel_id)
             panel = PanelWidget(
                 panel_id=panel_id,
@@ -439,10 +591,9 @@ class ExplorerWindow(QMainWindow):
 
         self.panel_widgets = new_panel_widgets
 
-        root_widget = self._build_widget_tree(self.panel_tree.root)
+        root_widget = self._build_rows_widget(self._layout_rows)
         if root_widget is None:
-            placeholder = QWidget(self)
-            root_widget = placeholder
+            root_widget = QWidget(self)
 
         self._clear_layout()
         self._central_layout.addWidget(root_widget)
@@ -452,43 +603,44 @@ class ExplorerWindow(QMainWindow):
             target_active = next(iter(self.panel_widgets), None)
         if target_active is not None:
             self._set_active_panel(target_active)
+        else:
+            self._update_pane_visuals()
 
-    def _build_widget_tree(self, node: LeafNode | SplitNode | None) -> QWidget | None:
-        if node is None:
+    def _build_rows_widget(self, rows: PanelRows) -> QWidget | None:
+        if not rows:
             return None
-        if isinstance(node, LeafNode):
-            return self.panel_widgets[node.panel_id]
+        if len(rows) == 1:
+            return self._build_row_widget(rows[0])
 
-        splitter = QSplitter(Qt.Orientation(node.orientation), self)
-        left_widget = self._build_widget_tree(node.left)
-        right_widget = self._build_widget_tree(node.right)
-        splitter.addWidget(left_widget if left_widget is not None else QWidget(self))
-        splitter.addWidget(right_widget if right_widget is not None else QWidget(self))
-
+        splitter = QSplitter(Qt.Orientation.Vertical, self)
+        for row in rows:
+            row_widget = self._build_row_widget(row)
+            splitter.addWidget(row_widget if row_widget is not None else QWidget(self))
         splitter.setChildrenCollapsible(False)
-        left_size = max(1, int(node.ratio * 1000))
-        splitter.setSizes([left_size, max(1, 1000 - left_size)])
-
-        def _on_splitter_moved(_pos: int, _index: int) -> None:
-            self._update_split_ratio(splitter, node)
-
-        splitter.splitterMoved.connect(_on_splitter_moved)
-        self._splitter_nodes[splitter] = node
-
+        splitter.setSizes([1000] * len(rows))
         return splitter
 
-    def _update_split_ratio(self, splitter: QSplitter, node: SplitNode) -> None:
-        sizes = splitter.sizes()
-        if len(sizes) != 2:
-            return
-        total = sizes[0] + sizes[1]
-        if total <= 0:
-            return
-        node.ratio = sizes[0] / total
+    def _build_row_widget(self, row: list[int]) -> QWidget | None:
+        if not row:
+            return None
+        if len(row) == 1:
+            return self.panel_widgets.get(row[0], QWidget(self))
+
+        splitter = QSplitter(Qt.Orientation.Horizontal, self)
+        for panel_id in row:
+            splitter.addWidget(self.panel_widgets.get(panel_id, QWidget(self)))
+        splitter.setChildrenCollapsible(False)
+        splitter.setSizes([1000] * len(row))
+        return splitter
 
     def _set_active_panel(self, panel_id: int) -> None:
-        if panel_id in self.panel_widgets:
-            self._active_panel_id = panel_id
+        if panel_id not in self.panel_widgets:
+            return
+        previous = self._active_panel_id
+        if previous is not None and previous != panel_id and previous in self.panel_widgets:
+            self._last_non_source_panel_id = previous
+        self._active_panel_id = panel_id
+        self._update_pane_visuals()
 
     def active_panel(self) -> PanelWidget | None:
         if self._active_panel_id is None:
@@ -500,17 +652,33 @@ class ExplorerWindow(QMainWindow):
             return
 
         tabs_state = self._serialize_tabs_state()
-        result = self.panel_tree.remove_leaf(panel_id)
-        if not result["removed"]:
+        rows = deepcopy(self._layout_rows)
+        removed = False
+        new_rows: PanelRows = []
+        for row in rows:
+            filtered = [pid for pid in row if pid != panel_id]
+            if len(filtered) != len(row):
+                removed = True
+            if filtered:
+                new_rows.append(filtered)
+
+        if not removed:
             return
 
         tabs_state.pop(panel_id, None)
-        if result["removed_last"]:
+        if panel_id == self._last_non_source_panel_id:
+            self._last_non_source_panel_id = None
+        if panel_id == self._active_panel_id:
+            self._active_panel_id = None
+
+        if not new_rows:
             self.close()
             return
 
-        remaining = result["remaining_panel_ids"]
-        preferred = remaining[0] if remaining else None
+        self._layout_rows = self._normalize_rows(new_rows)
+        self._sync_panel_tree_from_rows()
+        ordered = self._ordered_panel_ids(self._layout_rows)
+        preferred = ordered[0] if ordered else None
         self._rebuild_from_tree(tabs_state=tabs_state, preferred_active_panel=preferred)
 
     def _serialize_tabs_state(self) -> TabsState:
@@ -554,6 +722,227 @@ class ExplorerWindow(QMainWindow):
             return None
         return payload
 
+    def _focus_next_panel(self) -> None:
+        ordered = self._ordered_panel_ids(self._layout_rows)
+        if not ordered:
+            return
+        if self._active_panel_id in ordered:
+            current = ordered.index(cast("int", self._active_panel_id))
+            next_index = (current + 1) % len(ordered)
+        else:
+            next_index = 0
+        self._activate_panel_and_focus(ordered[next_index])
+
+    def _focus_previous_panel(self) -> None:
+        ordered = self._ordered_panel_ids(self._layout_rows)
+        if not ordered:
+            return
+        if self._active_panel_id in ordered:
+            current = ordered.index(cast("int", self._active_panel_id))
+            next_index = (current - 1) % len(ordered)
+        else:
+            next_index = 0
+        self._activate_panel_and_focus(ordered[next_index])
+
+    def _activate_panel_and_focus(self, panel_id: int) -> None:
+        self._set_active_panel(panel_id)
+        panel = self.panel_widgets.get(panel_id)
+        if panel is None:
+            return
+        tab = panel.current_tab()
+        if tab is not None:
+            tab.view.setFocus()
+
+    def _copy_selected_to_target(self) -> None:
+        self._transfer_selected_to_target(move=False)
+
+    def _move_selected_to_target(self) -> None:
+        self._transfer_selected_to_target(move=True)
+
+    def _delete_selected_items(self) -> None:
+        panel = self.active_panel()
+        if panel is None:
+            return
+        tab = panel.current_tab()
+        if tab is None:
+            return
+        selected = tab.selected_paths()
+        if not selected:
+            self.statusBar().showMessage("No items selected in source pane.", 3000)
+            return
+
+        names = "\n".join(path.name for path in selected[:10])
+        confirm = QMessageBox.question(
+            self,
+            "Delete to Recycle Bin",
+            f"Move selected items to Recycle Bin?\n\n{names}",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            file_ops.delete_to_recycle_bin(selected)
+            panel.refresh_current_path()
+            self.statusBar().showMessage(
+                f"Deleted {len(selected)} item(s) from source pane.", 4000
+            )
+        except Exception as exc:  # pragma: no cover - UI error path
+            QMessageBox.critical(self, "Delete Failed", str(exc))
+
+    def _transfer_selected_to_target(self, *, move: bool) -> None:
+        source_panel = self.active_panel()
+        source_id = self._active_panel_id
+        if source_panel is None or source_id is None:
+            return
+        source_tab = source_panel.current_tab()
+        if source_tab is None:
+            return
+
+        selected = source_tab.selected_paths()
+        if not selected:
+            self.statusBar().showMessage("No items selected in source pane.", 3000)
+            return
+
+        target_id = self._resolve_target_panel_id(source_id)
+        if target_id is None:
+            QMessageBox.information(
+                self,
+                "Target Pane",
+                "No target pane is available. Create another pane first.",
+            )
+            return
+        target_panel = self.panel_widgets.get(target_id)
+        if target_panel is None:
+            return
+        destination = target_panel.current_path()
+
+        transferred = 0
+        for source_path in selected:
+            outcome = self._copy_or_move_one(
+                source=Path(source_path), destination_dir=destination, move=move
+            )
+            if outcome == "cancel":
+                break
+            if outcome == "done":
+                transferred += 1
+
+        if transferred > 0:
+            source_panel.refresh_current_path()
+            target_panel.refresh_current_path()
+            verb = "Moved" if move else "Copied"
+            self.statusBar().showMessage(
+                f"{verb} {transferred} item(s) from pane {source_id} to pane {target_id}.",
+                4000,
+            )
+
+    def _copy_or_move_one(
+        self, *, source: Path, destination_dir: Path, move: bool
+    ) -> Literal["done", "skip", "cancel"]:
+        destination_dir = Path(destination_dir)
+        destination = destination_dir / source.name
+
+        if destination.exists():
+            choice = self._prompt_conflict_resolution(source, destination)
+            if choice == "cancel":
+                return "cancel"
+            if choice == "skip":
+                return "skip"
+            if choice == "rename":
+                destination = self._next_available_path(destination_dir, source.name)
+            elif choice == "overwrite":
+                if source.resolve() == destination.resolve():
+                    return "skip"
+                self._remove_existing_path(destination)
+
+        try:
+            if move:
+                shutil.move(str(source), str(destination))
+            else:
+                if source.is_dir():
+                    shutil.copytree(source, destination)
+                else:
+                    shutil.copy2(source, destination)
+        except Exception as exc:  # pragma: no cover - UI error path
+            QMessageBox.critical(self, "File Operation Failed", str(exc))
+            return "cancel"
+        return "done"
+
+    def _prompt_conflict_resolution(self, source: Path, destination: Path) -> ConflictChoice:
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Name Conflict")
+        dialog.setIcon(QMessageBox.Icon.Warning)
+        dialog.setText(
+            f'"{destination.name}" already exists in target pane.\n\n'
+            f"Source: {source}\nTarget: {destination}"
+        )
+        overwrite_button = dialog.addButton(
+            "Overwrite", QMessageBox.ButtonRole.AcceptRole
+        )
+        skip_button = dialog.addButton("Skip", QMessageBox.ButtonRole.ActionRole)
+        rename_button = dialog.addButton("Rename", QMessageBox.ButtonRole.ActionRole)
+        cancel_button = dialog.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
+        dialog.exec()
+        clicked = dialog.clickedButton()
+        if clicked is overwrite_button:
+            return "overwrite"
+        if clicked is skip_button:
+            return "skip"
+        if clicked is rename_button:
+            return "rename"
+        _ = cancel_button
+        return "cancel"
+
+    def _next_available_path(self, destination_dir: Path, base_name: str) -> Path:
+        candidate = destination_dir / base_name
+        if not candidate.exists():
+            return candidate
+        stem = candidate.stem
+        suffix = candidate.suffix
+        counter = 1
+        while True:
+            candidate = destination_dir / f"{stem} ({counter}){suffix}"
+            if not candidate.exists():
+                return candidate
+            counter += 1
+
+    def _remove_existing_path(self, path: Path) -> None:
+        if path.is_dir() and not path.is_symlink():
+            shutil.rmtree(path)
+            return
+        path.unlink()
+
+    def _resolve_target_panel_id(self, source_panel_id: int) -> int | None:
+        ordered = self._ordered_panel_ids(self._layout_rows)
+        candidates = [pid for pid in ordered if pid != source_panel_id]
+        if not candidates:
+            return None
+        if self._last_non_source_panel_id in candidates:
+            return self._last_non_source_panel_id
+        return candidates[0]
+
+    def _update_pane_visuals(self) -> None:
+        source_id = self._active_panel_id
+        target_id = (
+            self._resolve_target_panel_id(source_id) if source_id is not None else None
+        )
+
+        for panel_id, panel in self.panel_widgets.items():
+            panel.set_role_visual_state(
+                is_active=panel_id == source_id,
+                is_target=panel_id == target_id,
+            )
+
+        if source_id is None:
+            self.statusBar().showMessage("")
+            return
+        if target_id is None:
+            self.statusBar().showMessage(f"Source pane: {source_id}", 3000)
+            return
+        self.statusBar().showMessage(
+            f"Source pane: {source_id} | Target pane: {target_id}", 3000
+        )
+
     # ----- persistence -----
     def _encode_geometry(self) -> str:
         geometry = self.saveGeometry()
@@ -566,6 +955,7 @@ class ExplorerWindow(QMainWindow):
             self.restoreGeometry(raw)
 
     def serialize_state(self, *, include_geometry: bool = False) -> dict[str, Any]:
+        self._sync_panel_tree_from_rows()
         payload: dict[str, Any] = {
             "window_id": self.window_id,
             "panel_tree": self.panel_tree.to_dict(),
@@ -612,6 +1002,7 @@ class ExplorerWindow(QMainWindow):
                     self, "Restore", f"Could not restore panel tree: {exc}"
                 )
                 self.panel_tree = PanelTreeModel()
+        self._layout_rows = self._rows_from_tree(self.panel_tree.root)
 
         tabs_payload_raw = self.settings.get_json(
             self.settings.window_key(self.window_id, "tabs"), {}
@@ -635,6 +1026,10 @@ class ExplorerWindow(QMainWindow):
                 continue
             if isinstance(state, dict):
                 tabs_state[panel_id] = state
+        self._layout_rows = self._append_missing_panel_ids(
+            self._layout_rows, list(tabs_state.keys())
+        )
+        self._sync_panel_tree_from_rows()
 
         preferred_active = None
         raw_active = tabs_payload.get("active_panel_id")
@@ -672,6 +1067,7 @@ class ExplorerWindow(QMainWindow):
             self.panel_tree = PanelTreeModel.from_dict(
                 cast("dict[str, Any]", panel_tree_data)
             )
+        self._layout_rows = self._rows_from_tree(self.panel_tree.root)
 
         tabs_state: TabsState = {}
         raw_tabs = deepcopy(state.get("tabs", {}))
@@ -683,6 +1079,10 @@ class ExplorerWindow(QMainWindow):
                     continue
                 if isinstance(panel_state, dict):
                     tabs_state[panel_id_int] = panel_state
+        self._layout_rows = self._append_missing_panel_ids(
+            self._layout_rows, list(tabs_state.keys())
+        )
+        self._sync_panel_tree_from_rows()
 
         preferred_active_panel: int | None
         raw_active_panel = state.get("active_panel_id")
@@ -702,6 +1102,119 @@ class ExplorerWindow(QMainWindow):
             geometry_b64 = state.get("geometry_b64")
             if isinstance(geometry_b64, str) and geometry_b64:
                 self._restore_geometry_from_b64(geometry_b64)
+
+    def _new_panel_state(self, panel_id: int, seed_path: Path) -> PanelState:
+        return {
+            "panel_id": panel_id,
+            "current_index": 0,
+            "tabs": [{"path": str(seed_path)}],
+        }
+
+    def _default_panel_state(self, panel_id: int) -> PanelState:
+        panel = self.panel_widgets.get(panel_id)
+        path = panel.current_path() if panel is not None else Path.home()
+        return self._new_panel_state(panel_id, path)
+
+    def _find_panel_position(
+        self, panel_id: int, rows: PanelRows
+    ) -> tuple[int | None, int | None]:
+        for row_index, row in enumerate(rows):
+            for col_index, row_panel_id in enumerate(row):
+                if row_panel_id == panel_id:
+                    return row_index, col_index
+        return None, None
+
+    def _allocate_panel_id(self, rows: PanelRows, tabs_state: TabsState) -> int:
+        ids = set(self._ordered_panel_ids(rows)) | set(tabs_state.keys())
+        return (max(ids) + 1) if ids else 1
+
+    @staticmethod
+    def _ordered_panel_ids(rows: PanelRows) -> list[int]:
+        ordered: list[int] = []
+        for row in rows:
+            ordered.extend(row)
+        return ordered
+
+    def _normalize_rows(self, rows: PanelRows) -> PanelRows:
+        normalized: PanelRows = []
+        seen: set[int] = set()
+        for row in rows:
+            cleaned_row: list[int] = []
+            for panel_id in row:
+                panel_id_int = int(panel_id)
+                if panel_id_int in seen:
+                    continue
+                cleaned_row.append(panel_id_int)
+                seen.add(panel_id_int)
+            if cleaned_row:
+                normalized.append(cleaned_row)
+        if not normalized:
+            return [[1]]
+        return normalized
+
+    def _append_missing_panel_ids(
+        self, rows: PanelRows, panel_ids: list[int]
+    ) -> PanelRows:
+        normalized_rows = self._normalize_rows(rows)
+        present = set(self._ordered_panel_ids(normalized_rows))
+        missing = [int(panel_id) for panel_id in panel_ids if int(panel_id) not in present]
+        if missing:
+            normalized_rows.append(missing)
+        return self._normalize_rows(normalized_rows)
+
+    def _rows_from_tree(self, node: LeafNode | SplitNode | None) -> PanelRows:
+        if node is None:
+            return [[1]]
+
+        def split_into_rows(tree_node: LeafNode | SplitNode) -> list[LeafNode | SplitNode]:
+            if isinstance(tree_node, LeafNode):
+                return [tree_node]
+            if tree_node.orientation == ORIENTATION_VERTICAL:
+                return split_into_rows(tree_node.left) + split_into_rows(tree_node.right)
+            return [tree_node]
+
+        def flatten_row(tree_node: LeafNode | SplitNode) -> list[int]:
+            if isinstance(tree_node, LeafNode):
+                return [tree_node.panel_id]
+            if tree_node.orientation != ORIENTATION_HORIZONTAL:
+                raise ValueError("row contains vertical split")
+            return flatten_row(tree_node.left) + flatten_row(tree_node.right)
+
+        try:
+            rows = [flatten_row(row_node) for row_node in split_into_rows(node)]
+        except ValueError:
+            rows = [self.panel_tree.leaf_ids()]
+        return self._normalize_rows(rows)
+
+    def _sync_panel_tree_from_rows(self) -> None:
+        self._layout_rows = self._normalize_rows(self._layout_rows)
+        root = self._build_tree_root_from_rows(self._layout_rows)
+        self.panel_tree = PanelTreeModel(root=root if root is not None else LeafNode(1))
+
+    def _build_tree_root_from_rows(
+        self, rows: PanelRows
+    ) -> LeafNode | SplitNode | None:
+        if not rows:
+            return None
+
+        def build_row(row: list[int]) -> LeafNode | SplitNode:
+            if len(row) == 1:
+                return LeafNode(panel_id=row[0])
+            return SplitNode(
+                orientation=ORIENTATION_HORIZONTAL,
+                ratio=1.0 / float(len(row)),
+                left=LeafNode(panel_id=row[0]),
+                right=build_row(row[1:]),
+            )
+
+        if len(rows) == 1:
+            return build_row(rows[0])
+        return SplitNode(
+            orientation=ORIENTATION_VERTICAL,
+            ratio=1.0 / float(len(rows)),
+            left=build_row(rows[0]),
+            right=cast("LeafNode | SplitNode", self._build_tree_root_from_rows(rows[1:])),
+        )
 
     def default_close_warning(self) -> bool:
         if len(self.panel_widgets) > 1:
