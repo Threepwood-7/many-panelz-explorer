@@ -156,262 +156,73 @@ target application, and navigate manually.
 
 ---
 
-### F006 — Dynamic Context Menu — Folder Intelligence
+### F006 - Dynamic Context Menu - Folder Intelligence
 
-**Summary:** The application's main menu gains a dynamic top-level **Context** menu
-that is rebuilt whenever the active panel navigates to a new folder. The menu
-reflects what kind of project or content lives in the current directory (or its
-immediate children), surfacing relevant actions without the user having to seek
-them out.
+**Summary:** Add a dynamic top-level **Context** menu in the main menubar that
+adapts to the active folder (and immediate children) and surfaces mode-specific
+actions.
 
-**Motivation:** A file explorer is used in wildly different situations — a Python
-project root, a media dump folder, a Git repo, a Node app. The current menu is
-static and generic. For a developer and media-heavy workflow, 80% of the most
-useful actions are contextual. Surfacing them automatically eliminates repeated
-"open terminal → type command" loops and reduces tool-switching.
+**Motivation:** The current menu is static. Most high-value actions in real
+workflows are contextual (Python/Git/Node/media/etc.). A dynamic menu reduces
+tool switching and repetitive terminal command entry.
 
 ---
 
-#### Detection Behaviour
+#### Phase 1 (Implemented)
 
-- Detection runs on every navigation event in the active panel (path change, tab
-  switch, window focus change).
-- **Scope:** the current folder itself AND its immediate children (one level deep).
-  This means standing in `c:\projects` and having `my-app/pyproject.toml` a level
-  down is enough to trigger Python mode.
-- Multiple modes can be active simultaneously. All matching modes contribute
-  their action groups to the Context menu, separated by a labelled section header
-  per mode.
-- Detection is fast and synchronous (filesystem stat calls only, no file parsing
-  at detect time). Heavy parsing (e.g., reading `pyproject.toml` scripts) happens
-  lazily when the menu is opened, not on every navigation.
+**Scope:**
+- Modes: **Python Project**, **Git Repository**, **Node / JS / TS Project**
+- Detection scope: current folder + immediate child folders
+- Detection triggers: active path change, active tab change, window activation
+- Child scan cap: configurable in settings (default `33`)
+- Per-root grouping: current and child matches are shown as separate root groups
+- Top-level Context menu is hidden when no modes are detected
 
----
-
-#### Built-in Context Modes
-
-**Python Project**
-Triggered by: `pyproject.toml`, `setup.py`, `setup.cfg`, `requirements.txt`,
-`uv.lock`, `hatch.toml`, `.venv/`, `.python-version` — in current folder or any
-immediate child folder.
-
-Actions:
-- Open project root in Code Editor (tool: `code_editor`)
-- Open terminal here with venv auto-activated (detect `.venv/`, `uv`, `hatch`)
-- **Runnable scripts submenu** — discovered from all of:
-  - `[project.scripts]` in `pyproject.toml`
-  - `[tool.hatch.envs.*.scripts]` in `pyproject.toml`
-  - `run_*.py`, `main.py`, `__main__.py` globbed in the project root
-  - Entries shown as "Run: <script-name>" with the resolved command
+**Python mode (Phase 1):**
+- Open project root in Code Editor (`code_editor`)
+- Open terminal here (best-effort venv activation)
 - Open `pyproject.toml` in Code Editor
-- Show detected Python version (from `.python-version` or `pyproject.toml
-  requires-python`)
+- Disabled info row with detected Python version
+- Runnable scripts submenu (lazy-loaded on submenu open):
+  - `[project.scripts]`
+  - `[tool.hatch.envs.*.scripts]`
+  - `run_*.py`, `main.py`, `__main__.py`
 
-**Git Repository**
-Triggered by: `.git/` in current folder or any immediate child.
-
-Actions:
-- Open in configured Git GUI (tool: `git_gui`) — user sets path in settings
+**Git mode (Phase 1):**
+- Open in Git GUI (`git_gui`)
 - Open terminal here
-- Copy remote origin URL to clipboard (parsed from `.git/config`)
-- Open remote URL in browser (if remote matches github.com / gitlab.com /
-  bitbucket.org)
-- Show current branch name inline as a disabled menu label (e.g.,
-  `  Branch: main ✓` or `  Branch: feature/x *`)
+- Copy remote origin URL
+- Open remote URL in browser (GitHub/GitLab/Bitbucket only)
+- Disabled info row with current branch
 
-**Node / JS / TS Project**
-Triggered by: `package.json`, `bun.lockb`, `pnpm-lock.yaml`, `yarn.lock`,
-`node_modules/` — in current folder or immediate child.
-
-Actions:
-- Open in Code Editor
+**Node mode (Phase 1):**
+- Open project root in Code Editor (`code_editor`)
 - Open terminal here
-- **npm/bun scripts submenu** — scripts parsed from `package.json["scripts"]`,
-  shown as "Run: <script-name>"
 - Open `package.json` in Code Editor
+- Runnable scripts submenu (lazy-loaded from `package.json["scripts"]`)
+- Runner selection: `packageManager` field, then lockfile hints, else `npm`
 
-**Docker / Container Project**
-Triggered by: `Dockerfile`, `docker-compose.yml`, `compose.yaml`,
-`.dockerignore` — in current folder or immediate child.
+**Context tool settings (Phase 1):**
+- `context/tools/code_editor/exe_path`
+- `context/tools/code_editor/args_template`
+- `context/tools/git_gui/exe_path`
+- `context/tools/git_gui/args_template`
 
-Actions:
-- Open terminal here
-- `docker compose up` (in terminal)
-- `docker compose down` (in terminal)
-- Open `docker-compose.yml` in Code Editor
-
-**Media Folder**
-Triggered by: ≥30% of files in current folder (by count) are `.mp4`, `.mkv`,
-`.avi`, `.mov`, `.wmv`, `.m4v`, `.webm`.
-
-Actions:
-- Play all in Default Media Player (tool: `default_media_player`)
-- Play all in Alternative Media Player (tool: `alt_media_player`)
-- Play selected file(s) in Default Media Player
-- Play selected file(s) in Alternative Media Player
-- Open ffmpeg terminal here (if `ffmpeg` found on PATH or configured)
-- Show total media file count + total size (computed lazily)
-
-**Image Folder**
-Triggered by: ≥30% of files in current folder are `.jpg`, `.jpeg`, `.png`,
-`.webp`, `.gif`, `.tiff`, `.bmp`, `.heic`, `.avif`.
-
-Actions:
-- Open slideshow in Default Image Viewer (tool: `default_image_viewer`)
-- Open in Alternative Image Viewer (tool: `alt_image_viewer`)
-- Open selected file(s) in Default Image Viewer
-- Open selected file(s) in editor (tool: `default_image_editor`, optional)
-- Show image count + total size (computed lazily)
-
-**Subtitle / Release Folder** *(bonus for media workflows)*
-Triggered by: presence of both a video file type AND `.srt` / `.ass` / `.sub` /
-`.nfo` in the same folder.
-
-Actions:
-- Open `.nfo` in Default Editor
-- Play in Default Media Player (passes the folder as playlist root)
-- Play in Alternative Media Player
-
-**Archive Folder**
-Triggered by: ≥30% of files are `.zip`, `.7z`, `.rar`, `.tar`, `.gz`, `.xz`,
-`.zst`.
-
-Actions:
-- Extract selected to subfolder
-- Extract all here
-- Open selected in configured archive tool (tool: `archive_tool`)
+**General behavior (Phase 1):**
+- Missing tool paths show actions as disabled with a configuration hint
+- Script parsing is asynchronous and shows `Loading...` while resolving
+- Runnable scripts launch in a visible terminal
 
 ---
 
-#### Extended Tool Registry
+#### Deferred Phase 2+
 
-New named tools added to the settings system (extending existing
-`OpsSettingsDomain` tool paths, or a new `ContextToolsDomain`):
-
-| Key | Label in Settings | Used by |
-|---|---|---|
-| `code_editor` | Code Editor | Python, Node, Docker, Git |
-| `default_media_player` | Default Media Player | Media, Subtitle |
-| `alt_media_player` | Alternative Media Player | Media, Subtitle |
-| `default_image_viewer` | Default Image Viewer | Image |
-| `alt_image_viewer` | Alternative Image Viewer | Image |
-| `default_image_editor` | Image Editor (optional) | Image |
-| `pdf_viewer` | PDF Viewer | (future PDF mode) |
-| `git_gui` | Git GUI | Git |
-| `archive_tool` | Archive Tool | Archive |
-
-Each tool entry has:
-- `exe_path` — path to the executable (browsable in settings)
-- `args_template` — optional launch arguments with placeholders (default
-  reasonable per tool, user-overridable)
-
-Placeholders available in `args_template`:
-- `{folder}` — current folder path
-- `{file}` — first selected file path
-- `{files}` — all selected file paths, space-separated (quoted individually)
-- `{project_root}` — detected project root (nearest ancestor with detection
-  signal, e.g., where `pyproject.toml` lives)
+The following parts remain planned and are intentionally deferred:
+- Built-in modes: Docker, Media, Image, Subtitle/Release, Archive
+- Custom user-defined modes (`custom_modes.json`)
+- Extended context tool registry beyond `code_editor` and `git_gui`
 
 ---
-
-#### User-Defined Custom Modes
-
-Users can define additional context modes in a JSON file located at:
-`%APPDATA%\ThreepSoftwz\many_panelz_explorer\custom_modes.json`
-
-Each custom mode is a JSON object with three sections: `name`, `detect`, and
-`actions`. The format is intentionally minimal.
-
-```json
-[
-  {
-    "name": "Blender Project",
-    "detect": {
-      "any_file_matches": ["*.blend"],
-      "any_child_file_matches": ["*.blend"]
-    },
-    "actions": [
-      {
-        "label": "Open in Blender",
-        "exe": "C:\\Program Files\\Blender Foundation\\Blender 4.2\\blender.exe",
-        "args": "{folder}"
-      },
-      {
-        "label": "Render {file}",
-        "exe": "C:\\Program Files\\Blender Foundation\\Blender 4.2\\blender.exe",
-        "args": "-b {file} -a",
-        "requires": "single_file_selected"
-      }
-    ]
-  },
-  {
-    "name": "Unity Project",
-    "detect": {
-      "any_child_folder_matches": ["Assets", "ProjectSettings"]
-    },
-    "actions": [
-      {
-        "label": "Open in Unity Hub",
-        "exe": "C:\\Program Files\\Unity Hub\\Unity Hub.exe",
-        "args": "--headless open --project {folder}"
-      }
-    ]
-  }
-]
-```
-
-**Detection keys:**
-
-| Key | Meaning |
-|---|---|
-| `any_file_matches` | Any file in current folder matches glob |
-| `any_child_file_matches` | Any file in any immediate child folder matches glob |
-| `any_folder_matches` | Current folder name matches glob |
-| `any_child_folder_matches` | Any immediate child folder name matches glob |
-
-Multiple keys are ANDed (all must match for the mode to activate). To express OR
-logic, define two separate mode entries with the same `name` — they merge in the
-menu.
-
-**Action keys:**
-
-| Key | Required | Meaning |
-|---|---|---|
-| `label` | yes | Menu item text (supports `{file}` placeholder for display) |
-| `exe` | yes | Path to executable, OR a registered tool key like `"tool:code_editor"` |
-| `args` | no | Argument string with placeholders; omit to launch with no args |
-| `requires` | no | `"single_file_selected"` or `"any_file_selected"` — greys out if not met |
-
-**Referencing registered tools** — instead of a hardcoded `exe` path, a custom
-mode can reference a tool already configured in settings:
-
-```json
-{ "label": "Edit in Code Editor", "exe": "tool:code_editor", "args": "{folder}" }
-```
-
-This keeps custom modes resilient to tool path changes made in the settings UI.
-
----
-
-#### Architecture Notes
-
-- A new module `_context/` under `src/many_panelz_explorer/` owns this feature:
-  - `detector.py` — `ContextDetector` class; `detect(path) -> list[ContextMode]`
-  - `modes/` — one file per built-in mode (`python_mode.py`, `git_mode.py`, etc.)
-  - `custom_loader.py` — loads and validates `custom_modes.json`
-  - `menu_builder.py` — takes active modes, builds `QMenu` structure
-  - `tool_registry.py` — resolves tool keys to `(exe_path, args_template)` from
-    settings
-- `WindowUiComposer` (in `ui/window/actions.py`) gains a method
-  `rebuild_context_menu(modes: list[ContextMode])` called on every navigation.
-- The dynamic Context menu is a top-level `QMenu` in the main menubar, rebuilt
-  in-place (not removed and re-added, to preserve menu bar layout stability).
-- Script/config parsing (e.g., `pyproject.toml`, `package.json`) is done in a
-  `QThreadPool` worker triggered when the menu is first opened (`aboutToShow`
-  signal), with a loading placeholder item shown during parse.
-
----
-
 ## Backlog
 
 ### F007 — Filter / Search Within Current Folder

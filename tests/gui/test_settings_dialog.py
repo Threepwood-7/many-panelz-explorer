@@ -145,6 +145,11 @@ def _tracked_keys() -> list[str]:
         SettingsManager.NAVIGATION_USE_APP_FONT_KEY,
         SettingsManager.NAVIGATION_FONT_FAMILY_KEY,
         SettingsManager.NAVIGATION_FONT_SIZE_PT_KEY,
+        SettingsManager.CONTEXT_IMMEDIATE_CHILD_SCAN_CAP_KEY,
+        SettingsManager.CONTEXT_TOOL_CODE_EDITOR_EXE_PATH_KEY,
+        SettingsManager.CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE_KEY,
+        SettingsManager.CONTEXT_TOOL_GIT_GUI_EXE_PATH_KEY,
+        SettingsManager.CONTEXT_TOOL_GIT_GUI_ARGS_TEMPLATE_KEY,
         SettingsManager.ACTIVE_PANEL_TINT_COLOR_KEY,
         SettingsManager.ACTIVE_PANEL_TINT_INTENSITY_KEY,
         SettingsManager.TARGET_PANEL_TINT_COLOR_KEY,
@@ -655,6 +660,11 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
 
     dialog.default_editor_executable_edit.setText(r"C:\tools\editor.exe")
     dialog.default_viewer_executable_edit.setText(r"C:\tools\viewer.exe")
+    dialog.context_scan_cap_spin.setValue(77)
+    dialog.context_code_editor_executable_edit.setText(r"C:\tools\code.exe")
+    dialog.context_code_editor_args_edit.setText("--folder {folder}")
+    dialog.context_git_gui_executable_edit.setText(r"C:\tools\gitgui.exe")
+    dialog.context_git_gui_args_edit.setText("--path {folder}")
     dialog.add_override_row_btn.click()
     row = dialog.file_open_overrides_table.rowCount() - 1
     dialog.file_open_overrides_table.item(row, 0).setText(".log")
@@ -667,6 +677,11 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
     persisted = isolated_settings.ui_preferences()
     assert persisted.default_editor_executable == r"C:\tools\editor.exe"
     assert persisted.default_viewer_executable == r"C:\tools\viewer.exe"
+    assert persisted.context_immediate_child_scan_cap == 77
+    assert persisted.context_tool_code_editor_exe_path == r"C:\tools\code.exe"
+    assert persisted.context_tool_code_editor_args_template == "--folder {folder}"
+    assert persisted.context_tool_git_gui_exe_path == r"C:\tools\gitgui.exe"
+    assert persisted.context_tool_git_gui_args_template == "--path {folder}"
     assert '".log"' in persisted.file_open_overrides_json
     assert persisted.use_extended_paths_robocopy is True
     assert persisted.use_extended_paths_external_delete is True

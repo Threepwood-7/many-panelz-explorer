@@ -411,6 +411,18 @@ class SettingsDialog(QDialog):
             controls=[self.new_context_combo],
         )
 
+        self.context_scan_cap_spin = QSpinBox(self)
+        self.context_scan_cap_spin.setRange(1, 10_000)
+        self.context_scan_cap_spin.valueChanged.connect(self._on_controls_changed)
+        self._add_row(
+            section=behavior_group,
+            key="context_scan_cap",
+            title="Context Child Scan Cap",
+            description="Maximum immediate child directories scanned for Context mode detection.",
+            terms="context detection child scan cap limit",
+            controls=[self.context_scan_cap_spin],
+        )
+
         self.show_hidden_checkbox = QCheckBox("Show hidden files by default", self)
         self.show_hidden_checkbox.toggled.connect(self._on_controls_changed)
         self._add_row(
@@ -631,6 +643,44 @@ class SettingsDialog(QDialog):
             description="Default executable used for view operations. Empty means use Default Editor.",
             terms="default viewer executable open view fallback editor",
             controls=[default_viewer_controls],
+        )
+
+        self.context_code_editor_executable_edit = QLineEdit(self)
+        self.context_code_editor_args_edit = QLineEdit(self)
+        context_code_editor_controls = self._build_command_controls(
+            executable_edit=self.context_code_editor_executable_edit,
+            args_edit=self.context_code_editor_args_edit,
+            default_executable=SettingsManager.DEFAULT_CONTEXT_TOOL_CODE_EDITOR_EXE_PATH,
+            default_args=SettingsManager.DEFAULT_CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE,
+            discover_default_executable="",
+            enable_find=False,
+        )
+        self._add_row(
+            section=operations_group,
+            key="context_code_editor_tool",
+            title="Context Tool: Code Editor",
+            description="Executable and args template for context actions using code editor.",
+            terms="context tool code editor executable args template",
+            controls=[context_code_editor_controls],
+        )
+
+        self.context_git_gui_executable_edit = QLineEdit(self)
+        self.context_git_gui_args_edit = QLineEdit(self)
+        context_git_gui_controls = self._build_command_controls(
+            executable_edit=self.context_git_gui_executable_edit,
+            args_edit=self.context_git_gui_args_edit,
+            default_executable=SettingsManager.DEFAULT_CONTEXT_TOOL_GIT_GUI_EXE_PATH,
+            default_args=SettingsManager.DEFAULT_CONTEXT_TOOL_GIT_GUI_ARGS_TEMPLATE,
+            discover_default_executable="",
+            enable_find=False,
+        )
+        self._add_row(
+            section=operations_group,
+            key="context_git_gui_tool",
+            title="Context Tool: Git GUI",
+            description="Executable and args template for context actions using Git GUI.",
+            terms="context tool git gui executable args template",
+            controls=[context_git_gui_controls],
         )
 
         self.file_open_overrides_table = QTableWidget(0, 3, self)
@@ -1402,6 +1452,9 @@ class SettingsDialog(QDialog):
             self._set_combo_value(
                 self.new_context_combo, preferences.new_context_mode
             )
+            self.context_scan_cap_spin.setValue(
+                preferences.context_immediate_child_scan_cap
+            )
             self.show_hidden_checkbox.setChecked(preferences.show_hidden_default)
             self.show_root_dropdown_checkbox.setChecked(preferences.show_root_dropdown)
             self._set_combo_value(
@@ -1445,6 +1498,18 @@ class SettingsDialog(QDialog):
             )
             self.default_viewer_executable_edit.setText(
                 preferences.default_viewer_executable
+            )
+            self.context_code_editor_executable_edit.setText(
+                preferences.context_tool_code_editor_exe_path
+            )
+            self.context_code_editor_args_edit.setText(
+                preferences.context_tool_code_editor_args_template
+            )
+            self.context_git_gui_executable_edit.setText(
+                preferences.context_tool_git_gui_exe_path
+            )
+            self.context_git_gui_args_edit.setText(
+                preferences.context_tool_git_gui_args_template
             )
             self._load_file_open_overrides(preferences.file_open_overrides_json)
             self.use_extended_paths_robocopy_checkbox.setChecked(
@@ -1550,6 +1615,7 @@ class SettingsDialog(QDialog):
             column_width_auto_align_mode=str(
                 self.column_width_auto_align_mode_combo.currentData()
             ),
+            context_immediate_child_scan_cap=self.context_scan_cap_spin.value(),
             show_refresh_button=self.show_refresh_button_checkbox.isChecked(),
             show_root_buttons=self.show_root_buttons_checkbox.isChecked(),
             show_address_bar=self.show_address_bar_checkbox.isChecked(),
@@ -1572,6 +1638,10 @@ class SettingsDialog(QDialog):
             ),
             default_editor_executable=self.default_editor_executable_edit.text().strip(),
             default_viewer_executable=self.default_viewer_executable_edit.text().strip(),
+            context_tool_code_editor_exe_path=self.context_code_editor_executable_edit.text().strip(),
+            context_tool_code_editor_args_template=self.context_code_editor_args_edit.text().strip(),
+            context_tool_git_gui_exe_path=self.context_git_gui_executable_edit.text().strip(),
+            context_tool_git_gui_args_template=self.context_git_gui_args_edit.text().strip(),
             file_open_overrides_json=self._serialize_file_open_overrides(),
             use_extended_paths_robocopy=self.use_extended_paths_robocopy_checkbox.isChecked(),
             use_extended_paths_teracopy=self.use_extended_paths_teracopy_checkbox.isChecked(),

@@ -267,11 +267,15 @@ class WindowUiComposer:
         view_menu.addSeparator()
         view_menu.addAction(self.window._settings_action)
 
+        self.window._context_menu = QMenu("&Context", self.window)
+
         help_menu = QMenu("&Help", self.window)
         help_menu.addAction(self.window._help_action)
 
         self.window._menu_file_action = menu_bar.addMenu(file_menu)
         self.window._menu_view_action = menu_bar.addMenu(view_menu)
+        self.window._menu_context_action = menu_bar.addMenu(self.window._context_menu)
+        self.window._menu_context_action.setVisible(False)
         self.window._menu_help_action = menu_bar.addMenu(help_menu)
 
         self.window.addActions(
@@ -339,4 +343,3 @@ class WindowUiComposer:
         self.window._queue_dock.setVisible(show_dock)
         if mode in {"floating_window", "both"}:
             self.window.controller.show_queue_floating_window()
-

@@ -233,6 +233,106 @@ class UiSettingsDomain(SettingsRegistry):
         )
 
     @property
+    def context_immediate_child_scan_cap(self) -> int:
+        return normalize.normalize_positive_int(
+            self._storage.value(
+                self.CONTEXT_IMMEDIATE_CHILD_SCAN_CAP_KEY,
+                self.DEFAULT_CONTEXT_IMMEDIATE_CHILD_SCAN_CAP,
+            ),
+            fallback=self.DEFAULT_CONTEXT_IMMEDIATE_CHILD_SCAN_CAP,
+            minimum=1,
+            maximum=10_000,
+        )
+
+    @context_immediate_child_scan_cap.setter
+    def context_immediate_child_scan_cap(self, value: int) -> None:
+        self._storage.set_value(
+            self.CONTEXT_IMMEDIATE_CHILD_SCAN_CAP_KEY,
+            normalize.normalize_positive_int(
+                value,
+                fallback=self.DEFAULT_CONTEXT_IMMEDIATE_CHILD_SCAN_CAP,
+                minimum=1,
+                maximum=10_000,
+            ),
+        )
+
+    @property
+    def context_tool_code_editor_exe_path(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.CONTEXT_TOOL_CODE_EDITOR_EXE_PATH_KEY,
+                self.DEFAULT_CONTEXT_TOOL_CODE_EDITOR_EXE_PATH,
+            ),
+            fallback=self.DEFAULT_CONTEXT_TOOL_CODE_EDITOR_EXE_PATH,
+        )
+
+    @context_tool_code_editor_exe_path.setter
+    def context_tool_code_editor_exe_path(self, value: str) -> None:
+        self._storage.set_value(
+            self.CONTEXT_TOOL_CODE_EDITOR_EXE_PATH_KEY,
+            normalize.normalize_text(
+                value, fallback=self.DEFAULT_CONTEXT_TOOL_CODE_EDITOR_EXE_PATH
+            ),
+        )
+
+    @property
+    def context_tool_code_editor_args_template(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE_KEY,
+                self.DEFAULT_CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE,
+        )
+
+    @context_tool_code_editor_args_template.setter
+    def context_tool_code_editor_args_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE_KEY,
+            normalize.normalize_text(
+                value, fallback=self.DEFAULT_CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE
+            ),
+        )
+
+    @property
+    def context_tool_git_gui_exe_path(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.CONTEXT_TOOL_GIT_GUI_EXE_PATH_KEY,
+                self.DEFAULT_CONTEXT_TOOL_GIT_GUI_EXE_PATH,
+            ),
+            fallback=self.DEFAULT_CONTEXT_TOOL_GIT_GUI_EXE_PATH,
+        )
+
+    @context_tool_git_gui_exe_path.setter
+    def context_tool_git_gui_exe_path(self, value: str) -> None:
+        self._storage.set_value(
+            self.CONTEXT_TOOL_GIT_GUI_EXE_PATH_KEY,
+            normalize.normalize_text(
+                value, fallback=self.DEFAULT_CONTEXT_TOOL_GIT_GUI_EXE_PATH
+            ),
+        )
+
+    @property
+    def context_tool_git_gui_args_template(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.CONTEXT_TOOL_GIT_GUI_ARGS_TEMPLATE_KEY,
+                self.DEFAULT_CONTEXT_TOOL_GIT_GUI_ARGS_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_CONTEXT_TOOL_GIT_GUI_ARGS_TEMPLATE,
+        )
+
+    @context_tool_git_gui_args_template.setter
+    def context_tool_git_gui_args_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.CONTEXT_TOOL_GIT_GUI_ARGS_TEMPLATE_KEY,
+            normalize.normalize_text(
+                value, fallback=self.DEFAULT_CONTEXT_TOOL_GIT_GUI_ARGS_TEMPLATE
+            ),
+        )
+
+    @property
     def active_panel_tint_color_hex(self) -> str:
         return normalize.normalize_color_hex(
             self._storage.value(

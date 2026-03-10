@@ -69,6 +69,24 @@ def normalize_text(raw: Any, *, fallback: str) -> str:
     return str(fallback)
 
 
+def normalize_positive_int(
+    raw: Any,
+    *,
+    fallback: int,
+    minimum: int = 1,
+    maximum: int = 10_000,
+) -> int:
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return int(fallback)
+    if value < int(minimum):
+        return int(minimum)
+    if value > int(maximum):
+        return int(maximum)
+    return int(value)
+
+
 def normalize_overrides_json(raw: Any, *, fallback: str) -> str:
     text = str(raw or "").strip()
     if not text:

@@ -42,6 +42,11 @@ class SettingsRegistry:
     NAVIGATION_USE_APP_FONT_KEY = "ui/font/navigation/use_app_font"
     NAVIGATION_FONT_FAMILY_KEY = "ui/font/navigation/family"
     NAVIGATION_FONT_SIZE_PT_KEY = "ui/font/navigation/size_pt"
+    CONTEXT_IMMEDIATE_CHILD_SCAN_CAP_KEY = "context/detection/immediate_child_scan_cap"
+    CONTEXT_TOOL_CODE_EDITOR_EXE_PATH_KEY = "context/tools/code_editor/exe_path"
+    CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE_KEY = "context/tools/code_editor/args_template"
+    CONTEXT_TOOL_GIT_GUI_EXE_PATH_KEY = "context/tools/git_gui/exe_path"
+    CONTEXT_TOOL_GIT_GUI_ARGS_TEMPLATE_KEY = "context/tools/git_gui/args_template"
     ACTIVE_PANEL_TINT_COLOR_KEY = "ui/panel_tint/active_color_hex"
     ACTIVE_PANEL_TINT_INTENSITY_KEY = "ui/panel_tint/active_intensity_percent"
     TARGET_PANEL_TINT_COLOR_KEY = "ui/panel_tint/target_color_hex"
@@ -95,6 +100,11 @@ class SettingsRegistry:
     DEFAULT_NAVIGATION_USE_APP_FONT = True
     DEFAULT_NAVIGATION_FONT_FAMILY = ""
     DEFAULT_NAVIGATION_FONT_SIZE_PT = 10
+    DEFAULT_CONTEXT_IMMEDIATE_CHILD_SCAN_CAP = 33
+    DEFAULT_CONTEXT_TOOL_CODE_EDITOR_EXE_PATH = ""
+    DEFAULT_CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE = "{folder}"
+    DEFAULT_CONTEXT_TOOL_GIT_GUI_EXE_PATH = ""
+    DEFAULT_CONTEXT_TOOL_GIT_GUI_ARGS_TEMPLATE = "{folder}"
     DEFAULT_COPY_MOVE_BACKEND = BACKEND_PYTHON
     DEFAULT_DELETE_BACKEND = BACKEND_RECYCLE_BIN
     DEFAULT_OPERATION_DISPATCH_MODE = DISPATCH_MODE_QUEUE

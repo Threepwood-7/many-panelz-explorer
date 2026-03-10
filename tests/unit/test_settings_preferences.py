@@ -22,6 +22,11 @@ def _tracked_keys() -> list[str]:
         SettingsManager.NAVIGATION_USE_APP_FONT_KEY,
         SettingsManager.NAVIGATION_FONT_FAMILY_KEY,
         SettingsManager.NAVIGATION_FONT_SIZE_PT_KEY,
+        SettingsManager.CONTEXT_IMMEDIATE_CHILD_SCAN_CAP_KEY,
+        SettingsManager.CONTEXT_TOOL_CODE_EDITOR_EXE_PATH_KEY,
+        SettingsManager.CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE_KEY,
+        SettingsManager.CONTEXT_TOOL_GIT_GUI_EXE_PATH_KEY,
+        SettingsManager.CONTEXT_TOOL_GIT_GUI_ARGS_TEMPLATE_KEY,
         SettingsManager.ACTIVE_PANEL_TINT_COLOR_KEY,
         SettingsManager.ACTIVE_PANEL_TINT_INTENSITY_KEY,
         SettingsManager.TARGET_PANEL_TINT_COLOR_KEY,
@@ -96,6 +101,11 @@ def test_ui_preferences_round_trip() -> None:
             navigation_use_app_font=False,
             navigation_font_family="Segoe UI",
             navigation_font_size_pt=12,
+            context_immediate_child_scan_cap=55,
+            context_tool_code_editor_exe_path=r"C:\tools\code.exe",
+            context_tool_code_editor_args_template="--folder {folder}",
+            context_tool_git_gui_exe_path=r"C:\tools\gitgui.exe",
+            context_tool_git_gui_args_template="--path {folder}",
             active_panel_tint_color_hex="#ABCDEF",
             active_panel_tint_intensity_percent=80,
             target_panel_tint_color_hex="#123456",
@@ -161,6 +171,11 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.remove(SettingsManager.NAVIGATION_USE_APP_FONT_KEY)
         settings.remove(SettingsManager.NAVIGATION_FONT_FAMILY_KEY)
         settings.remove(SettingsManager.NAVIGATION_FONT_SIZE_PT_KEY)
+        settings.set_value(SettingsManager.CONTEXT_IMMEDIATE_CHILD_SCAN_CAP_KEY, "invalid")
+        settings.remove(SettingsManager.CONTEXT_TOOL_CODE_EDITOR_EXE_PATH_KEY)
+        settings.remove(SettingsManager.CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE_KEY)
+        settings.remove(SettingsManager.CONTEXT_TOOL_GIT_GUI_EXE_PATH_KEY)
+        settings.remove(SettingsManager.CONTEXT_TOOL_GIT_GUI_ARGS_TEMPLATE_KEY)
         settings.set_value(SettingsManager.ACTIVE_PANEL_TINT_COLOR_KEY, "blue")
         settings.set_value(SettingsManager.TARGET_PANEL_TINT_COLOR_KEY, "#12")
         settings.set_value(SettingsManager.ACTIVE_PANEL_TINT_INTENSITY_KEY, "oops")
@@ -233,6 +248,26 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         assert (
             loaded.navigation_font_size_pt
             == SettingsManager.DEFAULT_NAVIGATION_FONT_SIZE_PT
+        )
+        assert (
+            loaded.context_immediate_child_scan_cap
+            == SettingsManager.DEFAULT_CONTEXT_IMMEDIATE_CHILD_SCAN_CAP
+        )
+        assert (
+            loaded.context_tool_code_editor_exe_path
+            == SettingsManager.DEFAULT_CONTEXT_TOOL_CODE_EDITOR_EXE_PATH
+        )
+        assert (
+            loaded.context_tool_code_editor_args_template
+            == SettingsManager.DEFAULT_CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE
+        )
+        assert (
+            loaded.context_tool_git_gui_exe_path
+            == SettingsManager.DEFAULT_CONTEXT_TOOL_GIT_GUI_EXE_PATH
+        )
+        assert (
+            loaded.context_tool_git_gui_args_template
+            == SettingsManager.DEFAULT_CONTEXT_TOOL_GIT_GUI_ARGS_TEMPLATE
         )
         assert (
             loaded.active_panel_tint_color_hex

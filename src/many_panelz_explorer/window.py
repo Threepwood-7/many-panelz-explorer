@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from . import widget_naming
+from ._context import ContextMenuController
 from .panel_tree import (
     ORIENTATION_HORIZONTAL,
     LeafNode,
@@ -77,6 +78,7 @@ class ExplorerWindow(QMainWindow):
         self._operations_coordinator = WindowOperationsCoordinator(self)
         self._persistence_coordinator = WindowPersistenceCoordinator(self)
         self._ui_composer = WindowUiComposer(self)
+        self._context_menu_controller: ContextMenuController | None = None
 
         self._layout_rows: PanelRows = self._rows_from_tree(self.panel_tree.root)
         self.panel_widgets: dict[int, PanelWidget] = {}
@@ -110,6 +112,21 @@ class ExplorerWindow(QMainWindow):
         self._navigation_use_app_font = ui_preferences.navigation_use_app_font
         self._navigation_font_family = ui_preferences.navigation_font_family
         self._navigation_font_size_pt = ui_preferences.navigation_font_size_pt
+        self._context_immediate_child_scan_cap = (
+            ui_preferences.context_immediate_child_scan_cap
+        )
+        self._context_tool_code_editor_exe_path = (
+            ui_preferences.context_tool_code_editor_exe_path
+        )
+        self._context_tool_code_editor_args_template = (
+            ui_preferences.context_tool_code_editor_args_template
+        )
+        self._context_tool_git_gui_exe_path = (
+            ui_preferences.context_tool_git_gui_exe_path
+        )
+        self._context_tool_git_gui_args_template = (
+            ui_preferences.context_tool_git_gui_args_template
+        )
         self._active_panel_tint_color_hex = ui_preferences.active_panel_tint_color_hex
         self._active_panel_tint_intensity_percent = (
             ui_preferences.active_panel_tint_intensity_percent
@@ -131,6 +148,7 @@ class ExplorerWindow(QMainWindow):
 
         self._build_actions()
         self._build_menus()
+        self._context_menu_controller = ContextMenuController(self, self._context_menu)
         self._build_shortcuts()
         self._build_operation_queue_widgets()
         self.controller.operation_queue_manager.job_updated.connect(
@@ -148,6 +166,7 @@ class ExplorerWindow(QMainWindow):
         self._sync_panel_tree_from_rows()
         self._rebuild_from_tree(tabs_state=empty_state, preferred_active_panel=None)
         self._apply_operation_queue_visibility()
+        self._refresh_context_menu()
 
     # ----- public API -----
     def split_active_panel(self, orientation: Qt.Orientation) -> None:
@@ -329,6 +348,7 @@ class ExplorerWindow(QMainWindow):
     def event(self, event: QEvent) -> bool:
         if event.type() == QEvent.Type.WindowActivate:
             self.window_activated.emit()
+            self._refresh_context_menu()
         return super().event(event)
 
     def closeEvent(self, event: QCloseEvent) -> None:
@@ -644,6 +664,19 @@ class ExplorerWindow(QMainWindow):
         self._navigation_use_app_font = bool(preferences.navigation_use_app_font)
         self._navigation_font_family = preferences.navigation_font_family
         self._navigation_font_size_pt = int(preferences.navigation_font_size_pt)
+        self._context_immediate_child_scan_cap = int(
+            preferences.context_immediate_child_scan_cap
+        )
+        self._context_tool_code_editor_exe_path = (
+            preferences.context_tool_code_editor_exe_path
+        )
+        self._context_tool_code_editor_args_template = (
+            preferences.context_tool_code_editor_args_template
+        )
+        self._context_tool_git_gui_exe_path = preferences.context_tool_git_gui_exe_path
+        self._context_tool_git_gui_args_template = (
+            preferences.context_tool_git_gui_args_template
+        )
         self._active_panel_tint_color_hex = preferences.active_panel_tint_color_hex
         self._active_panel_tint_intensity_percent = (
             preferences.active_panel_tint_intensity_percent
@@ -872,6 +905,12 @@ class ExplorerWindow(QMainWindow):
 
     def _update_pane_visuals(self) -> None:
         self._status_coordinator.update_pane_visuals()
+        self._refresh_context_menu()
+
+    def _refresh_context_menu(self) -> None:
+        if self._context_menu_controller is None:
+            return
+        self._context_menu_controller.rebuild()
 
     def _set_persistent_path_status(
         self, *, source_id: int | None, target_id: int | None

@@ -33,6 +33,7 @@ A multi-panel, Windows-focused file explorer built with PySide6. Supports splitt
 - **Always on top** - per-window toggle
 - **Hidden files toggle** - show/hide hidden and system files
 - **Terminal integration** - open PowerShell (Windows) or x-terminal-emulator (Linux) at the current path
+- **Dynamic Context menu** - mode-aware actions for Python, Git, and Node folders (including immediate-child project detection)
 - **Properties dialog** - path, type, size, and file count for selected items
 - **Settings dialog** - searchable preferences with live preview, tint sliders, and tint color pickers
 
@@ -142,6 +143,11 @@ Runtime settings are stored via QSettings:
 | `ui/font/navigation/use_app_font` | Navigation toolbar inherits app font when true (default: true) |
 | `ui/font/navigation/family` | Navigation toolbar override family (`""` keeps app base family) |
 | `ui/font/navigation/size_pt` | Navigation toolbar override font size in pt (6..32) |
+| `context/detection/immediate_child_scan_cap` | Max immediate child directories scanned for context detection (default: `33`) |
+| `context/tools/code_editor/exe_path` | Executable path used by Context menu code-editor actions |
+| `context/tools/code_editor/args_template` | Launch args template for `code_editor` (`{folder}`, `{file}`, `{project_root}`, `{files}`) |
+| `context/tools/git_gui/exe_path` | Executable path used by Context menu Git GUI actions |
+| `context/tools/git_gui/args_template` | Launch args template for `git_gui` (`{folder}`, `{file}`, `{project_root}`, `{files}`) |
 | `ops/default_copy_move_backend` | Default copy/move backend (`python_builtin`, `windows_explorer`, `robocopy`, `teracopy`, `unstoppable`, `external_copymove`) |
 | `ops/default_delete_backend` | Default delete backend (`recycle_bin`, `permanent_native`, `cmd_delete`, `powershell_delete`, `rimraf`, `external_delete`) |
 | `ops/default_dispatch_mode` | Default dispatch mode (`queue`, `launch_now_no_wait`, `run_now_wait`) |
@@ -214,6 +220,12 @@ Runtime settings are stored via QSettings:
 - On top (checkable toggle)
 - Show hidden files (checkable toggle)
 - Settings... (Ctrl+,)
+
+**Context**:
+- Appears only when matching modes are detected for the active path
+- Python Project / Git Repository / Node / JS / TS Project mode groups
+- Per-root submenus for current root and immediate-child project roots
+- Runnable scripts submenus load asynchronously and show `Loading...` while parsing
 
 **Help**:
 - Help (F1)

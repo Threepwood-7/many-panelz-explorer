@@ -83,7 +83,7 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
     menu_titles = [
         action.text().replace("&", "") for action in window.menuBar().actions()
     ]
-    assert menu_titles[:3] == ["File", "View", "Help"]
+    assert menu_titles[:4] == ["File", "View", "Context", "Help"]
 
     file_menu = window.menuBar().actions()[0].menu()
     assert file_menu is not None
@@ -123,7 +123,7 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
     assert settings_action is not None
     assert settings_action.shortcut().toString() == "Ctrl+,"
 
-    help_menu = window.menuBar().actions()[2].menu()
+    help_menu = window.menuBar().actions()[3].menu()
     assert help_menu is not None
     help_action = next(
         (action for action in help_menu.actions() if action.text() == "&Help"), None
@@ -216,7 +216,7 @@ def test_menu_mouse_click_opens_each_main_menu(qtbot, tmp_path: Path) -> None:
     window.raise_()
 
     menu_bar = window.menuBar()
-    for action in menu_bar.actions()[:3]:
+    for action in [item for item in menu_bar.actions()[:4] if item.isVisible()]:
         menu = action.menu()
         assert menu is not None
         target = menu_bar.actionGeometry(action).center()

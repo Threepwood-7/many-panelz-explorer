@@ -62,6 +62,11 @@ class SettingsManager(SettingsRegistry):
     navigation_use_app_font = _delegate_property("ui", "navigation_use_app_font")
     navigation_font_family = _delegate_property("ui", "navigation_font_family")
     navigation_font_size_pt = _delegate_property("ui", "navigation_font_size_pt")
+    context_immediate_child_scan_cap = _delegate_property("ui", "context_immediate_child_scan_cap")
+    context_tool_code_editor_exe_path = _delegate_property("ui", "context_tool_code_editor_exe_path")
+    context_tool_code_editor_args_template = _delegate_property("ui", "context_tool_code_editor_args_template")
+    context_tool_git_gui_exe_path = _delegate_property("ui", "context_tool_git_gui_exe_path")
+    context_tool_git_gui_args_template = _delegate_property("ui", "context_tool_git_gui_args_template")
     active_panel_tint_color_hex = _delegate_property("ui", "active_panel_tint_color_hex")
     active_panel_tint_intensity_percent = _delegate_property(
         "ui", "active_panel_tint_intensity_percent"
@@ -127,6 +132,11 @@ class SettingsManager(SettingsRegistry):
             navigation_use_app_font=self.navigation_use_app_font,
             navigation_font_family=self.navigation_font_family,
             navigation_font_size_pt=self.navigation_font_size_pt,
+            context_immediate_child_scan_cap=self.context_immediate_child_scan_cap,
+            context_tool_code_editor_exe_path=self.context_tool_code_editor_exe_path,
+            context_tool_code_editor_args_template=self.context_tool_code_editor_args_template,
+            context_tool_git_gui_exe_path=self.context_tool_git_gui_exe_path,
+            context_tool_git_gui_args_template=self.context_tool_git_gui_args_template,
             active_panel_tint_color_hex=self.active_panel_tint_color_hex,
             active_panel_tint_intensity_percent=self.active_panel_tint_intensity_percent,
             target_panel_tint_color_hex=self.target_panel_tint_color_hex,
@@ -182,6 +192,13 @@ class SettingsManager(SettingsRegistry):
         self.navigation_use_app_font = preferences.navigation_use_app_font
         self.navigation_font_family = preferences.navigation_font_family
         self.navigation_font_size_pt = preferences.navigation_font_size_pt
+        self.context_immediate_child_scan_cap = preferences.context_immediate_child_scan_cap
+        self.context_tool_code_editor_exe_path = preferences.context_tool_code_editor_exe_path
+        self.context_tool_code_editor_args_template = (
+            preferences.context_tool_code_editor_args_template
+        )
+        self.context_tool_git_gui_exe_path = preferences.context_tool_git_gui_exe_path
+        self.context_tool_git_gui_args_template = preferences.context_tool_git_gui_args_template
         self.active_panel_tint_color_hex = preferences.active_panel_tint_color_hex
         self.active_panel_tint_intensity_percent = preferences.active_panel_tint_intensity_percent
         self.target_panel_tint_color_hex = preferences.target_panel_tint_color_hex

@@ -43,6 +43,11 @@ class UiPreferences:
     navigation_use_app_font: bool = True
     navigation_font_family: str = ""
     navigation_font_size_pt: int = 10
+    context_immediate_child_scan_cap: int = 33
+    context_tool_code_editor_exe_path: str = ""
+    context_tool_code_editor_args_template: str = "{folder}"
+    context_tool_git_gui_exe_path: str = ""
+    context_tool_git_gui_args_template: str = "{folder}"
     active_panel_tint_color_hex: str = "#A8B6C4"
     active_panel_tint_intensity_percent: int = 24
     target_panel_tint_color_hex: str = "#D2CCAA"
