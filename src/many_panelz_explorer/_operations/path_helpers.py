@@ -11,27 +11,34 @@ def normalize_path(path: Path | str) -> Path:
     return Path(path).expanduser()
 
 
+def _windows_native_separators(raw: str) -> str:
+    if os.name != "nt":
+        return raw
+    return str(raw).replace("/", "\\")
+
+
 def to_windows_long_path(path: Path | str) -> str:
-    raw = str(normalize_path(path))
+    raw = _windows_native_separators(str(normalize_path(path)))
     if os.name != "nt":
         return raw
     if raw.startswith("\\\\?\\"):
-        return raw
+        return _windows_native_separators(raw)
     absolute = os.path.abspath(raw)
+    absolute = _windows_native_separators(absolute)
     if absolute.startswith("\\\\"):
         return f"\\\\?\\UNC\\{absolute[2:]}"
     return f"\\\\?\\{absolute}"
 
 
 def to_windows_arg_path(path: Path | str, *, use_extended_paths: bool) -> str:
-    raw = str(normalize_path(path))
+    raw = _windows_native_separators(str(normalize_path(path)))
     if os.name != "nt":
         return raw
     if use_extended_paths:
         return to_windows_long_path(raw)
     if raw.startswith("\\\\?\\"):
-        return display_path(raw)
-    return os.path.abspath(raw)
+        return _windows_native_separators(display_path(raw))
+    return _windows_native_separators(os.path.abspath(raw))
 
 
 def resolve_use_extended_paths(
@@ -45,11 +52,14 @@ def resolve_use_extended_paths(
 
 def display_path(path: Path | str) -> str:
     raw = str(path)
+    if os.name != "nt":
+        return raw
+    raw = _windows_native_separators(raw)
     if raw.startswith("\\\\?\\UNC\\"):
-        return f"\\\\{raw[8:]}"
+        return _windows_native_separators(f"\\\\{raw[8:]}")
     if raw.startswith("\\\\?\\"):
-        return raw[4:]
-    return raw
+        return _windows_native_separators(raw[4:])
+    return _windows_native_separators(raw)
 
 
 def quoted(value: str) -> str:

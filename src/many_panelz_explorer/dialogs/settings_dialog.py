@@ -155,6 +155,83 @@ class _FontSizeSpinBox(QSpinBox):
 
 class SettingsDialog(QDialog):
     LIVE_PREVIEW_DEBOUNCE_MS = 140
+    RESETTABLE_FIELDS_BY_SECTION: dict[str, tuple[str, ...]] = {
+        "appearance": (
+            "active_panel_tint_color_hex",
+            "active_panel_tint_intensity_percent",
+            "target_panel_tint_color_hex",
+            "target_panel_tint_intensity_percent",
+            "app_font_family",
+            "app_font_size_pt",
+            "file_list_use_app_font",
+            "file_list_font_family",
+            "file_list_font_size_pt",
+            "navigation_use_app_font",
+            "navigation_font_family",
+            "navigation_font_size_pt",
+        ),
+        "behavior": (
+            "new_context_mode",
+            "context_immediate_child_scan_cap",
+        ),
+        "panels": (
+            "show_hidden_default",
+            "show_root_dropdown",
+            "show_refresh_button",
+            "show_root_buttons",
+            "show_address_bar",
+            "show_navigation_buttons",
+            "show_storage_overview_status_row",
+            "column_width_auto_align_mode",
+            "byte_thousands_separator",
+            "byte_decimal_separator",
+            "file_list_byte_format_mode",
+            "file_list_byte_custom_template",
+            "status_bar_byte_format_mode",
+            "status_bar_byte_custom_template",
+            "status_bar_storage_label_template",
+            "properties_byte_format_mode",
+            "properties_byte_custom_template",
+        ),
+        "operations": (
+            "default_copy_move_backend",
+            "default_delete_backend",
+            "default_operation_dispatch_mode",
+            "default_operation_conflict_policy",
+            "operation_shortcut_behavior",
+            "operation_queue_view_mode",
+            "default_editor_executable",
+            "default_viewer_executable",
+            "context_tool_code_editor_exe_path",
+            "context_tool_code_editor_args_template",
+            "context_tool_git_gui_exe_path",
+            "context_tool_git_gui_args_template",
+            "file_open_overrides_json",
+            "script_editor_executable",
+            "teracopy_executable",
+            "teracopy_args_template",
+            "use_extended_paths_teracopy",
+            "unstoppable_executable",
+            "unstoppable_args_template",
+            "use_extended_paths_unstoppable",
+            "generic_copymove_executable",
+            "generic_copymove_args_template",
+            "use_extended_paths_external_copymove",
+            "generic_delete_executable",
+            "generic_delete_args_template",
+            "use_extended_paths_external_delete",
+            "rimraf_executable",
+            "rimraf_args_template",
+            "use_extended_paths_rimraf",
+            "robocopy_copy_args",
+            "robocopy_move_args",
+            "use_extended_paths_robocopy",
+            "cmd_delete_args",
+            "powershell_delete_args",
+            "use_extended_paths_cmd_delete",
+            "use_extended_paths_powershell_delete",
+        ),
+    }
 
     def __init__(self, controller: AppController, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -171,6 +248,7 @@ class SettingsDialog(QDialog):
         self._row_subsection_keys: dict[str, str] = {}
         self._active_subsection_key = ""
         self._tree_sync_in_progress = False
+        self._pending_full_store_reset = False
 
         self.setWindowTitle("Settings")
         self.resize(1180, 820)
@@ -212,6 +290,59 @@ class SettingsDialog(QDialog):
         right_layout.setSpacing(8)
         content_layout.addWidget(right_host, 1)
 
+        self._reset_actions_bar = QWidget(right_host)
+        reset_bar_layout = QVBoxLayout(self._reset_actions_bar)
+        reset_bar_layout.setContentsMargins(0, 0, 0, 0)
+        reset_bar_layout.setSpacing(4)
+        self._assign_identity(
+            self._reset_actions_bar,
+            "settings_dialog:reset_context_bar",
+            "settings.reset.context_bar",
+        )
+
+        reset_top_row = QWidget(self._reset_actions_bar)
+        reset_top_layout = QHBoxLayout(reset_top_row)
+        reset_top_layout.setContentsMargins(0, 0, 0, 0)
+        reset_top_layout.setSpacing(8)
+
+        self.reset_section_context_label = QLabel(self._reset_actions_bar)
+        self._assign_identity(
+            self.reset_section_context_label,
+            "settings_dialog:reset_context_label",
+            "settings.reset.context_label",
+        )
+        self.reset_section_button = QPushButton("Reset Section", self._reset_actions_bar)
+        self.reset_section_button.clicked.connect(self._on_reset_current_section)
+        self._assign_identity(
+            self.reset_section_button,
+            "settings_dialog:reset_section_button",
+            "settings.reset.section_button",
+        )
+        self.reset_all_button = QPushButton(
+            "Reset Everything Stored", self._reset_actions_bar
+        )
+        self.reset_all_button.clicked.connect(self._on_reset_all_everything_stored)
+        self._assign_identity(
+            self.reset_all_button,
+            "settings_dialog:reset_everything_button",
+            "settings.reset.everything_button",
+        )
+        reset_top_layout.addWidget(self.reset_section_context_label, 1)
+        reset_top_layout.addWidget(self.reset_section_button)
+        reset_top_layout.addWidget(self.reset_all_button)
+        reset_bar_layout.addWidget(reset_top_row)
+
+        self.reset_pending_label = QLabel(self._reset_actions_bar)
+        self.reset_pending_label.setWordWrap(True)
+        self.reset_pending_label.setStyleSheet("color: #B25F00;")
+        self._assign_identity(
+            self.reset_pending_label,
+            "settings_dialog:reset_pending_label",
+            "settings.reset.pending_label",
+        )
+        reset_bar_layout.addWidget(self.reset_pending_label)
+        right_layout.addWidget(self._reset_actions_bar, 0)
+
         self._scroll = QScrollArea(right_host)
         self._scroll.setWidgetResizable(True)
         self._scroll_host = QWidget(self._scroll)
@@ -233,10 +364,6 @@ class SettingsDialog(QDialog):
         self._live_preview_timer = QTimer(self)
         self._live_preview_timer.setSingleShot(True)
         self._live_preview_timer.timeout.connect(self._flush_live_preview)
-
-        self._restore_defaults_button = QPushButton("Restore Appearance Defaults", self)
-        self._restore_defaults_button.clicked.connect(self._restore_appearance_defaults)
-        root.addWidget(self._restore_defaults_button)
 
         self._button_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok
@@ -1020,7 +1147,10 @@ class SettingsDialog(QDialog):
             section=operations_backend_commands_group,
             key="unstoppable_command",
             title="Unstoppable Copier Command",
-            description='Executable and args template. Tokens: {operation} {sources} {target}',
+            description=(
+                "Executable and args template. Tokens: {operation} {source} {sources} {target}. "
+                "For Unstoppable, {operation} maps to +d (copy) or +dm (move)."
+            ),
             terms="unstoppable copier executable args template test long path extended",
             controls=[unstoppable_controls],
         )
@@ -1914,6 +2044,7 @@ class SettingsDialog(QDialog):
             self._sync_font_override_controls()
             self._sync_byte_format_controls()
             self._sync_slider_value_labels()
+            self._update_reset_controls()
         finally:
             self._loading_ui = False
 
@@ -2053,74 +2184,72 @@ class SettingsDialog(QDialog):
         self._sync_color_preview(self.target_color_preview, self._target_color_hex)
         self._on_controls_changed()
 
-    def _restore_appearance_defaults(self) -> None:
-        self._active_color_hex = SettingsManager.DEFAULT_ACTIVE_PANEL_TINT_COLOR_HEX
-        self._target_color_hex = SettingsManager.DEFAULT_TARGET_PANEL_TINT_COLOR_HEX
-        self._sync_color_preview(self.active_color_preview, self._active_color_hex)
-        self._sync_color_preview(self.target_color_preview, self._target_color_hex)
-        self._set_combo_value(
-            self.app_font_family_combo, SettingsManager.DEFAULT_APP_FONT_FAMILY
-        )
-        self.app_font_size_spin.setValue(SettingsManager.DEFAULT_APP_FONT_SIZE_PT)
-        self.file_list_use_app_font_checkbox.setChecked(
-            SettingsManager.DEFAULT_FILE_LIST_USE_APP_FONT
-        )
-        self._set_combo_value(
-            self.file_list_font_family_combo,
-            SettingsManager.DEFAULT_FILE_LIST_FONT_FAMILY,
-        )
-        self.file_list_font_size_spin.setValue(
-            SettingsManager.DEFAULT_FILE_LIST_FONT_SIZE_PT
-        )
-        self.navigation_use_app_font_checkbox.setChecked(
-            SettingsManager.DEFAULT_NAVIGATION_USE_APP_FONT
-        )
-        self._set_combo_value(
-            self.navigation_font_family_combo,
-            SettingsManager.DEFAULT_NAVIGATION_FONT_FAMILY,
-        )
-        self.navigation_font_size_spin.setValue(
-            SettingsManager.DEFAULT_NAVIGATION_FONT_SIZE_PT
-        )
-        self.byte_thousands_separator_edit.setText(
-            SettingsManager.DEFAULT_BYTES_THOUSANDS_SEPARATOR
-        )
-        self.byte_decimal_separator_edit.setText(
-            SettingsManager.DEFAULT_BYTES_DECIMAL_SEPARATOR
-        )
-        self._set_combo_value(
-            self.file_list_byte_format_mode_combo,
-            SettingsManager.DEFAULT_FILE_LIST_BYTE_FORMAT_MODE,
-        )
-        self.file_list_byte_custom_template_edit.setText(
-            SettingsManager.DEFAULT_FILE_LIST_BYTE_CUSTOM_TEMPLATE
-        )
-        self._set_combo_value(
-            self.status_bar_byte_format_mode_combo,
-            SettingsManager.DEFAULT_STATUS_BAR_BYTE_FORMAT_MODE,
-        )
-        self.status_bar_byte_custom_template_edit.setText(
-            SettingsManager.DEFAULT_STATUS_BAR_BYTE_CUSTOM_TEMPLATE
-        )
-        self.status_bar_storage_label_template_edit.setText(
-            SettingsManager.DEFAULT_STATUS_BAR_STORAGE_LABEL_TEMPLATE
-        )
-        self._set_combo_value(
-            self.properties_byte_format_mode_combo,
-            SettingsManager.DEFAULT_PROPERTIES_BYTE_FORMAT_MODE,
-        )
-        self.properties_byte_custom_template_edit.setText(
-            SettingsManager.DEFAULT_PROPERTIES_BYTE_CUSTOM_TEMPLATE
-        )
-        self._sync_font_override_controls()
-        self._sync_byte_format_controls()
-        self.active_intensity_slider.setValue(
-            SettingsManager.DEFAULT_ACTIVE_PANEL_TINT_INTENSITY_PERCENT
-        )
-        self.target_intensity_slider.setValue(
-            SettingsManager.DEFAULT_TARGET_PANEL_TINT_INTENSITY_PERCENT
-        )
+    def _active_section_key(self) -> str:
+        subsection_key = self._selected_subsection_key()
+        subsection = self._subsections.get(subsection_key)
+        if subsection is None:
+            return ""
+        return subsection.section_key
+
+    def _resettable_fields_for_section(self, section_key: str) -> tuple[str, ...]:
+        return self.RESETTABLE_FIELDS_BY_SECTION.get(section_key, ())
+
+    def _apply_defaults_for_section(self, section_key: str) -> None:
+        field_names = self._resettable_fields_for_section(section_key)
+        if not field_names:
+            return
+        defaults = UiPreferences()
+        updates = {
+            field_name: getattr(defaults, field_name)
+            for field_name in field_names
+        }
+        updated_preferences = replace(self._working_preferences, **updates)
+        self._load_preferences_into_controls(updated_preferences)
         self._on_controls_changed()
+        self._update_reset_controls()
+
+    def _on_reset_current_section(self) -> None:
+        section_key = self._active_section_key()
+        if not section_key:
+            return
+        if not self._resettable_fields_for_section(section_key):
+            return
+        self._pending_full_store_reset = False
+        self._apply_defaults_for_section(section_key)
+
+    def _on_reset_all_everything_stored(self) -> None:
+        decision = QMessageBox.warning(
+            self,
+            "Reset Everything Stored",
+            (
+                "Schedule full reset of all stored settings and session data?\n\n"
+                "Apply/OK will clear the entire settings store, then persist current "
+                "defaults. Cancel keeps existing persisted settings unchanged."
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if decision != QMessageBox.StandardButton.Yes:
+            return
+        self._pending_full_store_reset = True
+        self._load_preferences_into_controls(UiPreferences())
+        self._on_controls_changed()
+        self._update_reset_controls()
+
+    def _update_reset_controls(self) -> None:
+        section_key = self._active_section_key()
+        section_entry = self._sections.get(section_key)
+        section_text = section_entry.title if section_entry is not None else "(none)"
+        self.reset_section_context_label.setText(f"Current Section: {section_text}")
+        section_fields = self._resettable_fields_for_section(section_key)
+        self.reset_section_button.setEnabled(bool(section_fields))
+        self.reset_pending_label.setVisible(self._pending_full_store_reset)
+        if self._pending_full_store_reset:
+            self.reset_pending_label.setText(
+                "Full reset is scheduled. Apply/OK will clear all stored settings and session data."
+            )
+        else:
+            self.reset_pending_label.setText("")
 
     def _accept_with_apply(self) -> None:
         self._apply_and_commit()
@@ -2130,13 +2259,19 @@ class SettingsDialog(QDialog):
         self._on_controls_changed()
         self._live_preview_timer.stop()
         self._pending_live_preview = False
+        if self._pending_full_store_reset:
+            self.controller.settings.clear_all()
         self.controller.apply_ui_preferences(self._working_preferences)
         self._committed_preferences = replace(self._working_preferences)
+        self._pending_full_store_reset = False
+        self._update_reset_controls()
 
     def reject(self) -> None:
         self._live_preview_timer.stop()
         self._pending_live_preview = False
+        self._pending_full_store_reset = False
         self.controller.preview_ui_preferences(self._committed_preferences)
+        self._update_reset_controls()
         super().reject()
 
     def _apply_search_filter(self, text: str) -> None:
@@ -2169,6 +2304,7 @@ class SettingsDialog(QDialog):
         self._no_matches_label.setVisible(bool(query) and visible_rows == 0)
         self._ensure_visible_tree_selection(persist=False)
         self._sync_active_subsection_visibility()
+        self._update_reset_controls()
 
     def _restore_last_tree_selection(self) -> None:
         saved_subsection = str(self.controller.settings.settings_dialog_last_subsection or "")
@@ -2265,6 +2401,7 @@ class SettingsDialog(QDialog):
             return False
         self._active_subsection_key = subsection_key
         self._sync_active_subsection_visibility()
+        self._update_reset_controls()
         if persist:
             self.controller.settings.settings_dialog_last_section = subsection.section_key
             self.controller.settings.settings_dialog_last_subsection = subsection.key

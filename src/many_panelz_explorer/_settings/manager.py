@@ -46,6 +46,9 @@ class SettingsManager(SettingsRegistry):
     def get_json(self, key: str, default: Any) -> Any:
         return self._storage.get_json(key, default)
 
+    def clear_all(self) -> None:
+        self._storage.clear_all()
+
     new_context_mode = _delegate_property("ui", "new_context_mode")
     show_hidden_default = _delegate_property("ui", "show_hidden_default")
     show_root_dropdown = _delegate_property("ui", "show_root_dropdown")

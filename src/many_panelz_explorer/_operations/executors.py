@@ -200,6 +200,8 @@ def execute_robocopy(
                 f'{quoted(robocopy_exe)} {quoted(src_parent)} {quoted(dst_parent)} {quoted(source.name)} {arg_tail}'
             )
         script_lines.append("if %ERRORLEVEL% GTR 7 exit /b %ERRORLEVEL%")
+    # Robocopy uses 0-7 as success/info codes; normalize success to 0 for queue status.
+    script_lines.append("cmd /c exit /b 0")
     script_path = write_script(artifacts, script_lines)
     return run_script(
         script_path,
@@ -218,6 +220,7 @@ def execute_external_command(
     executable: str,
     args_template: str,
     use_extended_paths_default: bool,
+    operation_token: str | None = None,
 ) -> OperationResult:
     exe = str(executable or "").strip()
     if not exe or exe == COMPANION_TOOL_NOT_FOUND:
@@ -228,7 +231,7 @@ def execute_external_command(
     )
     expanded = expand_template(
         args_template,
-        kind=request.kind,
+        kind=(operation_token if operation_token is not None else request.kind),
         sources=request.sources,
         target_dir=request.target_dir,
         use_extended_paths=use_extended_paths,
@@ -238,6 +241,69 @@ def execute_external_command(
         expanded = f"{expanded} {extra_args}".strip()
     cmd_line = " ".join([quoted(exe), expanded]).strip()
     script_path = write_script(artifacts, [cmd_line])
+    return run_script(
+        script_path,
+        artifacts.log_path,
+        cmd_path=preferences.resolved_cmd_path,
+        wait=wait,
+    )
+
+
+def _unstoppable_operation_token(kind: str) -> str:
+    normalized = str(kind or "").strip().lower()
+    if normalized == "move":
+        # +d: load program defaults, +m: move mode.
+        return "+dm"
+    # +d: load program defaults for predictable copy behavior.
+    return "+d"
+
+
+def execute_unstoppable(
+    request: OperationRequest,
+    artifacts: OperationArtifacts,
+    *,
+    wait: bool,
+    preferences: OperationExecutionPreferences,
+) -> OperationResult:
+    if request.kind not in {"copy", "move"} or request.target_dir is None:
+        return OperationResult(
+            status="failed",
+            message="Unstoppable backend supports copy/move only.",
+        )
+
+    exe = str(preferences.unstoppable_executable or "").strip()
+    if not exe or exe == COMPANION_TOOL_NOT_FOUND:
+        return OperationResult(status="failed", message="Executable is not configured.")
+    if not Path(exe).exists():
+        return OperationResult(
+            status="failed",
+            message=f"Executable is unavailable: {exe}",
+            processed_count=0,
+        )
+
+    use_extended_paths = resolve_use_extended_paths(
+        request,
+        default=preferences.use_extended_paths_unstoppable,
+    )
+    operation_token = _unstoppable_operation_token(request.kind)
+    extra_args = str(request.backend_options.get("extra_args", "")).strip()
+
+    script_lines: list[str] = []
+    for source in request.sources:
+        expanded = expand_template(
+            preferences.unstoppable_args_template,
+            kind=operation_token,
+            sources=(normalize_path(source),),
+            target_dir=request.target_dir,
+            use_extended_paths=use_extended_paths,
+        )
+        if extra_args:
+            expanded = f"{expanded} {extra_args}".strip()
+        cmd_line = " ".join([quoted(exe), expanded]).strip()
+        script_lines.append(cmd_line)
+        script_lines.append("if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%")
+
+    script_path = write_script(artifacts, script_lines)
     return run_script(
         script_path,
         artifacts.log_path,
@@ -373,14 +439,11 @@ def execute_operation_request(
             use_extended_paths_default=preferences.use_extended_paths_teracopy,
         )
     if backend == BACKEND_UNSTOPPABLE:
-        return execute_external_command(
+        return execute_unstoppable(
             request,
             artifacts,
             wait=wait,
             preferences=preferences,
-            executable=preferences.unstoppable_executable,
-            args_template=preferences.unstoppable_args_template,
-            use_extended_paths_default=preferences.use_extended_paths_unstoppable,
         )
     if backend == BACKEND_EXTERNAL_COPYMOVE:
         return execute_external_command(

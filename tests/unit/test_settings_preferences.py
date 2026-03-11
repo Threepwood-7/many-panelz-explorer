@@ -479,3 +479,64 @@ def test_settings_dialog_navigation_location_round_trip() -> None:
         assert settings.settings_dialog_last_subsection == ""
     finally:
         _restore(settings, before)
+
+
+def test_settings_clear_all_removes_known_and_unknown_keys() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    unknown_key = "custom/test_unknown_key"
+    unknown_before = settings.value(unknown_key, None)
+    window_tabs_key = settings.window_key("unit-reset", "tabs")
+    window_tree_key = settings.window_key("unit-reset", "panel_tree")
+    window_geometry_key = settings.window_key("unit-reset", "geometry")
+    window_tabs_before = settings.value(window_tabs_key, None)
+    window_tree_before = settings.value(window_tree_key, None)
+    window_geometry_before = settings.value(window_geometry_key, None)
+    try:
+        settings.show_hidden_default = False
+        settings.default_copy_move_backend = "robocopy"
+        settings.settings_dialog_last_section = "operations"
+        settings.settings_dialog_last_subsection = "operations/backend_args"
+        settings.set_session_window_ids(["unit-reset"])
+        settings.set_saved_view("Unit View", {"tabs": {}, "panel_tree": {}})
+        settings.set_json(window_tabs_key, {"active_panel_id": 1, "panels": {}})
+        settings.set_json(window_tree_key, {"type": "leaf", "panel_id": 1})
+        settings.set_value(window_geometry_key, "raw-geometry")
+        settings.set_value(unknown_key, "survive?")
+        settings.sync()
+
+        settings.clear_all()
+        settings.sync()
+
+        assert settings.value(SettingsManager.SHOW_HIDDEN_DEFAULT_KEY, None) is None
+        assert (
+            settings.value(SettingsManager.DEFAULT_COPY_MOVE_BACKEND_KEY, None) is None
+        )
+        assert settings.value(SettingsManager.SESSION_WINDOWS_KEY, None) is None
+        assert settings.value(SettingsManager.SAVED_VIEWS_KEY, None) is None
+        assert settings.value(window_tabs_key, None) is None
+        assert settings.value(window_tree_key, None) is None
+        assert settings.value(window_geometry_key, None) is None
+        assert settings.value(unknown_key, None) is None
+
+        loaded = settings.ui_preferences()
+        assert loaded == UiPreferences()
+    finally:
+        _restore(settings, before)
+        if unknown_before is None:
+            settings.remove(unknown_key)
+        else:
+            settings.set_value(unknown_key, unknown_before)
+        if window_tabs_before is None:
+            settings.remove(window_tabs_key)
+        else:
+            settings.set_value(window_tabs_key, window_tabs_before)
+        if window_tree_before is None:
+            settings.remove(window_tree_key)
+        else:
+            settings.set_value(window_tree_key, window_tree_before)
+        if window_geometry_before is None:
+            settings.remove(window_geometry_key)
+        else:
+            settings.set_value(window_geometry_key, window_geometry_before)
+        settings.sync()

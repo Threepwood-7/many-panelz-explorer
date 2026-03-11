@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .path_helpers import quoted, to_windows_arg_path
-from .types import OperationArtifacts, OperationKind, OperationJob, OperationResult
+from .types import OperationArtifacts, OperationJob, OperationResult
 
 
 def ensure_artifacts_root() -> Path:
@@ -86,10 +86,9 @@ def run_script(
         encoding="utf-8",
         newline="\n",
     )
-    command = quoted(str(script_path))
     creationflags = int(getattr(subprocess, "CREATE_NEW_CONSOLE", 0))
     process = subprocess.Popen(
-        [cmd_executable, "/d", "/c", command],
+        [cmd_executable, "/d", "/c", str(script_path)],
         creationflags=creationflags,
     )
     if not wait:
@@ -108,7 +107,7 @@ def run_script(
 def expand_template(
     template: str,
     *,
-    kind: OperationKind,
+    kind: str,
     sources: tuple[Path, ...],
     target_dir: Path | None,
     use_extended_paths: bool,

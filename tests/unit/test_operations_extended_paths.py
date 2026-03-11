@@ -8,7 +8,10 @@ from many_panelz_explorer._operations.artifacts import (
     run_script,
     write_script,
 )
-from many_panelz_explorer._operations.path_helpers import to_windows_arg_path
+from many_panelz_explorer._operations.path_helpers import (
+    display_path,
+    to_windows_arg_path,
+)
 from many_panelz_explorer._operations.types import (
     OperationArtifacts,
 )
@@ -24,6 +27,52 @@ def test_to_windows_arg_path_switches_extended_prefix(monkeypatch, tmp_path: Pat
 
     assert plain.startswith("\\\\?\\") is False
     assert extended.startswith("\\\\?\\")
+
+
+def test_to_windows_arg_path_normalizes_forward_slashes(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "many_panelz_explorer._operations.path_helpers.os.name", "nt", raising=False
+    )
+    plain = to_windows_arg_path(
+        r"C:/tmp/multi-panelz/source.txt",
+        use_extended_paths=False,
+    )
+    extended = to_windows_arg_path(
+        r"C:/tmp/multi-panelz/source.txt",
+        use_extended_paths=True,
+    )
+    assert "/" not in plain
+    assert "/" not in extended
+    assert "\\" in plain
+    assert extended.startswith("\\\\?\\")
+
+
+def test_display_path_normalizes_forward_slashes(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "many_panelz_explorer._operations.path_helpers.os.name", "nt", raising=False
+    )
+    assert (
+        display_path(r"\\?\C:/tmp/multi-panelz/source.txt")
+        == r"C:\tmp\multi-panelz\source.txt"
+    )
+    assert (
+        display_path(r"\\?\UNC\server/share/path")
+        == r"\\server\share\path"
+    )
+
+
+def test_windows_path_normalization_is_platform_specific(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "many_panelz_explorer._operations.path_helpers.os.name", "posix", raising=False
+    )
+    assert (
+        to_windows_arg_path("C:/tmp/multi-panelz/source.txt", use_extended_paths=False)
+        == "C:/tmp/multi-panelz/source.txt"
+    )
+    assert (
+        display_path(r"\\?\C:/tmp/multi-panelz/source.txt")
+        == r"\\?\C:/tmp/multi-panelz/source.txt"
+    )
 
 
 def test_expand_template_uses_configured_path_mode(
@@ -104,6 +153,7 @@ def test_run_script_does_not_redirect_companion_output(
     assert args[0] == str(cmd_exe)
     assert args[1] == "/d"
     assert args[2] == "/c"
+    assert args[3] == str(script_path)
     assert ">>" not in args[3]
     assert kwargs.get("creationflags", 0) == int(
         getattr(subprocess, "CREATE_NEW_CONSOLE", 0)

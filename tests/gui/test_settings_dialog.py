@@ -10,7 +10,7 @@ pytest.importorskip("pytestqt")
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from many_panelz_explorer._operations.discovery import resolve_companion_tool_paths
 from many_panelz_explorer._operations.queue_manager import OperationQueueManager
@@ -707,6 +707,156 @@ def test_settings_dialog_remembers_last_selected_subsection(
     )
     assert second._rows_by_key["robocopy_args"].isVisible() is True
     assert second._rows_by_key["teracopy_command"].isVisible() is False
+
+
+def test_settings_dialog_has_contextual_reset_bar_and_search_updates_target(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-reset-search",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    assert "reset" not in dialog._section_tree_items
+    assert (
+        dialog._reset_actions_bar.property("widget_alias")
+        == "settings.reset.context_bar"
+    )
+
+    operations_item = dialog._subsection_tree_items["operations/backend_args"]
+    dialog._section_tree.setCurrentItem(operations_item)
+    qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is operations_item)
+    assert dialog.reset_section_context_label.text() == "Current Section: Operations"
+    assert dialog.reset_section_button.isEnabled() is True
+
+    dialog.search_edit.setText("version")
+    qtbot.waitUntil(lambda: dialog._rows_by_key["about_version"].isVisible())
+    assert (
+        dialog._section_tree.currentItem()
+        is dialog._subsection_tree_items["about/application_info"]
+    )
+    assert dialog.reset_section_context_label.text() == "Current Section: About"
+    assert dialog.reset_section_button.isEnabled() is False
+
+
+def test_settings_dialog_reset_section_resets_selected_section_only(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-reset-subsection",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    panels_item = dialog._subsection_tree_items["panels/file_list_layout"]
+    dialog._section_tree.setCurrentItem(panels_item)
+    qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is panels_item)
+    dialog.show_hidden_checkbox.setChecked(False)
+    dialog.show_root_dropdown_checkbox.setChecked(True)
+    dialog._set_combo_value(dialog.column_width_auto_align_mode_combo, "none")
+    dialog.context_scan_cap_spin.setValue(77)
+
+    dialog.reset_section_button.click()
+
+    assert dialog.show_hidden_checkbox.isChecked() is True
+    assert dialog.show_root_dropdown_checkbox.isChecked() is False
+    assert str(dialog.column_width_auto_align_mode_combo.currentData()) == "current_panel_tabs"
+    assert dialog.context_scan_cap_spin.value() == 77
+    assert dialog._pending_full_store_reset is False
+
+
+def test_settings_dialog_reset_everything_staged_until_apply(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager, monkeypatch
+) -> None:
+    isolated_settings.show_hidden_default = False
+    isolated_settings.set_session_window_ids(["window-1"])
+    isolated_settings.set_saved_view("View A", {"tabs": {}, "panel_tree": {}})
+    isolated_settings.set_value("custom/gui_reset_unknown", "x")
+    isolated_settings.sync()
+
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-reset-all-apply",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    monkeypatch.setattr(
+        "many_panelz_explorer.dialogs.settings_dialog.QMessageBox.warning",
+        lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes,
+    )
+    dialog.reset_all_button.click()
+
+    assert dialog._pending_full_store_reset is True
+    assert dialog.reset_pending_label.isVisible() is True
+    assert dialog.show_hidden_checkbox.isChecked() is True
+    assert isolated_settings.show_hidden_default is False
+    assert isolated_settings.session_window_ids() == ["window-1"]
+    assert isolated_settings.value("custom/gui_reset_unknown", None) == "x"
+
+    dialog._apply_and_commit()
+
+    assert isolated_settings.ui_preferences() == UiPreferences()
+    assert isolated_settings.session_window_ids() == []
+    assert isolated_settings.list_saved_views() == []
+    assert isolated_settings.value("custom/gui_reset_unknown", None) is None
+
+
+def test_settings_dialog_reset_everything_cancel_keeps_persisted_values(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager, monkeypatch
+) -> None:
+    isolated_settings.show_hidden_default = False
+    isolated_settings.set_session_window_ids(["window-2"])
+    isolated_settings.set_value("custom/gui_reset_unknown_cancel", "keep")
+    isolated_settings.sync()
+
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-reset-all-cancel",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    monkeypatch.setattr(
+        "many_panelz_explorer.dialogs.settings_dialog.QMessageBox.warning",
+        lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes,
+    )
+
+    dialog.reset_all_button.click()
+    assert dialog._pending_full_store_reset is True
+
+    dialog.reject()
+
+    assert isolated_settings.show_hidden_default is False
+    assert isolated_settings.session_window_ids() == ["window-2"]
+    assert isolated_settings.value("custom/gui_reset_unknown_cancel", None) == "keep"
 
 
 def test_settings_dialog_command_textboxes_expand_with_resize(

@@ -27,6 +27,9 @@ class SettingsStorage:
     def remove(self, key: str) -> None:
         self.qsettings.remove(key)
 
+    def clear_all(self) -> None:
+        self.qsettings.clear()
+
     def set_json(self, key: str, value: Any) -> None:
         self.qsettings.setValue(key, json.dumps(value))
 
