@@ -79,9 +79,20 @@ class _RowEntry:
 @dataclass
 class _SectionEntry:
     key: str
+    title: str
+    terms: str
+    subsection_keys: list[str]
+
+
+@dataclass
+class _SubsectionEntry:
+    key: str
+    section_key: str
+    title: str
     group: QGroupBox
     terms: str
     rows: list[_RowEntry]
+    visible_row_count: int = 0
 
 
 class _FontSizeSpinBox(QSpinBox):
@@ -154,7 +165,11 @@ class SettingsDialog(QDialog):
         self._pending_live_preview = False
         self._rows_by_key: dict[str, QWidget] = {}
         self._sections: dict[str, _SectionEntry] = {}
+        self._subsections: dict[str, _SubsectionEntry] = {}
         self._section_tree_items: dict[str, QTreeWidgetItem] = {}
+        self._subsection_tree_items: dict[str, QTreeWidgetItem] = {}
+        self._row_subsection_keys: dict[str, str] = {}
+        self._active_subsection_key = ""
         self._tree_sync_in_progress = False
 
         self.setWindowTitle("Settings")
@@ -211,10 +226,9 @@ class SettingsDialog(QDialog):
         right_layout.addWidget(self._no_matches_label)
 
         self._build_sections()
-        if self._section_tree.topLevelItemCount() > 0:
-            self._section_tree.setCurrentItem(self._section_tree.topLevelItem(0))
         self._load_preferences_into_controls(self._working_preferences)
         self._apply_search_filter("")
+        self._restore_last_tree_selection()
 
         self._live_preview_timer = QTimer(self)
         self._live_preview_timer.setSingleShot(True)
@@ -239,31 +253,116 @@ class SettingsDialog(QDialog):
         root.addWidget(self._button_box)
 
     def _build_sections(self) -> None:
-        appearance_group = self._add_section(
+        self._add_section(
             key="appearance",
             title="Appearance",
             terms="appearance",
         )
-        behavior_group = self._add_section(
+        self._add_section(
             key="behavior",
             title="Behavior",
             terms="behavior",
         )
-        panels_group = self._add_section(
+        self._add_section(
             key="panels",
             title="Panels",
             terms="panels",
         )
-        operations_group = self._add_section(
+        self._add_section(
             key="operations",
             title="Operations",
             terms="operations copy move delete queue backend",
         )
-        about_group = self._add_section(
+        self._add_section(
             key="about",
             title="About",
             terms="about",
         )
+
+        appearance_panel_tint_group = self._add_subsection(
+            section_key="appearance",
+            key="appearance/panel_tint",
+            title="Panel Tint",
+            terms="panel tint color intensity opacity active target",
+        )
+        appearance_typography_group = self._add_subsection(
+            section_key="appearance",
+            key="appearance/typography",
+            title="Typography",
+            terms="font typography app file list navigation",
+        )
+        behavior_context_defaults_group = self._add_subsection(
+            section_key="behavior",
+            key="behavior/context_defaults",
+            title="Context Defaults",
+            terms="context defaults new mode home cwd clone active path",
+        )
+        behavior_scan_limits_group = self._add_subsection(
+            section_key="behavior",
+            key="behavior/scan_limits",
+            title="Scan Limits",
+            terms="scan limits context detection child cap",
+        )
+        panels_visibility_group = self._add_subsection(
+            section_key="panels",
+            key="panels/visibility",
+            title="Visibility",
+            terms="visibility show hide controls root dropdown buttons address navigation status",
+        )
+        panels_file_list_layout_group = self._add_subsection(
+            section_key="panels",
+            key="panels/file_list_layout",
+            title="File List Layout",
+            terms="file list layout column width align auto",
+        )
+        panels_byte_display_group = self._add_subsection(
+            section_key="panels",
+            key="panels/byte_display",
+            title="Byte Display",
+            terms="bytes byte format separators file list status bar properties",
+        )
+        operations_defaults_queue_group = self._add_subsection(
+            section_key="operations",
+            key="operations/defaults_queue",
+            title="Defaults and Queue",
+            terms="defaults queue backend dispatch conflict shortcut behavior",
+        )
+        operations_open_tools_group = self._add_subsection(
+            section_key="operations",
+            key="operations/open_tools",
+            title="Open Tools",
+            terms="open tools editor viewer context extension overrides code git",
+        )
+        operations_backend_commands_group = self._add_subsection(
+            section_key="operations",
+            key="operations/backend_commands",
+            title="Backend Commands",
+            terms="backend commands executable teracopy unstoppable generic rimraf",
+        )
+        operations_backend_args_group = self._add_subsection(
+            section_key="operations",
+            key="operations/backend_args",
+            title="Backend Args",
+            terms="backend args robocopy delete shell cmd powershell",
+        )
+        operations_diagnostics_group = self._add_subsection(
+            section_key="operations",
+            key="operations/diagnostics",
+            title="Diagnostics",
+            terms="diagnostics resolved system commands path cmd robocopy",
+        )
+        about_application_info_group = self._add_subsection(
+            section_key="about",
+            key="about/application_info",
+            title="Application Info",
+            terms="application info about version settings file path",
+        )
+
+        appearance_group = appearance_panel_tint_group
+        behavior_group = behavior_context_defaults_group
+        panels_group = panels_visibility_group
+        operations_group = operations_defaults_queue_group
+        about_group = about_application_info_group
 
         self.active_color_button = QPushButton("Choose Color", self)
         self.active_color_button.clicked.connect(self._choose_active_color)
@@ -334,7 +433,7 @@ class SettingsDialog(QDialog):
         self.app_font_size_spin.setSpecialValueText("System")
         self.app_font_size_spin.valueChanged.connect(self._on_controls_changed)
         self._add_row(
-            section=appearance_group,
+            section=appearance_typography_group,
             key="app_font",
             title="App Font",
             description="Base font family and size used throughout the app.",
@@ -358,7 +457,7 @@ class SettingsDialog(QDialog):
         )
         self.file_list_font_size_spin.valueChanged.connect(self._on_controls_changed)
         self._add_row(
-            section=appearance_group,
+            section=appearance_typography_group,
             key="file_list_font",
             title="File List Font",
             description="Override the file list (tree view) font family and size.",
@@ -386,7 +485,7 @@ class SettingsDialog(QDialog):
         )
         self.navigation_font_size_spin.valueChanged.connect(self._on_controls_changed)
         self._add_row(
-            section=appearance_group,
+            section=appearance_typography_group,
             key="navigation_font",
             title="Navigation Toolbar Font",
             description="Override panel toolbar controls font family and size.",
@@ -415,7 +514,7 @@ class SettingsDialog(QDialog):
         self.context_scan_cap_spin.setRange(1, 10_000)
         self.context_scan_cap_spin.valueChanged.connect(self._on_controls_changed)
         self._add_row(
-            section=behavior_group,
+            section=behavior_scan_limits_group,
             key="context_scan_cap",
             title="Context Child Scan Cap",
             description="Maximum immediate child directories scanned for Context mode detection.",
@@ -457,7 +556,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=panels_group,
+            section=panels_file_list_layout_group,
             key="column_width_auto_align_mode",
             title="Auto-Align Column Widths",
             description="Choose how file-list column width changes propagate.",
@@ -553,7 +652,7 @@ class SettingsDialog(QDialog):
             second_edit=self.byte_decimal_separator_edit,
         )
         self._add_row(
-            section=panels_group,
+            section=panels_byte_display_group,
             key="byte_separators",
             title="Byte Number Separators",
             description="Global separators applied to all byte display contexts.",
@@ -568,7 +667,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=panels_group,
+            section=panels_byte_display_group,
             key="file_list_byte_format",
             title="File List Size Format",
             description="How the file-list Size column displays byte values.",
@@ -586,7 +685,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=panels_group,
+            section=panels_byte_display_group,
             key="status_bar_byte_format",
             title="Status Bar Storage Format",
             description="How status-bar storage used/total values are displayed.",
@@ -597,6 +696,34 @@ class SettingsDialog(QDialog):
             ],
         )
 
+        self.status_bar_storage_label_template_edit = QLineEdit(self)
+        self.status_bar_storage_label_template_edit.setPlaceholderText(
+            "{disk_root} {disk_label} {used_space}/{total_space}"
+        )
+        self.status_bar_storage_label_template_edit.setToolTip(
+            "Placeholders: {disk_label} {disk_root} {root_path} {used_space} "
+            "{free_space} {total_space} {used_bytes} {free_bytes} {total_bytes} "
+            "{usage_percentage} {free_percentage} {usage_ratio} {free_ratio} "
+            "{usage_indicator} {free_indicator}"
+        )
+        self.status_bar_storage_label_template_edit.textChanged.connect(
+            self._on_controls_changed
+        )
+        self._add_row(
+            section=panels_byte_display_group,
+            key="status_bar_storage_label_template",
+            title="Status Bar Disk Label Template",
+            description=(
+                "Template for each disk label in the storage status row. "
+                "Use placeholders like {disk_label}, {used_space}, and {usage_indicator}."
+            ),
+            terms=(
+                "status bar storage disk label template placeholders usage free total "
+                "percentage indicator tooltip"
+            ),
+            controls=[self.status_bar_storage_label_template_edit],
+        )
+
         self.properties_byte_format_mode_combo = self._new_byte_format_mode_combo()
         self.properties_byte_custom_template_edit = QLineEdit(self)
         self.properties_byte_custom_template_edit.setPlaceholderText("{b}")
@@ -604,7 +731,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=panels_group,
+            section=panels_byte_display_group,
             key="properties_byte_format",
             title="Properties Size Format",
             description="How file/folder size is shown in the Properties dialog.",
@@ -721,7 +848,7 @@ class SettingsDialog(QDialog):
             default_executable=SettingsManager.DEFAULT_DEFAULT_EDITOR_EXECUTABLE,
         )
         self._add_row(
-            section=operations_group,
+            section=operations_open_tools_group,
             key="default_editor_executable",
             title="Default Editor",
             description="Default executable used for edit operations, including queue scripts.",
@@ -735,7 +862,7 @@ class SettingsDialog(QDialog):
             default_executable=SettingsManager.DEFAULT_DEFAULT_VIEWER_EXECUTABLE,
         )
         self._add_row(
-            section=operations_group,
+            section=operations_open_tools_group,
             key="default_viewer_executable",
             title="Default Viewer",
             description="Default executable used for view operations. Empty means use Default Editor.",
@@ -754,7 +881,7 @@ class SettingsDialog(QDialog):
             enable_find=False,
         )
         self._add_row(
-            section=operations_group,
+            section=operations_open_tools_group,
             key="context_code_editor_tool",
             title="Context Tool: Code Editor",
             description="Executable and args template for context actions using code editor.",
@@ -773,7 +900,7 @@ class SettingsDialog(QDialog):
             enable_find=False,
         )
         self._add_row(
-            section=operations_group,
+            section=operations_open_tools_group,
             key="context_git_gui_tool",
             title="Context Tool: Git GUI",
             description="Executable and args template for context actions using Git GUI.",
@@ -801,7 +928,7 @@ class SettingsDialog(QDialog):
         self.file_open_overrides_table.setMinimumHeight(150)
         overrides_controls = self._build_file_open_overrides_controls()
         self._add_row(
-            section=operations_group,
+            section=operations_open_tools_group,
             key="file_open_overrides",
             title="Per-Extension Open Overrides",
             description="Override editor/viewer executables by extension (example: .log, .json, .cmd).",
@@ -868,7 +995,7 @@ class SettingsDialog(QDialog):
             on_test=lambda: self._test_backend("copy", "teracopy"),
         )
         self._add_row(
-            section=operations_group,
+            section=operations_backend_commands_group,
             key="teracopy_command",
             title="TeraCopy Command",
             description='Executable and args template. Tokens: {operation} {sources} {target}',
@@ -890,7 +1017,7 @@ class SettingsDialog(QDialog):
             on_test=lambda: self._test_backend("copy", "unstoppable"),
         )
         self._add_row(
-            section=operations_group,
+            section=operations_backend_commands_group,
             key="unstoppable_command",
             title="Unstoppable Copier Command",
             description='Executable and args template. Tokens: {operation} {sources} {target}',
@@ -913,7 +1040,7 @@ class SettingsDialog(QDialog):
             on_test=lambda: self._test_backend("copy", "external_copymove"),
         )
         self._add_row(
-            section=operations_group,
+            section=operations_backend_commands_group,
             key="generic_copymove_command",
             title="Generic Copy/Move Command",
             description='Executable and args template. Tokens: {operation} {sources} {target}',
@@ -936,7 +1063,7 @@ class SettingsDialog(QDialog):
             on_test=lambda: self._test_backend("delete", "external_delete"),
         )
         self._add_row(
-            section=operations_group,
+            section=operations_backend_commands_group,
             key="generic_delete_command",
             title="Generic Delete Command",
             description='Executable and args template. Tokens: {operation} {sources}',
@@ -958,7 +1085,7 @@ class SettingsDialog(QDialog):
             test_button=self.robocopy_test_btn,
         )
         self._add_row(
-            section=operations_group,
+            section=operations_backend_args_group,
             key="robocopy_args",
             title="Robocopy Args",
             description="Copy args and move args for robocopy backend.",
@@ -983,7 +1110,7 @@ class SettingsDialog(QDialog):
             powershell_test_button=self.powershell_delete_test_btn,
         )
         self._add_row(
-            section=operations_group,
+            section=operations_backend_args_group,
             key="delete_shell_args",
             title="Shell Delete Args",
             description="Args for cmd delete and PowerShell delete backends.",
@@ -1005,7 +1132,7 @@ class SettingsDialog(QDialog):
             on_test=lambda: self._test_backend("delete", "rimraf"),
         )
         self._add_row(
-            section=operations_group,
+            section=operations_backend_commands_group,
             key="rimraf_command",
             title="rimraf Command",
             description='Executable and extra args. Tokens: {sources}',
@@ -1016,7 +1143,7 @@ class SettingsDialog(QDialog):
         self.resolved_cmd_path_label = QLabel(self)
         self.resolved_robocopy_path_label = QLabel(self)
         self._add_row(
-            section=operations_group,
+            section=operations_diagnostics_group,
             key="resolved_system_paths",
             title="Resolved System Commands",
             description="Runtime resolved command paths for shell and robocopy.",
@@ -1050,27 +1177,73 @@ class SettingsDialog(QDialog):
             controls=[QLabel(str(settings_path), self)],
         )
 
+        for item in self._section_tree_items.values():
+            item.setExpanded(True)
+
         self._scroll_layout.addStretch(1)
 
     def _add_section(self, *, key: str, title: str, terms: str) -> _SectionEntry:
+        entry = _SectionEntry(
+            key=key,
+            title=title,
+            terms=terms.casefold(),
+            subsection_keys=[],
+        )
+        self._sections[key] = entry
+        item = QTreeWidgetItem([title])
+        item.setData(0, Qt.ItemDataRole.UserRole, ("section", key))
+        self._section_tree.addTopLevelItem(item)
+        self._section_tree_items[key] = item
+        return entry
+
+    def _add_subsection(
+        self,
+        *,
+        section_key: str,
+        key: str,
+        title: str,
+        terms: str,
+    ) -> _SubsectionEntry:
+        section = self._sections.get(section_key)
+        if section is None:
+            raise KeyError(f"Unknown section key: {section_key}")
+        section.subsection_keys.append(key)
+
         group = QGroupBox(title, self._scroll_host)
         group_layout = QVBoxLayout(group)
         group_layout.setContentsMargins(10, 12, 10, 10)
         group_layout.setSpacing(8)
+        group.setVisible(False)
         self._scroll_layout.addWidget(group)
-        entry = _SectionEntry(key=key, group=group, terms=terms.casefold(), rows=[])
-        self._sections[key] = entry
+        entry = _SubsectionEntry(
+            key=key,
+            section_key=section_key,
+            title=title,
+            group=group,
+            terms=terms.casefold(),
+            rows=[],
+        )
+        self._subsections[key] = entry
+
+        section_item = self._section_tree_items.get(section_key)
+        if section_item is None:
+            raise KeyError(f"Unknown section tree item: {section_key}")
         item = QTreeWidgetItem([title])
-        item.setData(0, Qt.ItemDataRole.UserRole, key)
-        self._section_tree.addTopLevelItem(item)
-        self._section_tree_items[key] = item
-        self._assign_identity(group, f"settings_dialog:section:{key}", f"settings.section.{key}")
+        item.setData(0, Qt.ItemDataRole.UserRole, ("subsection", key))
+        section_item.addChild(item)
+        self._subsection_tree_items[key] = item
+        identity_key = key.replace("/", ":")
+        self._assign_identity(
+            group,
+            f"settings_dialog:subsection:{identity_key}",
+            f"settings.subsection.{identity_key}",
+        )
         return entry
 
     def _add_row(
         self,
         *,
-        section: _SectionEntry,
+        section: _SubsectionEntry,
         key: str,
         title: str,
         description: str,
@@ -1116,6 +1289,7 @@ class SettingsDialog(QDialog):
         )
         section.rows.append(entry)
         self._rows_by_key[key] = row
+        self._row_subsection_keys[key] = section.key
         self._assign_identity(row, f"settings_dialog:row:{key}", f"settings.row.{key}")
 
     def _build_command_controls(
@@ -1613,6 +1787,9 @@ class SettingsDialog(QDialog):
             self.status_bar_byte_custom_template_edit.setText(
                 preferences.status_bar_byte_custom_template
             )
+            self.status_bar_storage_label_template_edit.setText(
+                preferences.status_bar_storage_label_template
+            )
             self._set_combo_value(
                 self.properties_byte_format_mode_combo,
                 preferences.properties_byte_format_mode,
@@ -1783,6 +1960,7 @@ class SettingsDialog(QDialog):
                 self.status_bar_byte_format_mode_combo.currentData()
             ),
             status_bar_byte_custom_template=self.status_bar_byte_custom_template_edit.text(),
+            status_bar_storage_label_template=self.status_bar_storage_label_template_edit.text(),
             properties_byte_format_mode=str(
                 self.properties_byte_format_mode_combo.currentData()
             ),
@@ -1924,6 +2102,9 @@ class SettingsDialog(QDialog):
         self.status_bar_byte_custom_template_edit.setText(
             SettingsManager.DEFAULT_STATUS_BAR_BYTE_CUSTOM_TEMPLATE
         )
+        self.status_bar_storage_label_template_edit.setText(
+            SettingsManager.DEFAULT_STATUS_BAR_STORAGE_LABEL_TEMPLATE
+        )
         self._set_combo_value(
             self.properties_byte_format_mode_combo,
             SettingsManager.DEFAULT_PROPERTIES_BYTE_FORMAT_MODE,
@@ -1961,53 +2142,154 @@ class SettingsDialog(QDialog):
     def _apply_search_filter(self, text: str) -> None:
         query = str(text or "").strip().casefold()
         visible_rows = 0
-        for key, section in self._sections.items():
-            section_match = bool(query) and query in section.terms
-            section_visible_rows = 0
-            for row in section.rows:
-                row_visible = (not query) or section_match or (query in row.terms)
-                row.widget.setVisible(row_visible)
-                if row_visible:
-                    section_visible_rows += 1
-            section_visible = section_visible_rows > 0
-            section.group.setVisible(section_visible)
-            tree_item = self._section_tree_items.get(key)
-            if tree_item is not None:
-                tree_item.setHidden(not section_visible)
-            visible_rows += section_visible_rows
+        for section_key, section in self._sections.items():
+            section_visible_subsections = 0
+            for subsection_key in section.subsection_keys:
+                subsection = self._subsections.get(subsection_key)
+                if subsection is None:
+                    continue
+                subsection_visible_rows = 0
+                for row in subsection.rows:
+                    row_visible = (not query) or (query in row.terms)
+                    row.widget.setVisible(row_visible)
+                    if row_visible:
+                        subsection_visible_rows += 1
+                subsection.visible_row_count = subsection_visible_rows
+                subsection_visible = subsection_visible_rows > 0
+                subsection_item = self._subsection_tree_items.get(subsection_key)
+                if subsection_item is not None:
+                    subsection_item.setHidden(not subsection_visible)
+                if subsection_visible:
+                    section_visible_subsections += 1
+                visible_rows += subsection_visible_rows
+            section_visible = section_visible_subsections > 0
+            section_item = self._section_tree_items.get(section_key)
+            if section_item is not None:
+                section_item.setHidden(not section_visible)
         self._no_matches_label.setVisible(bool(query) and visible_rows == 0)
-        self._ensure_visible_tree_selection()
+        self._ensure_visible_tree_selection(persist=False)
+        self._sync_active_subsection_visibility()
 
-    def _ensure_visible_tree_selection(self) -> None:
+    def _restore_last_tree_selection(self) -> None:
+        saved_subsection = str(self.controller.settings.settings_dialog_last_subsection or "")
+        saved_section = str(self.controller.settings.settings_dialog_last_section or "")
+        if saved_subsection:
+            item = self._subsection_tree_items.get(saved_subsection)
+            if item is not None and not item.isHidden():
+                self._set_current_tree_item(item, persist=False)
+                return
+        if saved_section and self._select_first_visible_subsection_for_section(
+            saved_section, persist=False
+        ):
+            return
+        self._ensure_visible_tree_selection(persist=False)
+
+    def _ensure_visible_tree_selection(self, *, persist: bool) -> None:
         current = self._section_tree.currentItem()
-        if current is not None and not current.isHidden():
+        if current is not None and self._activate_tree_item(current, persist=persist):
             return
-        for index in range(self._section_tree.topLevelItemCount()):
-            item = self._section_tree.topLevelItem(index)
-            if item is None or item.isHidden():
-                continue
-            self._tree_sync_in_progress = True
-            try:
-                self._section_tree.setCurrentItem(item)
-            finally:
-                self._tree_sync_in_progress = False
-            self._scroll_to_section(str(item.data(0, Qt.ItemDataRole.UserRole)))
-            return
+        item = self._first_visible_subsection_item()
+        if item is not None:
+            self._set_current_tree_item(item, persist=persist)
 
     def _on_section_tree_changed(
         self, current: QTreeWidgetItem | None, _previous: QTreeWidgetItem | None
     ) -> None:
         if self._tree_sync_in_progress or current is None:
             return
-        if current.isHidden():
-            return
-        self._scroll_to_section(str(current.data(0, Qt.ItemDataRole.UserRole)))
+        self._activate_tree_item(current, persist=True)
 
-    def _scroll_to_section(self, section_key: str) -> None:
-        section = self._sections.get(str(section_key))
-        if section is None or not section.group.isVisible():
-            return
-        self._scroll.ensureWidgetVisible(section.group, 0, 16)
+    def _tree_item_payload(self, item: QTreeWidgetItem) -> tuple[str, str] | None:
+        payload = item.data(0, Qt.ItemDataRole.UserRole)
+        if not isinstance(payload, (list, tuple)) or len(payload) != 2:
+            return None
+        kind = str(payload[0]).strip().lower()
+        key = str(payload[1] or "").strip()
+        if kind not in {"section", "subsection"} or not key:
+            return None
+        return kind, key
+
+    def _activate_tree_item(self, item: QTreeWidgetItem, *, persist: bool) -> bool:
+        if item.isHidden():
+            return False
+        payload = self._tree_item_payload(item)
+        if payload is None:
+            return False
+        kind, key = payload
+        if kind == "section":
+            return self._select_first_visible_subsection_for_section(key, persist=persist)
+        return self._activate_subsection(key, persist=persist)
+
+    def _set_current_tree_item(self, item: QTreeWidgetItem, *, persist: bool) -> bool:
+        if item.isHidden():
+            return False
+        current = self._section_tree.currentItem()
+        if current is not item:
+            self._tree_sync_in_progress = True
+            try:
+                self._section_tree.setCurrentItem(item)
+            finally:
+                self._tree_sync_in_progress = False
+        return self._activate_tree_item(item, persist=persist)
+
+    def _first_visible_subsection_item(self) -> QTreeWidgetItem | None:
+        for section_key in self._sections:
+            section_item = self._section_tree_items.get(section_key)
+            if section_item is None or section_item.isHidden():
+                continue
+            for index in range(section_item.childCount()):
+                child = section_item.child(index)
+                if child is not None and not child.isHidden():
+                    return child
+        return None
+
+    def _select_first_visible_subsection_for_section(
+        self,
+        section_key: str,
+        *,
+        persist: bool,
+    ) -> bool:
+        section_item = self._section_tree_items.get(section_key)
+        if section_item is None or section_item.isHidden():
+            return False
+        for index in range(section_item.childCount()):
+            child = section_item.child(index)
+            if child is None or child.isHidden():
+                continue
+            return self._set_current_tree_item(child, persist=persist)
+        return False
+
+    def _activate_subsection(self, subsection_key: str, *, persist: bool) -> bool:
+        subsection = self._subsections.get(subsection_key)
+        if subsection is None or subsection.visible_row_count <= 0:
+            return False
+        self._active_subsection_key = subsection_key
+        self._sync_active_subsection_visibility()
+        if persist:
+            self.controller.settings.settings_dialog_last_section = subsection.section_key
+            self.controller.settings.settings_dialog_last_subsection = subsection.key
+        return True
+
+    def _sync_active_subsection_visibility(self) -> None:
+        active_key = str(self._active_subsection_key or "")
+        for key, subsection in self._subsections.items():
+            subsection.group.setVisible(
+                key == active_key and subsection.visible_row_count > 0
+            )
+        if active_key:
+            self._scroll.verticalScrollBar().setValue(0)
+
+    def _selected_subsection_key(self) -> str:
+        current = self._section_tree.currentItem()
+        if current is None:
+            return ""
+        payload = self._tree_item_payload(current)
+        if payload is None:
+            return ""
+        kind, key = payload
+        if kind != "subsection":
+            return ""
+        return key
 
     def _assign_identity(self, widget: QWidget, widget_id: str, alias: str) -> None:
         widget.setObjectName(widget_naming.object_name_for_id(widget_id))

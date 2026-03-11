@@ -103,6 +103,9 @@ class ExplorerWindow(QMainWindow):
         self._byte_format_preferences = self._build_byte_format_preferences(
             ui_preferences
         )
+        self._status_bar_storage_label_template = (
+            ui_preferences.status_bar_storage_label_template
+        )
         self._app_font_family = ui_preferences.app_font_family
         self._app_font_size_pt = ui_preferences.app_font_size_pt
         self._file_list_use_app_font = ui_preferences.file_list_use_app_font
@@ -152,6 +155,9 @@ class ExplorerWindow(QMainWindow):
         self._build_operation_queue_widgets()
         self._status_coordinator.set_storage_bytes_formatter(
             self._format_status_bar_bytes
+        )
+        self._status_coordinator.set_storage_label_template(
+            self._status_bar_storage_label_template
         )
         self._status_coordinator.set_storage_overview_enabled(
             self._show_storage_overview_status_row
@@ -669,6 +675,9 @@ class ExplorerWindow(QMainWindow):
         self._byte_format_preferences = self._build_byte_format_preferences(
             preferences
         )
+        self._status_bar_storage_label_template = (
+            preferences.status_bar_storage_label_template
+        )
         self._app_font_family = preferences.app_font_family
         self._app_font_size_pt = int(preferences.app_font_size_pt)
         self._file_list_use_app_font = bool(preferences.file_list_use_app_font)
@@ -740,6 +749,9 @@ class ExplorerWindow(QMainWindow):
         self._apply_operation_queue_visibility()
         self._status_coordinator.set_storage_bytes_formatter(
             self._format_status_bar_bytes
+        )
+        self._status_coordinator.set_storage_label_template(
+            self._status_bar_storage_label_template
         )
         self._status_coordinator.set_storage_overview_enabled(
             self._show_storage_overview_status_row

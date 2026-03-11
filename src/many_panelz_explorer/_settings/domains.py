@@ -134,6 +134,16 @@ class UiSettingsDomain(SettingsRegistry):
             fallback_decimal=self.DEFAULT_BYTES_DECIMAL_SEPARATOR,
         )
 
+    def set_byte_separators(self, thousands_raw: str, decimal_raw: str) -> None:
+        thousands, decimal = normalize.normalize_byte_separators(
+            thousands_raw,
+            decimal_raw,
+            fallback_thousands=self.DEFAULT_BYTES_THOUSANDS_SEPARATOR,
+            fallback_decimal=self.DEFAULT_BYTES_DECIMAL_SEPARATOR,
+        )
+        self._storage.set_value(self.BYTES_THOUSANDS_SEPARATOR_KEY, thousands)
+        self._storage.set_value(self.BYTES_DECIMAL_SEPARATOR_KEY, decimal)
+
     @property
     def byte_thousands_separator(self) -> str:
         thousands, _ = self._normalized_byte_separators()
@@ -141,17 +151,12 @@ class UiSettingsDomain(SettingsRegistry):
 
     @byte_thousands_separator.setter
     def byte_thousands_separator(self, value: str) -> None:
-        thousands, decimal = normalize.normalize_byte_separators(
+        normalized = normalize.normalize_byte_separator(
             value,
-            self._storage.value(
-                self.BYTES_DECIMAL_SEPARATOR_KEY,
-                self.DEFAULT_BYTES_DECIMAL_SEPARATOR,
-            ),
-            fallback_thousands=self.DEFAULT_BYTES_THOUSANDS_SEPARATOR,
-            fallback_decimal=self.DEFAULT_BYTES_DECIMAL_SEPARATOR,
+            fallback=self.DEFAULT_BYTES_THOUSANDS_SEPARATOR,
+            allow_empty=True,
         )
-        self._storage.set_value(self.BYTES_THOUSANDS_SEPARATOR_KEY, thousands)
-        self._storage.set_value(self.BYTES_DECIMAL_SEPARATOR_KEY, decimal)
+        self._storage.set_value(self.BYTES_THOUSANDS_SEPARATOR_KEY, normalized)
 
     @property
     def byte_decimal_separator(self) -> str:
@@ -160,17 +165,12 @@ class UiSettingsDomain(SettingsRegistry):
 
     @byte_decimal_separator.setter
     def byte_decimal_separator(self, value: str) -> None:
-        thousands, decimal = normalize.normalize_byte_separators(
-            self._storage.value(
-                self.BYTES_THOUSANDS_SEPARATOR_KEY,
-                self.DEFAULT_BYTES_THOUSANDS_SEPARATOR,
-            ),
+        normalized = normalize.normalize_byte_separator(
             value,
-            fallback_thousands=self.DEFAULT_BYTES_THOUSANDS_SEPARATOR,
-            fallback_decimal=self.DEFAULT_BYTES_DECIMAL_SEPARATOR,
+            fallback=self.DEFAULT_BYTES_DECIMAL_SEPARATOR,
+            allow_empty=False,
         )
-        self._storage.set_value(self.BYTES_THOUSANDS_SEPARATOR_KEY, thousands)
-        self._storage.set_value(self.BYTES_DECIMAL_SEPARATOR_KEY, decimal)
+        self._storage.set_value(self.BYTES_DECIMAL_SEPARATOR_KEY, normalized)
 
     @property
     def file_list_byte_format_mode(self) -> str:
@@ -253,6 +253,26 @@ class UiSettingsDomain(SettingsRegistry):
             normalize.normalize_byte_custom_template(
                 value,
                 fallback=self.DEFAULT_STATUS_BAR_BYTE_CUSTOM_TEMPLATE,
+            ),
+        )
+
+    @property
+    def status_bar_storage_label_template(self) -> str:
+        return normalize.normalize_status_storage_label_template(
+            self._storage.value(
+                self.STATUS_BAR_STORAGE_LABEL_TEMPLATE_KEY,
+                self.DEFAULT_STATUS_BAR_STORAGE_LABEL_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_STATUS_BAR_STORAGE_LABEL_TEMPLATE,
+        )
+
+    @status_bar_storage_label_template.setter
+    def status_bar_storage_label_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.STATUS_BAR_STORAGE_LABEL_TEMPLATE_KEY,
+            normalize.normalize_status_storage_label_template(
+                value,
+                fallback=self.DEFAULT_STATUS_BAR_STORAGE_LABEL_TEMPLATE,
             ),
         )
 
@@ -1145,6 +1165,46 @@ class SessionSettingsDomain(SettingsRegistry):
 
     def set_session_window_ids(self, window_ids: list[str]) -> None:
         self._storage.set_json(self.SESSION_WINDOWS_KEY, window_ids)
+
+    @property
+    def settings_dialog_last_section(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.SETTINGS_DIALOG_LAST_SECTION_KEY,
+                self.DEFAULT_SETTINGS_DIALOG_LAST_SECTION,
+            ),
+            fallback=self.DEFAULT_SETTINGS_DIALOG_LAST_SECTION,
+        )
+
+    @settings_dialog_last_section.setter
+    def settings_dialog_last_section(self, value: str) -> None:
+        self._storage.set_value(
+            self.SETTINGS_DIALOG_LAST_SECTION_KEY,
+            normalize.normalize_text(
+                value,
+                fallback=self.DEFAULT_SETTINGS_DIALOG_LAST_SECTION,
+            ),
+        )
+
+    @property
+    def settings_dialog_last_subsection(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.SETTINGS_DIALOG_LAST_SUBSECTION_KEY,
+                self.DEFAULT_SETTINGS_DIALOG_LAST_SUBSECTION,
+            ),
+            fallback=self.DEFAULT_SETTINGS_DIALOG_LAST_SUBSECTION,
+        )
+
+    @settings_dialog_last_subsection.setter
+    def settings_dialog_last_subsection(self, value: str) -> None:
+        self._storage.set_value(
+            self.SETTINGS_DIALOG_LAST_SUBSECTION_KEY,
+            normalize.normalize_text(
+                value,
+                fallback=self.DEFAULT_SETTINGS_DIALOG_LAST_SUBSECTION,
+            ),
+        )
 
     def saved_views(self) -> dict[str, dict[str, Any]]:
         data = self._storage.get_json(self.SAVED_VIEWS_KEY, {})

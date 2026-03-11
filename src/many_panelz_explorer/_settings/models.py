@@ -42,6 +42,9 @@ class UiPreferences:
     file_list_byte_custom_template: str = ""
     status_bar_byte_format_mode: str = "bytes"
     status_bar_byte_custom_template: str = ""
+    status_bar_storage_label_template: str = (
+        "{disk_root} {disk_label} {used_space}/{total_space}"
+    )
     properties_byte_format_mode: str = "bytes"
     properties_byte_custom_template: str = ""
     app_font_family: str = ""

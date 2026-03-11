@@ -145,6 +145,7 @@ def _tracked_keys() -> list[str]:
         SettingsManager.FILE_LIST_BYTE_CUSTOM_TEMPLATE_KEY,
         SettingsManager.STATUS_BAR_BYTE_FORMAT_MODE_KEY,
         SettingsManager.STATUS_BAR_BYTE_CUSTOM_TEMPLATE_KEY,
+        SettingsManager.STATUS_BAR_STORAGE_LABEL_TEMPLATE_KEY,
         SettingsManager.PROPERTIES_BYTE_FORMAT_MODE_KEY,
         SettingsManager.PROPERTIES_BYTE_CUSTOM_TEMPLATE_KEY,
         SettingsManager.APP_FONT_FAMILY_KEY,
@@ -196,6 +197,8 @@ def _tracked_keys() -> list[str]:
         SettingsManager.POWERSHELL_DELETE_ARGS_KEY,
         SettingsManager.RIMRAF_EXECUTABLE_KEY,
         SettingsManager.RIMRAF_ARGS_TEMPLATE_KEY,
+        SettingsManager.SETTINGS_DIALOG_LAST_SECTION_KEY,
+        SettingsManager.SETTINGS_DIALOG_LAST_SUBSECTION_KEY,
     ]
 
 
@@ -479,6 +482,9 @@ def test_settings_apply_persists_and_new_window_uses_values(
     dialog._set_combo_value(dialog.file_list_byte_format_mode_combo, "custom")
     dialog.file_list_byte_custom_template_edit.setText("{b} ({MiB:.2f})")
     dialog._set_combo_value(dialog.status_bar_byte_format_mode_combo, "always_mib")
+    dialog.status_bar_storage_label_template_edit.setText(
+        "{disk_root} {disk_label} {used_space}/{total_space} {usage_indicator}"
+    )
     dialog._set_combo_value(dialog.properties_byte_format_mode_combo, "always_mb")
     dialog.app_font_size_spin.setValue(12)
     dialog.file_list_use_app_font_checkbox.setChecked(False)
@@ -502,6 +508,10 @@ def test_settings_apply_persists_and_new_window_uses_values(
     assert persisted.file_list_byte_format_mode == "custom"
     assert persisted.file_list_byte_custom_template == "{b} ({MiB:.2f})"
     assert persisted.status_bar_byte_format_mode == "always_mib"
+    assert (
+        persisted.status_bar_storage_label_template
+        == "{disk_root} {disk_label} {used_space}/{total_space} {usage_indicator}"
+    )
     assert persisted.properties_byte_format_mode == "always_mb"
     assert persisted.app_font_size_pt == 12
     assert persisted.file_list_use_app_font is False
@@ -638,13 +648,65 @@ def test_settings_dialog_has_left_section_tree_and_search_sync(
 
     assert dialog._section_tree.topLevelItemCount() >= 5
     operations_item = dialog._section_tree_items["operations"]
+    assert operations_item.childCount() >= 5
     dialog._section_tree.setCurrentItem(operations_item)
-    qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is operations_item)
+    qtbot.waitUntil(
+        lambda: dialog._section_tree.currentItem()
+        is dialog._subsection_tree_items["operations/defaults_queue"]
+    )
+    backend_commands_item = dialog._subsection_tree_items["operations/backend_commands"]
+    dialog._section_tree.setCurrentItem(backend_commands_item)
+    qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is backend_commands_item)
+    assert dialog._rows_by_key["teracopy_command"].isVisible() is True
+    assert dialog._rows_by_key["default_copy_move_backend"].isVisible() is False
 
     dialog.search_edit.setText("version")
     qtbot.waitUntil(lambda: dialog._rows_by_key["about_version"].isVisible())
     assert dialog._section_tree_items["operations"].isHidden() is True
     assert dialog._section_tree_items["about"].isHidden() is False
+    assert (
+        dialog._section_tree.currentItem()
+        is dialog._subsection_tree_items["about/application_info"]
+    )
+
+
+def test_settings_dialog_remembers_last_selected_subsection(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-memory",
+        roots_provider=roots_provider,
+    )
+
+    first = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(first)
+    first.show()
+
+    remembered_item = first._subsection_tree_items["operations/backend_args"]
+    first._section_tree.setCurrentItem(remembered_item)
+    qtbot.waitUntil(lambda: first._section_tree.currentItem() is remembered_item)
+    assert controller.settings.settings_dialog_last_section == "operations"
+    assert (
+        controller.settings.settings_dialog_last_subsection
+        == "operations/backend_args"
+    )
+    first.reject()
+
+    second = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(second)
+    second.show()
+
+    qtbot.waitUntil(
+        lambda: second._section_tree.currentItem()
+        is second._subsection_tree_items["operations/backend_args"]
+    )
+    assert second._rows_by_key["robocopy_args"].isVisible() is True
+    assert second._rows_by_key["teracopy_command"].isVisible() is False
 
 
 def test_settings_dialog_command_textboxes_expand_with_resize(
@@ -673,6 +735,12 @@ def test_settings_dialog_command_textboxes_expand_with_resize(
 def test_settings_byte_format_preview_and_persistence(
     qtbot, tmp_path: Path, isolated_settings: SettingsManager
 ) -> None:
+    isolated_settings.byte_thousands_separator = ","
+    isolated_settings.byte_decimal_separator = "."
+    isolated_settings.file_list_byte_format_mode = "bytes"
+    isolated_settings.file_list_byte_custom_template = ""
+    isolated_settings.sync()
+
     roots_provider = _test_roots_provider(tmp_path)
     controller = _ControllerSettingsStub(isolated_settings)
     window = _new_window(
@@ -699,6 +767,9 @@ def test_settings_byte_format_preview_and_persistence(
     dialog = SettingsDialog(controller=controller, parent=window)
     qtbot.addWidget(dialog)
     dialog.show()
+    byte_display_item = dialog._subsection_tree_items["panels/byte_display"]
+    dialog._section_tree.setCurrentItem(byte_display_item)
+    qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is byte_display_item)
 
     dialog._set_combo_value(dialog.file_list_byte_format_mode_combo, "custom")
     assert dialog.file_list_byte_custom_template_edit.isEnabled() is True
@@ -706,7 +777,7 @@ def test_settings_byte_format_preview_and_persistence(
     dialog.byte_thousands_separator_edit.setText(".")
     dialog.byte_decimal_separator_edit.setText(",")
     qtbot.waitUntil(
-        lambda: str(tab.model.data(sample_index, Qt.DisplayRole)).endswith("MiB")
+        lambda: str(tab.model.data(sample_index, Qt.DisplayRole)) == "3,42 KiB"
     )
     assert str(tab.model.data(sample_index, Qt.DisplayRole)) == "3,42 KiB"
 
@@ -782,7 +853,14 @@ def test_settings_dialog_removes_central_extended_paths_row(
     dialog.show()
 
     assert "backend_extended_paths" not in dialog._rows_by_key
+    backend_commands_item = dialog._subsection_tree_items["operations/backend_commands"]
+    dialog._section_tree.setCurrentItem(backend_commands_item)
+    qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is backend_commands_item)
     assert dialog.use_extended_paths_teracopy_checkbox.isVisible() is True
+    assert dialog.use_extended_paths_robocopy_checkbox.isVisible() is False
+    backend_args_item = dialog._subsection_tree_items["operations/backend_args"]
+    dialog._section_tree.setCurrentItem(backend_args_item)
+    qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is backend_args_item)
     assert dialog.use_extended_paths_robocopy_checkbox.isVisible() is True
 
 

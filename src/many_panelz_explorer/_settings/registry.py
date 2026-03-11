@@ -41,6 +41,7 @@ class SettingsRegistry:
     FILE_LIST_BYTE_CUSTOM_TEMPLATE_KEY = "ui/bytes/file_list/custom_template"
     STATUS_BAR_BYTE_FORMAT_MODE_KEY = "ui/bytes/status_bar/mode"
     STATUS_BAR_BYTE_CUSTOM_TEMPLATE_KEY = "ui/bytes/status_bar/custom_template"
+    STATUS_BAR_STORAGE_LABEL_TEMPLATE_KEY = "ui/status_bar/storage/label_template"
     PROPERTIES_BYTE_FORMAT_MODE_KEY = "ui/bytes/properties/mode"
     PROPERTIES_BYTE_CUSTOM_TEMPLATE_KEY = "ui/bytes/properties/custom_template"
     APP_FONT_FAMILY_KEY = "ui/font/app/family"
@@ -95,6 +96,8 @@ class SettingsRegistry:
     OPS_COMPANION_BOOTSTRAP_DONE_KEY = "ops/internal/companion_bootstrap_done"
     SESSION_WINDOWS_KEY = "prefs/session_windows"
     SAVED_VIEWS_KEY = "prefs/saved_views"
+    SETTINGS_DIALOG_LAST_SECTION_KEY = "prefs/settings_dialog/last_section"
+    SETTINGS_DIALOG_LAST_SUBSECTION_KEY = "prefs/settings_dialog/last_subsection"
 
     DEFAULT_ACTIVE_PANEL_TINT_COLOR_HEX = "#A8B6C4"
     DEFAULT_ACTIVE_PANEL_TINT_INTENSITY_PERCENT = 24
@@ -116,6 +119,9 @@ class SettingsRegistry:
     DEFAULT_FILE_LIST_BYTE_CUSTOM_TEMPLATE = ""
     DEFAULT_STATUS_BAR_BYTE_FORMAT_MODE = "bytes"
     DEFAULT_STATUS_BAR_BYTE_CUSTOM_TEMPLATE = ""
+    DEFAULT_STATUS_BAR_STORAGE_LABEL_TEMPLATE = (
+        "{disk_root} {disk_label} {used_space}/{total_space}"
+    )
     DEFAULT_PROPERTIES_BYTE_FORMAT_MODE = "bytes"
     DEFAULT_PROPERTIES_BYTE_CUSTOM_TEMPLATE = ""
     DEFAULT_CONTEXT_IMMEDIATE_CHILD_SCAN_CAP = 33
@@ -155,6 +161,8 @@ class SettingsRegistry:
     DEFAULT_POWERSHELL_DELETE_ARGS = DEFAULT_POWERSHELL_DELETE_ARGS
     DEFAULT_RIMRAF_EXECUTABLE = DEFAULT_RIMRAF_EXE
     DEFAULT_RIMRAF_ARGS_TEMPLATE = DEFAULT_RIMRAF_ARGS
+    DEFAULT_SETTINGS_DIALOG_LAST_SECTION = ""
+    DEFAULT_SETTINGS_DIALOG_LAST_SUBSECTION = ""
 
     ALLOWED_NEW_CONTEXT_MODES: ClassVar[set[str]] = {"clone_active_path", "home", "cwd"}
     ALLOWED_COLUMN_WIDTH_AUTO_ALIGN_MODES: ClassVar[set[str]] = {

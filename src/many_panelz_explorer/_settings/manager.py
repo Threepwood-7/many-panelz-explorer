@@ -63,6 +63,9 @@ class SettingsManager(SettingsRegistry):
     file_list_byte_custom_template = _delegate_property("ui", "file_list_byte_custom_template")
     status_bar_byte_format_mode = _delegate_property("ui", "status_bar_byte_format_mode")
     status_bar_byte_custom_template = _delegate_property("ui", "status_bar_byte_custom_template")
+    status_bar_storage_label_template = _delegate_property(
+        "ui", "status_bar_storage_label_template"
+    )
     properties_byte_format_mode = _delegate_property("ui", "properties_byte_format_mode")
     properties_byte_custom_template = _delegate_property("ui", "properties_byte_custom_template")
     app_font_family = _delegate_property("ui", "app_font_family")
@@ -124,6 +127,12 @@ class SettingsManager(SettingsRegistry):
     rimraf_executable = _delegate_property("ops", "rimraf_executable")
     rimraf_args_template = _delegate_property("ops", "rimraf_args_template")
     ops_companion_bootstrap_done = _delegate_property("ops", "ops_companion_bootstrap_done")
+    settings_dialog_last_section = _delegate_property(
+        "session", "settings_dialog_last_section"
+    )
+    settings_dialog_last_subsection = _delegate_property(
+        "session", "settings_dialog_last_subsection"
+    )
 
     def ui_preferences(self) -> UiPreferences:
         return UiPreferences(
@@ -142,6 +151,7 @@ class SettingsManager(SettingsRegistry):
             file_list_byte_custom_template=self.file_list_byte_custom_template,
             status_bar_byte_format_mode=self.status_bar_byte_format_mode,
             status_bar_byte_custom_template=self.status_bar_byte_custom_template,
+            status_bar_storage_label_template=self.status_bar_storage_label_template,
             properties_byte_format_mode=self.properties_byte_format_mode,
             properties_byte_custom_template=self.properties_byte_custom_template,
             app_font_family=self.app_font_family,
@@ -207,12 +217,17 @@ class SettingsManager(SettingsRegistry):
         self.show_root_buttons = preferences.show_root_buttons
         self.show_address_bar = preferences.show_address_bar
         self.show_navigation_buttons = preferences.show_navigation_buttons
-        self.byte_thousands_separator = preferences.byte_thousands_separator
-        self.byte_decimal_separator = preferences.byte_decimal_separator
+        self.ui.set_byte_separators(
+            preferences.byte_thousands_separator,
+            preferences.byte_decimal_separator,
+        )
         self.file_list_byte_format_mode = preferences.file_list_byte_format_mode
         self.file_list_byte_custom_template = preferences.file_list_byte_custom_template
         self.status_bar_byte_format_mode = preferences.status_bar_byte_format_mode
         self.status_bar_byte_custom_template = preferences.status_bar_byte_custom_template
+        self.status_bar_storage_label_template = (
+            preferences.status_bar_storage_label_template
+        )
         self.properties_byte_format_mode = preferences.properties_byte_format_mode
         self.properties_byte_custom_template = preferences.properties_byte_custom_template
         self.app_font_family = preferences.app_font_family

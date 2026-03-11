@@ -21,6 +21,7 @@ def _tracked_keys() -> list[str]:
         SettingsManager.FILE_LIST_BYTE_CUSTOM_TEMPLATE_KEY,
         SettingsManager.STATUS_BAR_BYTE_FORMAT_MODE_KEY,
         SettingsManager.STATUS_BAR_BYTE_CUSTOM_TEMPLATE_KEY,
+        SettingsManager.STATUS_BAR_STORAGE_LABEL_TEMPLATE_KEY,
         SettingsManager.PROPERTIES_BYTE_FORMAT_MODE_KEY,
         SettingsManager.PROPERTIES_BYTE_CUSTOM_TEMPLATE_KEY,
         SettingsManager.APP_FONT_FAMILY_KEY,
@@ -73,6 +74,8 @@ def _tracked_keys() -> list[str]:
         SettingsManager.RIMRAF_EXECUTABLE_KEY,
         SettingsManager.RIMRAF_ARGS_TEMPLATE_KEY,
         SettingsManager.OPS_COMPANION_BOOTSTRAP_DONE_KEY,
+        SettingsManager.SETTINGS_DIALOG_LAST_SECTION_KEY,
+        SettingsManager.SETTINGS_DIALOG_LAST_SUBSECTION_KEY,
     ]
 
 
@@ -109,6 +112,9 @@ def test_ui_preferences_round_trip() -> None:
             file_list_byte_custom_template="{b} ({MiB:.2f})",
             status_bar_byte_format_mode="always_mib",
             status_bar_byte_custom_template="",
+            status_bar_storage_label_template=(
+                "{disk_root} {disk_label} {used_space}/{total_space} {usage_indicator}"
+            ),
             properties_byte_format_mode="always_mb",
             properties_byte_custom_template="",
             app_font_family="Consolas",
@@ -188,6 +194,7 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.remove(SettingsManager.FILE_LIST_BYTE_CUSTOM_TEMPLATE_KEY)
         settings.set_value(SettingsManager.STATUS_BAR_BYTE_FORMAT_MODE_KEY, "INVALID")
         settings.remove(SettingsManager.STATUS_BAR_BYTE_CUSTOM_TEMPLATE_KEY)
+        settings.set_value(SettingsManager.STATUS_BAR_STORAGE_LABEL_TEMPLATE_KEY, "plain text")
         settings.set_value(SettingsManager.PROPERTIES_BYTE_FORMAT_MODE_KEY, "bad")
         settings.remove(SettingsManager.PROPERTIES_BYTE_CUSTOM_TEMPLATE_KEY)
         settings.remove(SettingsManager.APP_FONT_FAMILY_KEY)
@@ -278,6 +285,10 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         assert (
             loaded.status_bar_byte_custom_template
             == SettingsManager.DEFAULT_STATUS_BAR_BYTE_CUSTOM_TEMPLATE
+        )
+        assert (
+            loaded.status_bar_storage_label_template
+            == SettingsManager.DEFAULT_STATUS_BAR_STORAGE_LABEL_TEMPLATE
         )
         assert (
             loaded.properties_byte_format_mode
@@ -444,5 +455,27 @@ def test_ops_companion_bootstrap_flag_round_trip() -> None:
         assert settings.ops_companion_bootstrap_done is False
         settings.ops_companion_bootstrap_done = True
         assert settings.ops_companion_bootstrap_done is True
+    finally:
+        _restore(settings, before)
+
+
+def test_settings_dialog_navigation_location_round_trip() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    try:
+        settings.remove(SettingsManager.SETTINGS_DIALOG_LAST_SECTION_KEY)
+        settings.remove(SettingsManager.SETTINGS_DIALOG_LAST_SUBSECTION_KEY)
+        assert settings.settings_dialog_last_section == ""
+        assert settings.settings_dialog_last_subsection == ""
+
+        settings.settings_dialog_last_section = "operations"
+        settings.settings_dialog_last_subsection = "operations/backend_commands"
+        assert settings.settings_dialog_last_section == "operations"
+        assert settings.settings_dialog_last_subsection == "operations/backend_commands"
+
+        settings.set_value(SettingsManager.SETTINGS_DIALOG_LAST_SECTION_KEY, None)
+        settings.set_value(SettingsManager.SETTINGS_DIALOG_LAST_SUBSECTION_KEY, None)
+        assert settings.settings_dialog_last_section == ""
+        assert settings.settings_dialog_last_subsection == ""
     finally:
         _restore(settings, before)

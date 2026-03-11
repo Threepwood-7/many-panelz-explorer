@@ -2,10 +2,29 @@ from __future__ import annotations
 
 import json
 import re
+from string import Formatter
 from typing import Any, cast
 
 
 HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
+_FORMATTER = Formatter()
+_ALLOWED_STATUS_LABEL_FIELDS = {
+    "disk_label",
+    "disk_root",
+    "root_path",
+    "used_space",
+    "free_space",
+    "total_space",
+    "used_bytes",
+    "free_bytes",
+    "total_bytes",
+    "usage_percentage",
+    "free_percentage",
+    "usage_ratio",
+    "free_ratio",
+    "usage_indicator",
+    "free_indicator",
+}
 
 
 def normalize_percent(raw: Any, *, fallback: int) -> int:
@@ -173,3 +192,26 @@ def normalize_byte_custom_template(raw: Any, *, fallback: str = "") -> str:
     if text:
         return text
     return str(fallback)
+
+
+def normalize_status_storage_label_template(raw: Any, *, fallback: str) -> str:
+    template = str(raw or "")
+    if not template:
+        return str(fallback)
+    try:
+        parsed = list(_FORMATTER.parse(template))
+    except ValueError:
+        return str(fallback)
+
+    has_field = False
+    for _literal, field_name, _format_spec, conversion in parsed:
+        if field_name is None:
+            continue
+        has_field = True
+        if conversion is not None:
+            return str(fallback)
+        if str(field_name) not in _ALLOWED_STATUS_LABEL_FIELDS:
+            return str(fallback)
+    if not has_field:
+        return str(fallback)
+    return template

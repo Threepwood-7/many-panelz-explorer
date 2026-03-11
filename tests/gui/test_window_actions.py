@@ -73,6 +73,11 @@ def _test_roots_provider(tmp_path: Path) -> Callable[[Path | None], list[Path]]:
     return lambda _current: [root]
 
 
+def _visible_storage_labels(window: ExplorerWindow) -> list[object]:
+    labels = list(getattr(window, "_storage_overview_labels", []))
+    return [label for label in labels if label.isVisible()]
+
+
 class _ControllerCloneStub(_ControllerStub):
     def __init__(
         self,
@@ -638,9 +643,10 @@ def test_storage_overview_status_row_visible_and_populated_by_default(
     window.show()
 
     qtbot.waitUntil(lambda: window._storage_overview_row.isVisible() is True)
-    tooltip = window._storage_overview_label.toolTip()
-    assert "C: System" in tooltip
-    assert "C:\\mounts\\media01 Media" in tooltip
+    qtbot.waitUntil(lambda: len(_visible_storage_labels(window)) == len(entries))
+    tooltips = [label.toolTip() for label in _visible_storage_labels(window)]
+    assert any("C: System" in tooltip for tooltip in tooltips)
+    assert any("C:\\mounts\\media01 Media" in tooltip for tooltip in tooltips)
 
 
 def test_storage_overview_status_row_hides_when_disabled(
@@ -675,7 +681,7 @@ def test_storage_overview_status_row_hides_when_disabled(
     window.show()
 
     assert window._storage_overview_row.isVisible() is False
-    assert window._storage_overview_label.toolTip() == ""
+    assert _visible_storage_labels(window) == []
 
 
 def test_storage_overview_status_row_hides_when_no_valid_entries(
@@ -700,7 +706,7 @@ def test_storage_overview_status_row_hides_when_no_valid_entries(
     window.show()
 
     assert window._storage_overview_row.isVisible() is False
-    assert window._storage_overview_label.toolTip() == ""
+    assert _visible_storage_labels(window) == []
 
 
 def test_storage_overview_status_row_elides_with_full_tooltip(
@@ -737,12 +743,13 @@ def test_storage_overview_status_row_elides_with_full_tooltip(
     window.show()
     window._status_coordinator.refresh_storage_overview_status()
 
-    qtbot.waitUntil(lambda: bool(window._storage_overview_label.toolTip()))
-    displayed = window._storage_overview_label.text()
-    full = window._storage_overview_label.toolTip()
-    assert full
-    assert displayed != full
-    assert "\u2026" in displayed or "..." in displayed
+    qtbot.waitUntil(lambda: len(_visible_storage_labels(window)) == len(entries))
+    assert any(label.toolTip() for label in _visible_storage_labels(window))
+    assert any(
+        label.text() != label.toolTip()
+        and ("\u2026" in label.text() or "..." in label.text())
+        for label in _visible_storage_labels(window)
+    )
 
 
 def test_storage_overview_status_row_uses_configured_byte_format(
@@ -753,6 +760,10 @@ def test_storage_overview_status_row_uses_configured_byte_format(
     settings.byte_thousands_separator = "."
     settings.byte_decimal_separator = ","
     settings.status_bar_byte_format_mode = "always_mib"
+    settings.status_bar_storage_label_template = (
+        "{disk_root} {disk_label} {used_space}/{total_space} "
+        "{usage_percentage:.1f}% {usage_indicator}"
+    )
     settings.sync()
     roots_provider = _test_roots_provider(tmp_path)
     entries = [
@@ -780,10 +791,28 @@ def test_storage_overview_status_row_uses_configured_byte_format(
     window.show()
     window._status_coordinator.refresh_storage_overview_status()
 
-    qtbot.waitUntil(lambda: bool(window._storage_overview_label.toolTip()))
-    tooltip = window._storage_overview_label.toolTip()
-    assert "MiB" in tooltip
-    assert "1,43 MiB/2,86 MiB" in tooltip
+    qtbot.waitUntil(lambda: len(_visible_storage_labels(window)) == len(entries))
+    labels = _visible_storage_labels(window)
+    label_texts = [label.full_text() for label in labels]
+    tooltips = [label.toolTip() for label in labels]
+    assert any("C: System 1,43 MiB/2,86 MiB" in text for text in label_texts)
+    assert any("50.0%" in text or "50,0%" in text for text in label_texts)
+    assert any(
+        "\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591" in text
+        for text in label_texts
+    )
+    assert any("MiB" in tooltip for tooltip in tooltips)
+    assert any("Usage:" in tooltip and "50.00%" in tooltip for tooltip in tooltips)
+    assert any(
+        "Usage bar:" in tooltip
+        and "\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591" in tooltip
+        for tooltip in tooltips
+    )
+    assert any(
+        "Free bar:" in tooltip
+        and "\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591" in tooltip
+        for tooltip in tooltips
+    )
 
 
 def test_copy_or_move_conflict_choices(qtbot, tmp_path: Path, monkeypatch) -> None:
