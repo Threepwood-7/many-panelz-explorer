@@ -483,7 +483,7 @@ class UiSettingsDomain(SettingsRegistry):
 
     @property
     def context_tool_code_editor_exe_path(self) -> str:
-        return normalize.normalize_text(
+        return normalize.normalize_windows_path_text(
             self._storage.value(
                 self.CONTEXT_TOOL_CODE_EDITOR_EXE_PATH_KEY,
                 self.DEFAULT_CONTEXT_TOOL_CODE_EDITOR_EXE_PATH,
@@ -495,7 +495,7 @@ class UiSettingsDomain(SettingsRegistry):
     def context_tool_code_editor_exe_path(self, value: str) -> None:
         self._storage.set_value(
             self.CONTEXT_TOOL_CODE_EDITOR_EXE_PATH_KEY,
-            normalize.normalize_text(
+            normalize.normalize_windows_path_text(
                 value, fallback=self.DEFAULT_CONTEXT_TOOL_CODE_EDITOR_EXE_PATH
             ),
         )
@@ -521,7 +521,7 @@ class UiSettingsDomain(SettingsRegistry):
 
     @property
     def context_tool_git_gui_exe_path(self) -> str:
-        return normalize.normalize_text(
+        return normalize.normalize_windows_path_text(
             self._storage.value(
                 self.CONTEXT_TOOL_GIT_GUI_EXE_PATH_KEY,
                 self.DEFAULT_CONTEXT_TOOL_GIT_GUI_EXE_PATH,
@@ -533,7 +533,7 @@ class UiSettingsDomain(SettingsRegistry):
     def context_tool_git_gui_exe_path(self, value: str) -> None:
         self._storage.set_value(
             self.CONTEXT_TOOL_GIT_GUI_EXE_PATH_KEY,
-            normalize.normalize_text(
+            normalize.normalize_windows_path_text(
                 value, fallback=self.DEFAULT_CONTEXT_TOOL_GIT_GUI_EXE_PATH
             ),
         )
@@ -736,7 +736,7 @@ class OpsSettingsDomain(SettingsRegistry):
 
     @property
     def default_editor_executable(self) -> str:
-        value = normalize.normalize_text(
+        value = normalize.normalize_windows_path_text(
             self._storage.value(
                 self.DEFAULT_EDITOR_EXECUTABLE_KEY,
                 self.DEFAULT_DEFAULT_EDITOR_EXECUTABLE,
@@ -752,12 +752,14 @@ class OpsSettingsDomain(SettingsRegistry):
     def default_editor_executable(self, value: str) -> None:
         self._storage.set_value(
             self.DEFAULT_EDITOR_EXECUTABLE_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_DEFAULT_EDITOR_EXECUTABLE),
+            normalize.normalize_windows_path_text(
+                value, fallback=self.DEFAULT_DEFAULT_EDITOR_EXECUTABLE
+            ),
         )
 
     @property
     def default_viewer_executable(self) -> str:
-        return normalize.normalize_text(
+        return normalize.normalize_windows_path_text(
             self._storage.value(
                 self.DEFAULT_VIEWER_EXECUTABLE_KEY,
                 self.DEFAULT_DEFAULT_VIEWER_EXECUTABLE,
@@ -769,7 +771,9 @@ class OpsSettingsDomain(SettingsRegistry):
     def default_viewer_executable(self, value: str) -> None:
         self._storage.set_value(
             self.DEFAULT_VIEWER_EXECUTABLE_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_DEFAULT_VIEWER_EXECUTABLE),
+            normalize.normalize_windows_path_text(
+                value, fallback=self.DEFAULT_DEFAULT_VIEWER_EXECUTABLE
+            ),
         )
 
     @property
@@ -898,7 +902,7 @@ class OpsSettingsDomain(SettingsRegistry):
 
     @property
     def script_editor_executable(self) -> str:
-        return normalize.normalize_text(
+        return normalize.normalize_windows_path_text(
             self._storage.value(
                 self.SCRIPT_EDITOR_EXECUTABLE_KEY,
                 self.DEFAULT_SCRIPT_EDITOR_EXECUTABLE,
@@ -910,12 +914,14 @@ class OpsSettingsDomain(SettingsRegistry):
     def script_editor_executable(self, value: str) -> None:
         self._storage.set_value(
             self.SCRIPT_EDITOR_EXECUTABLE_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_SCRIPT_EDITOR_EXECUTABLE),
+            normalize.normalize_windows_path_text(
+                value, fallback=self.DEFAULT_SCRIPT_EDITOR_EXECUTABLE
+            ),
         )
 
     @property
     def teracopy_executable(self) -> str:
-        return normalize.normalize_text(
+        return normalize.normalize_windows_path_text(
             self._storage.value(
                 self.TERACOPY_EXECUTABLE_KEY,
                 self.DEFAULT_TERACOPY_EXECUTABLE,
@@ -927,12 +933,14 @@ class OpsSettingsDomain(SettingsRegistry):
     def teracopy_executable(self, value: str) -> None:
         self._storage.set_value(
             self.TERACOPY_EXECUTABLE_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_TERACOPY_EXECUTABLE),
+            normalize.normalize_windows_path_text(
+                value, fallback=self.DEFAULT_TERACOPY_EXECUTABLE
+            ),
         )
 
     @property
     def unstoppable_executable(self) -> str:
-        return normalize.normalize_text(
+        return normalize.normalize_windows_path_text(
             self._storage.value(
                 self.UNSTOPPABLE_EXECUTABLE_KEY,
                 self.DEFAULT_UNSTOPPABLE_EXECUTABLE,
@@ -944,12 +952,14 @@ class OpsSettingsDomain(SettingsRegistry):
     def unstoppable_executable(self, value: str) -> None:
         self._storage.set_value(
             self.UNSTOPPABLE_EXECUTABLE_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_UNSTOPPABLE_EXECUTABLE),
+            normalize.normalize_windows_path_text(
+                value, fallback=self.DEFAULT_UNSTOPPABLE_EXECUTABLE
+            ),
         )
 
     @property
     def generic_copymove_executable(self) -> str:
-        return normalize.normalize_text(
+        return normalize.normalize_windows_path_text(
             self._storage.value(
                 self.GENERIC_COPYMOVE_EXECUTABLE_KEY,
                 self.DEFAULT_GENERIC_COPYMOVE_EXECUTABLE,
@@ -961,12 +971,14 @@ class OpsSettingsDomain(SettingsRegistry):
     def generic_copymove_executable(self, value: str) -> None:
         self._storage.set_value(
             self.GENERIC_COPYMOVE_EXECUTABLE_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_GENERIC_COPYMOVE_EXECUTABLE),
+            normalize.normalize_windows_path_text(
+                value, fallback=self.DEFAULT_GENERIC_COPYMOVE_EXECUTABLE
+            ),
         )
 
     @property
     def generic_delete_executable(self) -> str:
-        return normalize.normalize_text(
+        return normalize.normalize_windows_path_text(
             self._storage.value(
                 self.GENERIC_DELETE_EXECUTABLE_KEY,
                 self.DEFAULT_GENERIC_DELETE_EXECUTABLE,
@@ -978,7 +990,9 @@ class OpsSettingsDomain(SettingsRegistry):
     def generic_delete_executable(self, value: str) -> None:
         self._storage.set_value(
             self.GENERIC_DELETE_EXECUTABLE_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_GENERIC_DELETE_EXECUTABLE),
+            normalize.normalize_windows_path_text(
+                value, fallback=self.DEFAULT_GENERIC_DELETE_EXECUTABLE
+            ),
         )
 
     @property
@@ -1112,7 +1126,7 @@ class OpsSettingsDomain(SettingsRegistry):
 
     @property
     def rimraf_executable(self) -> str:
-        return normalize.normalize_text(
+        return normalize.normalize_windows_path_text(
             self._storage.value(
                 self.RIMRAF_EXECUTABLE_KEY,
                 self.DEFAULT_RIMRAF_EXECUTABLE,
@@ -1124,7 +1138,9 @@ class OpsSettingsDomain(SettingsRegistry):
     def rimraf_executable(self, value: str) -> None:
         self._storage.set_value(
             self.RIMRAF_EXECUTABLE_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_RIMRAF_EXECUTABLE),
+            normalize.normalize_windows_path_text(
+                value, fallback=self.DEFAULT_RIMRAF_EXECUTABLE
+            ),
         )
 
     @property

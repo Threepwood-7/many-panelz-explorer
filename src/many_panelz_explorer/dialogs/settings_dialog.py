@@ -62,6 +62,7 @@ from .._operations.types import (
     OperationExecutionPreferences,
     OperationRequest,
 )
+from .._settings import normalize as settings_normalize
 from .._settings.manager import SettingsManager
 from .._settings.models import UiPreferences
 from ..constants import APP_DISPLAY_NAME, APP_VERSION
@@ -2215,7 +2216,7 @@ class SettingsDialog(QDialog):
         if item is None:
             item = QTableWidgetItem("")
             self.file_open_overrides_table.setItem(current, column, item)
-        item.setText(selected)
+        item.setText(settings_normalize.normalize_windows_path_text(selected, fallback=""))
         self._on_controls_changed()
 
     def _is_valid_extension(self, text: str) -> bool:
@@ -2303,7 +2304,7 @@ class SettingsDialog(QDialog):
         )
         if not selected:
             return
-        edit.setText(selected)
+        edit.setText(settings_normalize.normalize_windows_path_text(selected, fallback=""))
         self._on_controls_changed()
 
     def _find_executable(

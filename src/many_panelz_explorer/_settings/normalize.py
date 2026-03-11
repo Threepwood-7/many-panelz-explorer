@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import PureWindowsPath
 from string import Formatter
 from typing import Any, cast
 
@@ -17,6 +18,9 @@ from many_panelz_explorer._operations.backend_options import (
 )
 
 HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
+WINDOWS_DRIVE_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
+WINDOWS_UNC_PATH_RE = re.compile(r"^[\\/]{2}[^\\/]+[\\/][^\\/]+")
+WINDOWS_DEVICE_PATH_RE = re.compile(r"^[\\/]{2}[?.][\\/]")
 _FORMATTER = Formatter()
 _ALLOWED_STATUS_LABEL_FIELDS = {
     "disk_label",
@@ -98,6 +102,23 @@ def normalize_text(raw: Any, *, fallback: str) -> str:
     return str(fallback)
 
 
+def normalize_windows_path_text(raw: Any, *, fallback: str) -> str:
+    text = normalize_text(raw, fallback=fallback)
+    if not text:
+        return text
+    if not _looks_like_windows_path(text):
+        return text
+    return str(PureWindowsPath(text))
+
+
+def _looks_like_windows_path(text: str) -> bool:
+    return bool(
+        WINDOWS_DRIVE_PATH_RE.match(text)
+        or WINDOWS_UNC_PATH_RE.match(text)
+        or WINDOWS_DEVICE_PATH_RE.match(text)
+    )
+
+
 def normalize_positive_int(
     raw: Any,
     *,
@@ -135,8 +156,8 @@ def normalize_overrides_json(raw: Any, *, fallback: str) -> str:
             ext_text = f".{ext_text}"
         if isinstance(value, dict):
             source = cast("dict[str, Any]", value)
-            editor = str(source.get("editor", "")).strip()
-            viewer = str(source.get("viewer", "")).strip()
+            editor = normalize_windows_path_text(source.get("editor", ""), fallback="")
+            viewer = normalize_windows_path_text(source.get("viewer", ""), fallback="")
         else:
             editor = ""
             viewer = ""

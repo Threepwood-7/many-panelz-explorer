@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from many_panelz_explorer._operations.backend_options import (
     ExternalCopyMoveBackendOptions,
     RobocopyBackendOptions,
@@ -215,6 +217,43 @@ def test_ui_preferences_round_trip() -> None:
         settings.set_ui_preferences(expected)
         settings.sync()
         assert settings.ui_preferences() == expected
+    finally:
+        _restore(settings, before)
+
+
+def test_windows_executable_paths_normalize_to_backslashes() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    try:
+        settings.set_value(
+            SettingsManager.UNSTOPPABLE_EXECUTABLE_KEY,
+            "C:/bin/roadkil/UnstopCpy_5_2_Win2K_UP.exe",
+        )
+        settings.set_value(
+            SettingsManager.DEFAULT_EDITOR_EXECUTABLE_KEY,
+            "C:/tools/editor.exe",
+        )
+        settings.set_value(
+            SettingsManager.FILE_OPEN_OVERRIDES_JSON_KEY,
+            json.dumps(
+                {
+                    ".log": {
+                        "editor": "C:/tools/logedit.exe",
+                        "viewer": "C:/tools/logview.exe",
+                    }
+                }
+            ),
+        )
+        settings.sync()
+
+        assert (
+            settings.unstoppable_executable
+            == r"C:\bin\roadkil\UnstopCpy_5_2_Win2K_UP.exe"
+        )
+        assert settings.default_editor_executable == r"C:\tools\editor.exe"
+        overrides = json.loads(settings.file_open_overrides_json)
+        assert overrides[".log"]["editor"] == r"C:\tools\logedit.exe"
+        assert overrides[".log"]["viewer"] == r"C:\tools\logview.exe"
     finally:
         _restore(settings, before)
 

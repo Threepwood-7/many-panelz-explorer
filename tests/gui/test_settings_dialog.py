@@ -1070,6 +1070,45 @@ def test_settings_dialog_backend_test_uses_unsaved_values(
     assert captured["info"] is True
 
 
+def test_settings_dialog_browse_normalizes_windows_executable_paths(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager, monkeypatch
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-backend-browse-normalize",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    monkeypatch.setattr(
+        "many_panelz_explorer.dialogs.settings_dialog.QFileDialog.getOpenFileName",
+        lambda *_args, **_kwargs: (
+            "C:/bin/roadkil/UnstopCpy_5_2_Win2K_UP.exe",
+            "Executable Files (*.exe *.cmd *.bat)",
+        ),
+    )
+
+    dialog._browse_executable(dialog.unstoppable_executable_edit)
+
+    assert (
+        dialog.unstoppable_executable_edit.text()
+        == r"C:\bin\roadkil\UnstopCpy_5_2_Win2K_UP.exe"
+    )
+
+    dialog._apply_and_commit()
+    persisted = isolated_settings.ui_preferences()
+    assert (
+        persisted.unstoppable_executable
+        == r"C:\bin\roadkil\UnstopCpy_5_2_Win2K_UP.exe"
+    )
+
+
 def test_settings_dialog_rich_backend_controls_update_preview_and_persist(
     qtbot, tmp_path: Path, isolated_settings: SettingsManager
 ) -> None:
