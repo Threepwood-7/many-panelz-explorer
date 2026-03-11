@@ -3,6 +3,7 @@ from __future__ import annotations
 import fnmatch
 import os
 import weakref
+from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
@@ -78,7 +79,12 @@ class FastDirModel(QAbstractTableModel):
     _HEADERS = ("Name", "Ext", "Size", "Date")
     _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="mpe-dir-scan")
 
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        parent: QObject | None = None,
+        *,
+        size_formatter: Callable[[int], str] | None = None,
+    ) -> None:
         super().__init__(parent)
         self._current_path = Path.home()
         self._filter_flags = (
@@ -93,6 +99,7 @@ class FastDirModel(QAbstractTableModel):
         self._sort_column = 0
         self._sort_order = Qt.SortOrder.AscendingOrder
         self._request_id = 0
+        self._size_formatter = size_formatter or self._default_size_formatter
         self._signals = _ModelSignals(self)
         self._signals.listing_ready.connect(self._on_listing_ready)
         self._refresh_filter_flags()
@@ -158,7 +165,7 @@ class FastDirModel(QAbstractTableModel):
         if col == 1:
             return "" if entry.is_dir else entry.extension
         if col == 2:
-            return "" if entry.is_dir else f"{entry.size:,}"
+            return "" if entry.is_dir else self._format_size(entry.size)
         if col == 3:
             return datetime.fromtimestamp(entry.modified_ts).strftime("%Y-%m-%d %H:%M")
         return ""
@@ -273,6 +280,20 @@ class FastDirModel(QAbstractTableModel):
         self._sort_order = order
         self._rebuild_visible(reset=True)
 
+    def set_size_formatter(self, formatter: Callable[[int], str] | None) -> None:
+        self._size_formatter = formatter or self._default_size_formatter
+        row_count = self.rowCount()
+        if row_count <= 0:
+            return
+        top = self.index(0, 2)
+        bottom = self.index(row_count - 1, 2)
+        if top.isValid() and bottom.isValid():
+            self.dataChanged.emit(
+                top,
+                bottom,
+                [int(Qt.ItemDataRole.DisplayRole)],
+            )
+
     def _on_listing_ready(
         self,
         request_id: int,
@@ -375,6 +396,15 @@ class FastDirModel(QAbstractTableModel):
         if idx < 0 or idx >= len(self._visible_entries):
             return None
         return self._visible_entries[idx]
+
+    def _format_size(self, value: int) -> str:
+        try:
+            return str(self._size_formatter(int(value)))
+        except Exception:  # pragma: no cover - defensive
+            return self._default_size_formatter(int(value))
+
+    def _default_size_formatter(self, value: int) -> str:
+        return f"{int(value):,}"
 
     def _path_key(self, path: Path) -> str:
         return os.path.normcase(os.path.normpath(str(path)))

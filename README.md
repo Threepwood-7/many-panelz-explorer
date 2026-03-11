@@ -32,6 +32,7 @@ A multi-panel, Windows-focused file explorer built with PySide6. Supports splitt
 - **Selection memory** - remembers selected files when navigating back to a previously visited folder
 - **Always on top** - per-window toggle
 - **Hidden files toggle** - show/hide hidden and system files
+- **Storage overview row** - optional second status-bar row listing used/total space for all discovered roots (drives, partitions, and Windows mount points)
 - **Terminal integration** - open PowerShell (Windows) or x-terminal-emulator (Linux) at the current path
 - **Dynamic Context menu** - mode-aware actions for Python, Git, and Node folders (including immediate-child project detection)
 - **Properties dialog** - path, type, size, and file count for selected items
@@ -135,6 +136,15 @@ Runtime settings are stored via QSettings:
 | `ui/show_root_buttons` | Show/hide root buttons strip in panel toolbar (default: true) |
 | `ui/show_address_bar` | Show/hide address bar in panel toolbar (default: true) |
 | `ui/show_navigation_buttons` | Show/hide navigation buttons group in panel toolbar (default: true) |
+| `ui/show_storage_overview_status_row` | Show/hide the global storage overview status row (default: true) |
+| `ui/bytes/separators/thousands` | Thousands separator for byte displays (default: `,`; empty disables grouping) |
+| `ui/bytes/separators/decimal` | Decimal separator for byte displays (default: `.`) |
+| `ui/bytes/file_list/mode` | File-list size format mode (`human_readable`, `always_mb`, `always_mib`, `bytes`, `custom`) |
+| `ui/bytes/file_list/custom_template` | File-list custom byte template used when mode is `custom` |
+| `ui/bytes/status_bar/mode` | Status-bar storage format mode (`human_readable`, `always_mb`, `always_mib`, `bytes`, `custom`) |
+| `ui/bytes/status_bar/custom_template` | Status-bar custom byte template used when mode is `custom` |
+| `ui/bytes/properties/mode` | Properties dialog size format mode (`human_readable`, `always_mb`, `always_mib`, `bytes`, `custom`) |
+| `ui/bytes/properties/custom_template` | Properties dialog custom byte template used when mode is `custom` |
 | `ui/font/app/family` | App-wide base font family (`""` means system default) |
 | `ui/font/app/size_pt` | App-wide base font size in pt (`0` means system default; else 6..32) |
 | `ui/font/file_list/use_app_font` | File-list inherits app font when true (default: true) |

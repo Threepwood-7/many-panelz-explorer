@@ -113,3 +113,63 @@ def normalize_overrides_json(raw: Any, *, fallback: str) -> str:
             viewer = ""
         normalized[ext_text] = {"editor": editor, "viewer": viewer}
     return json.dumps(normalized, sort_keys=True)
+
+
+def normalize_byte_separator(
+    raw: Any,
+    *,
+    fallback: str,
+    allow_empty: bool = False,
+) -> str:
+    if raw is None:
+        return str(fallback)
+    text = str(raw)
+    if text == "":
+        return "" if allow_empty else str(fallback)
+    candidate = text[0]
+    if candidate in {"\n", "\r", "\t"}:
+        return "" if allow_empty else str(fallback)
+    return candidate
+
+
+def normalize_byte_separators(
+    raw_thousands: Any,
+    raw_decimal: Any,
+    *,
+    fallback_thousands: str = ",",
+    fallback_decimal: str = ".",
+) -> tuple[str, str]:
+    thousands = normalize_byte_separator(
+        raw_thousands,
+        fallback=fallback_thousands,
+        allow_empty=True,
+    )
+    decimal = normalize_byte_separator(
+        raw_decimal,
+        fallback=fallback_decimal,
+        allow_empty=False,
+    )
+    if thousands == decimal:
+        return fallback_thousands, fallback_decimal
+    return thousands, decimal
+
+
+def normalize_byte_format_mode(
+    raw: Any,
+    *,
+    fallback: str,
+    allowed_modes: set[str],
+) -> str:
+    mode = str(raw or "").strip().lower()
+    if mode in allowed_modes:
+        return mode
+    return str(fallback)
+
+
+def normalize_byte_custom_template(raw: Any, *, fallback: str = "") -> str:
+    if raw is None:
+        return str(fallback)
+    text = str(raw)
+    if text:
+        return text
+    return str(fallback)

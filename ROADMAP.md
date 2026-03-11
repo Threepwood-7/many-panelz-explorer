@@ -87,10 +87,10 @@ and organization workflows.
 
 ---
 
-### F004 — Disk Usage / Free Space Indicator
+### F004 - Disk Usage / Free Space Indicator
 
-**Summary:** Show available and used disk space for the drive of the currently
-active path, visible directly in the panel without switching to another tool.
+**Summary:** Show disk usage in a global status-bar row for all discovered storage
+roots (drive letters, partitions, and Windows directory mount points).
 
 **Motivation:** The root/drive selector dropdown exists but shows only drive labels
 and letters. There is no at-a-glance indication of how full a drive is. Users
@@ -98,20 +98,22 @@ frequently need this context when deciding where to copy files, which requires
 alt-tabbing to Windows Explorer or running a separate command. Surfacing it
 directly in the panel keeps the user in context.
 
+#### Phase 1 (Implemented)
+
 **Scope:**
-- Per-panel display: shows the free/total space for the drive of the current path
-- Placement: status bar area within the panel, or as an augmented tooltip/label
-  on the root dropdown
-- Compact format: e.g., `238 GB free of 931 GB`
-- Optional thin progress bar (used space ratio) alongside the label
-- Updates when the panel navigates to a different drive
-- Refresh on the same interval as the mount cache (currently 2-second TTL)
-- Toggleable via preferences (on by default)
+- Window-level status bar uses two rows:
+  - Row 1: existing source/target path labels
+  - Row 2: storage overview line for discovered roots
+- Storage row includes used/total values and volume label fallback handling
+- Windows discovery includes both drive roots and directory mount points
+- Storage snapshots refresh on a 2-second TTL cadence aligned with mount discovery
+- Row is toggleable via `ui/show_storage_overview_status_row` (default `true`)
+- Overflow handling uses elided text with full tooltip
+- If no valid storage entries are available, the storage row is hidden
 
 **Notes:**
-- Data source: `QStorageInfo` already used in `mounts.py`; extend it to also
-  expose `bytesAvailable()` and `bytesTotal()`.
-- The indicator should update lazily (not on every keypress), only on path change.
+- Data source is `QStorageInfo` for `bytesAvailable()` / `bytesTotal()`.
+- Dedup for storage entries is exact-root dedup (drive and mount roots can both show).
 
 ---
 

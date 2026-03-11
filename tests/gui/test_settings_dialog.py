@@ -8,6 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6")
 pytest.importorskip("pytestqt")
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
@@ -132,11 +133,20 @@ def _tracked_keys() -> list[str]:
         SettingsManager.NEW_CONTEXT_MODE_KEY,
         SettingsManager.SHOW_HIDDEN_DEFAULT_KEY,
         SettingsManager.SHOW_ROOT_DROPDOWN_KEY,
+        SettingsManager.SHOW_STORAGE_OVERVIEW_STATUS_ROW_KEY,
         SettingsManager.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY,
         SettingsManager.SHOW_REFRESH_BUTTON_KEY,
         SettingsManager.SHOW_ROOT_BUTTONS_KEY,
         SettingsManager.SHOW_ADDRESS_BAR_KEY,
         SettingsManager.SHOW_NAVIGATION_BUTTONS_KEY,
+        SettingsManager.BYTES_THOUSANDS_SEPARATOR_KEY,
+        SettingsManager.BYTES_DECIMAL_SEPARATOR_KEY,
+        SettingsManager.FILE_LIST_BYTE_FORMAT_MODE_KEY,
+        SettingsManager.FILE_LIST_BYTE_CUSTOM_TEMPLATE_KEY,
+        SettingsManager.STATUS_BAR_BYTE_FORMAT_MODE_KEY,
+        SettingsManager.STATUS_BAR_BYTE_CUSTOM_TEMPLATE_KEY,
+        SettingsManager.PROPERTIES_BYTE_FORMAT_MODE_KEY,
+        SettingsManager.PROPERTIES_BYTE_CUSTOM_TEMPLATE_KEY,
         SettingsManager.APP_FONT_FAMILY_KEY,
         SettingsManager.APP_FONT_SIZE_PT_KEY,
         SettingsManager.FILE_LIST_USE_APP_FONT_KEY,
@@ -463,6 +473,13 @@ def test_settings_apply_persists_and_new_window_uses_values(
     dialog.show_root_buttons_checkbox.setChecked(False)
     dialog.show_address_bar_checkbox.setChecked(False)
     dialog.show_navigation_buttons_checkbox.setChecked(False)
+    dialog.show_storage_overview_status_row_checkbox.setChecked(False)
+    dialog.byte_thousands_separator_edit.setText(" ")
+    dialog.byte_decimal_separator_edit.setText(",")
+    dialog._set_combo_value(dialog.file_list_byte_format_mode_combo, "custom")
+    dialog.file_list_byte_custom_template_edit.setText("{b} ({MiB:.2f})")
+    dialog._set_combo_value(dialog.status_bar_byte_format_mode_combo, "always_mib")
+    dialog._set_combo_value(dialog.properties_byte_format_mode_combo, "always_mb")
     dialog.app_font_size_spin.setValue(12)
     dialog.file_list_use_app_font_checkbox.setChecked(False)
     dialog.file_list_font_size_spin.setValue(14)
@@ -479,6 +496,13 @@ def test_settings_apply_persists_and_new_window_uses_values(
     assert persisted.show_root_buttons is False
     assert persisted.show_address_bar is False
     assert persisted.show_navigation_buttons is False
+    assert persisted.show_storage_overview_status_row is False
+    assert persisted.byte_thousands_separator == " "
+    assert persisted.byte_decimal_separator == ","
+    assert persisted.file_list_byte_format_mode == "custom"
+    assert persisted.file_list_byte_custom_template == "{b} ({MiB:.2f})"
+    assert persisted.status_bar_byte_format_mode == "always_mib"
+    assert persisted.properties_byte_format_mode == "always_mb"
     assert persisted.app_font_size_pt == 12
     assert persisted.file_list_use_app_font is False
     assert persisted.file_list_font_size_pt == 14
@@ -503,6 +527,7 @@ def test_settings_apply_persists_and_new_window_uses_values(
     assert reopened_panel.forward_btn.isVisible() is False
     assert reopened_panel.up_btn.isVisible() is False
     assert reopened_panel.root_btn.isVisible() is False
+    assert reopened._storage_overview_row.isVisible() is False
     assert reopened_panel.current_tab().view.font().pointSize() == 14
     assert reopened_panel.address_edit.font().pointSize() == 13
     assert "rgba(168, 182, 196, 127)" in reopened_panel.styleSheet()
@@ -542,6 +567,7 @@ def test_settings_checkbox_changes_sync_existing_windows(
     dialog.show_root_buttons_checkbox.setChecked(False)
     dialog.show_address_bar_checkbox.setChecked(False)
     dialog.show_navigation_buttons_checkbox.setChecked(False)
+    dialog.show_storage_overview_status_row_checkbox.setChecked(False)
     dialog.app_font_size_spin.setValue(11)
     dialog.file_list_use_app_font_checkbox.setChecked(False)
     dialog.file_list_font_size_spin.setValue(15)
@@ -564,6 +590,8 @@ def test_settings_checkbox_changes_sync_existing_windows(
     assert second_panel.address_edit.isVisible() is False
     assert first_panel.back_btn.isVisible() is False
     assert second_panel.back_btn.isVisible() is False
+    assert first._storage_overview_row.isVisible() is False
+    assert second._storage_overview_row.isVisible() is False
     assert first_panel.current_tab().view.font().pointSize() == 15
     assert second_panel.current_tab().view.font().pointSize() == 15
 
@@ -642,6 +670,54 @@ def test_settings_dialog_command_textboxes_expand_with_resize(
     qtbot.waitUntil(lambda: dialog.teracopy_executable_edit.width() > initial_width)
 
 
+def test_settings_byte_format_preview_and_persistence(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-byte-format",
+        roots_provider=roots_provider,
+    )
+
+    root = tmp_path / "files"
+    root.mkdir(parents=True, exist_ok=True)
+    sample = root / "sample.bin"
+    sample.write_bytes(b"x" * 3_500)
+    panel = window.active_panel()
+    assert panel is not None
+    tab = panel.current_tab()
+    assert tab is not None
+    tab.set_path(root)
+    qtbot.waitUntil(lambda: tab.model.index(str(sample)).isValid())
+    sample_index = tab.model.index(str(sample)).siblingAtColumn(2)
+    assert str(tab.model.data(sample_index, Qt.DisplayRole)) == "3,500"
+
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    dialog._set_combo_value(dialog.file_list_byte_format_mode_combo, "custom")
+    assert dialog.file_list_byte_custom_template_edit.isEnabled() is True
+    dialog.file_list_byte_custom_template_edit.setText("{KiB:.2f} KiB")
+    dialog.byte_thousands_separator_edit.setText(".")
+    dialog.byte_decimal_separator_edit.setText(",")
+    qtbot.waitUntil(
+        lambda: str(tab.model.data(sample_index, Qt.DisplayRole)).endswith("MiB")
+    )
+    assert str(tab.model.data(sample_index, Qt.DisplayRole)) == "3,42 KiB"
+
+    dialog._apply_and_commit()
+    persisted = isolated_settings.ui_preferences()
+    assert persisted.file_list_byte_format_mode == "custom"
+    assert persisted.file_list_byte_custom_template == "{KiB:.2f} KiB"
+    assert persisted.byte_thousands_separator == "."
+    assert persisted.byte_decimal_separator == ","
+
+
 def test_settings_dialog_open_with_and_extended_path_settings_persist(
     qtbot, tmp_path: Path, isolated_settings: SettingsManager
 ) -> None:
@@ -665,6 +741,7 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
     dialog.context_code_editor_args_edit.setText("--folder {folder}")
     dialog.context_git_gui_executable_edit.setText(r"C:\tools\gitgui.exe")
     dialog.context_git_gui_args_edit.setText("--path {folder}")
+    dialog.show_storage_overview_status_row_checkbox.setChecked(False)
     dialog.add_override_row_btn.click()
     row = dialog.file_open_overrides_table.rowCount() - 1
     dialog.file_open_overrides_table.item(row, 0).setText(".log")
@@ -682,6 +759,7 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
     assert persisted.context_tool_code_editor_args_template == "--folder {folder}"
     assert persisted.context_tool_git_gui_exe_path == r"C:\tools\gitgui.exe"
     assert persisted.context_tool_git_gui_args_template == "--path {folder}"
+    assert persisted.show_storage_overview_status_row is False
     assert '".log"' in persisted.file_open_overrides_json
     assert persisted.use_extended_paths_robocopy is True
     assert persisted.use_extended_paths_external_delete is True

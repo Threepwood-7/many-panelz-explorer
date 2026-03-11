@@ -29,11 +29,20 @@ class SettingsRegistry:
     NEW_CONTEXT_MODE_KEY = "config/new_context_mode"
     SHOW_HIDDEN_DEFAULT_KEY = "ui/show_hidden_default"
     SHOW_ROOT_DROPDOWN_KEY = "ui/show_root_dropdown"
+    SHOW_STORAGE_OVERVIEW_STATUS_ROW_KEY = "ui/show_storage_overview_status_row"
     COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY = "ui/file_list/column_width_auto_align_mode"
     SHOW_REFRESH_BUTTON_KEY = "ui/show_refresh_button"
     SHOW_ROOT_BUTTONS_KEY = "ui/show_root_buttons"
     SHOW_ADDRESS_BAR_KEY = "ui/show_address_bar"
     SHOW_NAVIGATION_BUTTONS_KEY = "ui/show_navigation_buttons"
+    BYTES_THOUSANDS_SEPARATOR_KEY = "ui/bytes/separators/thousands"
+    BYTES_DECIMAL_SEPARATOR_KEY = "ui/bytes/separators/decimal"
+    FILE_LIST_BYTE_FORMAT_MODE_KEY = "ui/bytes/file_list/mode"
+    FILE_LIST_BYTE_CUSTOM_TEMPLATE_KEY = "ui/bytes/file_list/custom_template"
+    STATUS_BAR_BYTE_FORMAT_MODE_KEY = "ui/bytes/status_bar/mode"
+    STATUS_BAR_BYTE_CUSTOM_TEMPLATE_KEY = "ui/bytes/status_bar/custom_template"
+    PROPERTIES_BYTE_FORMAT_MODE_KEY = "ui/bytes/properties/mode"
+    PROPERTIES_BYTE_CUSTOM_TEMPLATE_KEY = "ui/bytes/properties/custom_template"
     APP_FONT_FAMILY_KEY = "ui/font/app/family"
     APP_FONT_SIZE_PT_KEY = "ui/font/app/size_pt"
     FILE_LIST_USE_APP_FONT_KEY = "ui/font/file_list/use_app_font"
@@ -100,6 +109,15 @@ class SettingsRegistry:
     DEFAULT_NAVIGATION_USE_APP_FONT = True
     DEFAULT_NAVIGATION_FONT_FAMILY = ""
     DEFAULT_NAVIGATION_FONT_SIZE_PT = 10
+    DEFAULT_SHOW_STORAGE_OVERVIEW_STATUS_ROW = True
+    DEFAULT_BYTES_THOUSANDS_SEPARATOR = ","
+    DEFAULT_BYTES_DECIMAL_SEPARATOR = "."
+    DEFAULT_FILE_LIST_BYTE_FORMAT_MODE = "bytes"
+    DEFAULT_FILE_LIST_BYTE_CUSTOM_TEMPLATE = ""
+    DEFAULT_STATUS_BAR_BYTE_FORMAT_MODE = "bytes"
+    DEFAULT_STATUS_BAR_BYTE_CUSTOM_TEMPLATE = ""
+    DEFAULT_PROPERTIES_BYTE_FORMAT_MODE = "bytes"
+    DEFAULT_PROPERTIES_BYTE_CUSTOM_TEMPLATE = ""
     DEFAULT_CONTEXT_IMMEDIATE_CHILD_SCAN_CAP = 33
     DEFAULT_CONTEXT_TOOL_CODE_EDITOR_EXE_PATH = ""
     DEFAULT_CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE = "{folder}"
@@ -143,4 +161,11 @@ class SettingsRegistry:
         "all_panels_tabs",
         "current_panel_tabs",
         "none",
+    }
+    ALLOWED_BYTE_FORMAT_MODES: ClassVar[set[str]] = {
+        "human_readable",
+        "always_mb",
+        "always_mib",
+        "bytes",
+        "custom",
     }

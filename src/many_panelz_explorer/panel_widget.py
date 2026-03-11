@@ -208,6 +208,9 @@ class PanelWidget(QWidget):
         show_root_dropdown: bool = False,
         roots_provider: Callable[[Path | None], list[Path]] | None = None,
         parent: QWidget | None = None,
+        *,
+        file_list_size_formatter: Callable[[int], str] | None = None,
+        properties_size_formatter: Callable[[int], str] | None = None,
     ) -> None:
         super().__init__(parent)
         self.panel_id = panel_id
@@ -237,6 +240,12 @@ class PanelWidget(QWidget):
         self._show_navigation_buttons = True
         self._file_list_font = QFont(self.font())
         self._navigation_font = QFont(self.font())
+        self._file_list_size_formatter = (
+            file_list_size_formatter or self._default_file_list_size_formatter
+        )
+        self._properties_size_formatter = (
+            properties_size_formatter or self._default_properties_size_formatter
+        )
         self._navigation_coordinator = PanelNavigationCoordinator(
             self,
             root_display_text=_root_display_text,
@@ -457,7 +466,13 @@ class PanelWidget(QWidget):
     def add_tab(self, path: Path) -> ExplorerTab:
         source_tab = self.current_tab()
         source_widths = source_tab.column_widths() if source_tab is not None else []
-        tab = ExplorerTab(path, show_hidden=self._show_hidden, parent=self)
+        tab = ExplorerTab(
+            path,
+            show_hidden=self._show_hidden,
+            file_list_size_formatter=self._file_list_size_formatter,
+            properties_size_formatter=self._properties_size_formatter,
+            parent=self,
+        )
         self._assign_tab_identity(tab)
 
         def _on_path_changed(_path: str, t: ExplorerTab = tab) -> None:
@@ -615,6 +630,20 @@ class PanelWidget(QWidget):
         self._apply_toolbar_font()
         self._apply_file_list_font()
         self._sync_widget_map_overlay()
+
+    def apply_size_formatters(
+        self,
+        *,
+        file_list_size_formatter: Callable[[int], str] | None,
+        properties_size_formatter: Callable[[int], str] | None,
+    ) -> None:
+        self._file_list_size_formatter = (
+            file_list_size_formatter or self._default_file_list_size_formatter
+        )
+        self._properties_size_formatter = (
+            properties_size_formatter or self._default_properties_size_formatter
+        )
+        self._apply_size_formatters_to_tabs()
 
     def set_role_visual_preferences(
         self,
@@ -926,6 +955,19 @@ class PanelWidget(QWidget):
             widget = self.tabs.widget(index)
             if isinstance(widget, ExplorerTab):
                 widget.view.setFont(self._file_list_font)
+
+    def _apply_size_formatters_to_tabs(self) -> None:
+        for index in range(self.tabs.count()):
+            widget = self.tabs.widget(index)
+            if isinstance(widget, ExplorerTab):
+                widget.set_file_size_formatter(self._file_list_size_formatter)
+                widget.set_properties_size_formatter(self._properties_size_formatter)
+
+    def _default_file_list_size_formatter(self, value: int) -> str:
+        return f"{int(value):,}"
+
+    def _default_properties_size_formatter(self, value: int) -> str:
+        return f"{int(value):,}"
 
     def _rebuild_root_controls(self, current_path: Path | None) -> None:
         self._navigation_coordinator.rebuild_root_controls(current_path)

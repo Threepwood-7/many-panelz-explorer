@@ -517,6 +517,104 @@ class SettingsDialog(QDialog):
             controls=[self.show_navigation_buttons_checkbox],
         )
 
+        self.show_storage_overview_status_row_checkbox = QCheckBox(
+            "Show global storage overview status row", self
+        )
+        self.show_storage_overview_status_row_checkbox.toggled.connect(
+            self._on_controls_changed
+        )
+        self._add_row(
+            section=panels_group,
+            key="show_storage_overview_status_row",
+            title="Storage Overview Status Row",
+            description="Display an always-visible storage usage row in the window status bar.",
+            terms="storage overview status row disk usage free total mount points",
+            controls=[self.show_storage_overview_status_row_checkbox],
+        )
+
+        self.byte_thousands_separator_edit = QLineEdit(self)
+        self.byte_thousands_separator_edit.setMaxLength(1)
+        self.byte_thousands_separator_edit.setPlaceholderText(",")
+        self.byte_thousands_separator_edit.setToolTip(
+            "Thousands separator (leave empty to disable grouping)"
+        )
+        self.byte_thousands_separator_edit.textChanged.connect(self._on_controls_changed)
+
+        self.byte_decimal_separator_edit = QLineEdit(self)
+        self.byte_decimal_separator_edit.setMaxLength(1)
+        self.byte_decimal_separator_edit.setPlaceholderText(".")
+        self.byte_decimal_separator_edit.setToolTip("Decimal separator")
+        self.byte_decimal_separator_edit.textChanged.connect(self._on_controls_changed)
+
+        byte_separators_controls = self._build_dual_text_controls(
+            first_label="Thousands",
+            first_edit=self.byte_thousands_separator_edit,
+            second_label="Decimal",
+            second_edit=self.byte_decimal_separator_edit,
+        )
+        self._add_row(
+            section=panels_group,
+            key="byte_separators",
+            title="Byte Number Separators",
+            description="Global separators applied to all byte display contexts.",
+            terms="bytes format separators thousands decimal global",
+            controls=[byte_separators_controls],
+        )
+
+        self.file_list_byte_format_mode_combo = self._new_byte_format_mode_combo()
+        self.file_list_byte_custom_template_edit = QLineEdit(self)
+        self.file_list_byte_custom_template_edit.setPlaceholderText("{b}")
+        self.file_list_byte_custom_template_edit.textChanged.connect(
+            self._on_controls_changed
+        )
+        self._add_row(
+            section=panels_group,
+            key="file_list_byte_format",
+            title="File List Size Format",
+            description="How the file-list Size column displays byte values.",
+            terms="file list size bytes format mode custom template",
+            controls=[
+                self.file_list_byte_format_mode_combo,
+                self.file_list_byte_custom_template_edit,
+            ],
+        )
+
+        self.status_bar_byte_format_mode_combo = self._new_byte_format_mode_combo()
+        self.status_bar_byte_custom_template_edit = QLineEdit(self)
+        self.status_bar_byte_custom_template_edit.setPlaceholderText("{b}")
+        self.status_bar_byte_custom_template_edit.textChanged.connect(
+            self._on_controls_changed
+        )
+        self._add_row(
+            section=panels_group,
+            key="status_bar_byte_format",
+            title="Status Bar Storage Format",
+            description="How status-bar storage used/total values are displayed.",
+            terms="status bar storage bytes format mode custom template",
+            controls=[
+                self.status_bar_byte_format_mode_combo,
+                self.status_bar_byte_custom_template_edit,
+            ],
+        )
+
+        self.properties_byte_format_mode_combo = self._new_byte_format_mode_combo()
+        self.properties_byte_custom_template_edit = QLineEdit(self)
+        self.properties_byte_custom_template_edit.setPlaceholderText("{b}")
+        self.properties_byte_custom_template_edit.textChanged.connect(
+            self._on_controls_changed
+        )
+        self._add_row(
+            section=panels_group,
+            key="properties_byte_format",
+            title="Properties Size Format",
+            description="How file/folder size is shown in the Properties dialog.",
+            terms="properties dialog bytes format mode custom template",
+            controls=[
+                self.properties_byte_format_mode_combo,
+                self.properties_byte_custom_template_edit,
+            ],
+        )
+
         self.default_copy_move_backend_combo = QComboBox(self)
         self.default_copy_move_backend_combo.addItem("Python Built-in", "python_builtin")
         self.default_copy_move_backend_combo.addItem("Windows Explorer", "windows_explorer")
@@ -1413,6 +1511,20 @@ class SettingsDialog(QDialog):
         combo.currentIndexChanged.connect(self._on_controls_changed)
         return combo
 
+    def _new_byte_format_mode_combo(self) -> QComboBox:
+        combo = QComboBox(self)
+        combo.addItem("Human Readable", "human_readable")
+        combo.addItem("Always MB", "always_mb")
+        combo.addItem("Always MiB", "always_mib")
+        combo.addItem("Bytes", "bytes")
+        combo.addItem("Custom", "custom")
+        combo.currentIndexChanged.connect(self._on_byte_format_mode_changed)
+        return combo
+
+    def _on_byte_format_mode_changed(self, _index: int) -> None:
+        self._sync_byte_format_controls()
+        self._on_controls_changed()
+
     def _on_file_list_use_app_font_toggled(self, _checked: bool) -> None:
         self._sync_font_override_controls()
         self._on_controls_changed()
@@ -1431,6 +1543,17 @@ class SettingsDialog(QDialog):
         )
         self.navigation_font_family_combo.setEnabled(navigation_override_enabled)
         self.navigation_font_size_spin.setEnabled(navigation_override_enabled)
+
+    def _sync_byte_format_controls(self) -> None:
+        self.file_list_byte_custom_template_edit.setEnabled(
+            str(self.file_list_byte_format_mode_combo.currentData()) == "custom"
+        )
+        self.status_bar_byte_custom_template_edit.setEnabled(
+            str(self.status_bar_byte_format_mode_combo.currentData()) == "custom"
+        )
+        self.properties_byte_custom_template_edit.setEnabled(
+            str(self.properties_byte_format_mode_combo.currentData()) == "custom"
+        )
 
     def _load_preferences_into_controls(self, preferences: UiPreferences) -> None:
         self._loading_ui = True
@@ -1468,6 +1591,34 @@ class SettingsDialog(QDialog):
             self.show_address_bar_checkbox.setChecked(preferences.show_address_bar)
             self.show_navigation_buttons_checkbox.setChecked(
                 preferences.show_navigation_buttons
+            )
+            self.show_storage_overview_status_row_checkbox.setChecked(
+                preferences.show_storage_overview_status_row
+            )
+            self.byte_thousands_separator_edit.setText(
+                preferences.byte_thousands_separator
+            )
+            self.byte_decimal_separator_edit.setText(preferences.byte_decimal_separator)
+            self._set_combo_value(
+                self.file_list_byte_format_mode_combo,
+                preferences.file_list_byte_format_mode,
+            )
+            self.file_list_byte_custom_template_edit.setText(
+                preferences.file_list_byte_custom_template
+            )
+            self._set_combo_value(
+                self.status_bar_byte_format_mode_combo,
+                preferences.status_bar_byte_format_mode,
+            )
+            self.status_bar_byte_custom_template_edit.setText(
+                preferences.status_bar_byte_custom_template
+            )
+            self._set_combo_value(
+                self.properties_byte_format_mode_combo,
+                preferences.properties_byte_format_mode,
+            )
+            self.properties_byte_custom_template_edit.setText(
+                preferences.properties_byte_custom_template
             )
             self._set_combo_value(
                 self.default_copy_move_backend_combo,
@@ -1584,6 +1735,7 @@ class SettingsDialog(QDialog):
                 preferences.navigation_font_size_pt
             )
             self._sync_font_override_controls()
+            self._sync_byte_format_controls()
             self._sync_slider_value_labels()
         finally:
             self._loading_ui = False
@@ -1620,6 +1772,21 @@ class SettingsDialog(QDialog):
             show_root_buttons=self.show_root_buttons_checkbox.isChecked(),
             show_address_bar=self.show_address_bar_checkbox.isChecked(),
             show_navigation_buttons=self.show_navigation_buttons_checkbox.isChecked(),
+            show_storage_overview_status_row=self.show_storage_overview_status_row_checkbox.isChecked(),
+            byte_thousands_separator=self.byte_thousands_separator_edit.text(),
+            byte_decimal_separator=self.byte_decimal_separator_edit.text(),
+            file_list_byte_format_mode=str(
+                self.file_list_byte_format_mode_combo.currentData()
+            ),
+            file_list_byte_custom_template=self.file_list_byte_custom_template_edit.text(),
+            status_bar_byte_format_mode=str(
+                self.status_bar_byte_format_mode_combo.currentData()
+            ),
+            status_bar_byte_custom_template=self.status_bar_byte_custom_template_edit.text(),
+            properties_byte_format_mode=str(
+                self.properties_byte_format_mode_combo.currentData()
+            ),
+            properties_byte_custom_template=self.properties_byte_custom_template_edit.text(),
             default_copy_move_backend=str(
                 self.default_copy_move_backend_combo.currentData()
             ),
@@ -1737,7 +1904,35 @@ class SettingsDialog(QDialog):
         self.navigation_font_size_spin.setValue(
             SettingsManager.DEFAULT_NAVIGATION_FONT_SIZE_PT
         )
+        self.byte_thousands_separator_edit.setText(
+            SettingsManager.DEFAULT_BYTES_THOUSANDS_SEPARATOR
+        )
+        self.byte_decimal_separator_edit.setText(
+            SettingsManager.DEFAULT_BYTES_DECIMAL_SEPARATOR
+        )
+        self._set_combo_value(
+            self.file_list_byte_format_mode_combo,
+            SettingsManager.DEFAULT_FILE_LIST_BYTE_FORMAT_MODE,
+        )
+        self.file_list_byte_custom_template_edit.setText(
+            SettingsManager.DEFAULT_FILE_LIST_BYTE_CUSTOM_TEMPLATE
+        )
+        self._set_combo_value(
+            self.status_bar_byte_format_mode_combo,
+            SettingsManager.DEFAULT_STATUS_BAR_BYTE_FORMAT_MODE,
+        )
+        self.status_bar_byte_custom_template_edit.setText(
+            SettingsManager.DEFAULT_STATUS_BAR_BYTE_CUSTOM_TEMPLATE
+        )
+        self._set_combo_value(
+            self.properties_byte_format_mode_combo,
+            SettingsManager.DEFAULT_PROPERTIES_BYTE_FORMAT_MODE,
+        )
+        self.properties_byte_custom_template_edit.setText(
+            SettingsManager.DEFAULT_PROPERTIES_BYTE_CUSTOM_TEMPLATE
+        )
         self._sync_font_override_controls()
+        self._sync_byte_format_controls()
         self.active_intensity_slider.setValue(
             SettingsManager.DEFAULT_ACTIVE_PANEL_TINT_INTENSITY_PERCENT
         )

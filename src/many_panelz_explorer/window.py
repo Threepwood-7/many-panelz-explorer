@@ -11,7 +11,6 @@ from PySide6.QtGui import QCloseEvent, QFont
 from PySide6.QtWidgets import (
     QApplication,
     QInputDialog,
-    QLabel,
     QMainWindow,
     QMessageBox,
     QSplitter,
@@ -21,6 +20,7 @@ from PySide6.QtWidgets import (
 
 from . import widget_naming
 from ._context import ContextMenuController
+from .byte_formatting import ByteFormatPreferences, ByteFormatScopeConfig, format_bytes
 from .panel_tree import (
     ORIENTATION_HORIZONTAL,
     LeafNode,
@@ -88,22 +88,21 @@ class ExplorerWindow(QMainWindow):
         self._central_layout.setContentsMargins(0, 0, 0, 0)
         self.setCentralWidget(self._central)
 
-        status_bar = self.statusBar()
-        self._source_path_label = QLabel("Source path: (none)", self)
-        self._target_path_label = QLabel("Target path: (none)", self)
-        status_bar.addPermanentWidget(self._source_path_label, 1)
-        status_bar.addPermanentWidget(self._target_path_label, 1)
-        status_bar.showMessage("")
-
         ui_preferences = self.settings.ui_preferences()
         self._new_context_mode = ui_preferences.new_context_mode
         self._show_hidden = ui_preferences.show_hidden_default
         self._show_root_dropdown = ui_preferences.show_root_dropdown
+        self._show_storage_overview_status_row = (
+            ui_preferences.show_storage_overview_status_row
+        )
         self._column_width_auto_align_mode = ui_preferences.column_width_auto_align_mode
         self._show_refresh_button = ui_preferences.show_refresh_button
         self._show_root_buttons = ui_preferences.show_root_buttons
         self._show_address_bar = ui_preferences.show_address_bar
         self._show_navigation_buttons = ui_preferences.show_navigation_buttons
+        self._byte_format_preferences = self._build_byte_format_preferences(
+            ui_preferences
+        )
         self._app_font_family = ui_preferences.app_font_family
         self._app_font_size_pt = ui_preferences.app_font_size_pt
         self._file_list_use_app_font = ui_preferences.file_list_use_app_font
@@ -151,6 +150,12 @@ class ExplorerWindow(QMainWindow):
         self._context_menu_controller = ContextMenuController(self, self._context_menu)
         self._build_shortcuts()
         self._build_operation_queue_widgets()
+        self._status_coordinator.set_storage_bytes_formatter(
+            self._format_status_bar_bytes
+        )
+        self._status_coordinator.set_storage_overview_enabled(
+            self._show_storage_overview_status_row
+        )
         self.controller.operation_queue_manager.job_updated.connect(
             self._on_operation_job_updated
         )
@@ -507,6 +512,8 @@ class ExplorerWindow(QMainWindow):
                 default_path=self._resolve_new_context_path(self._initial_path),
                 show_hidden=self._show_hidden,
                 show_root_dropdown=self._show_root_dropdown,
+                file_list_size_formatter=self._format_file_list_bytes,
+                properties_size_formatter=self._format_properties_bytes,
                 roots_provider=self._roots_provider,
                 parent=self,
             )
@@ -651,11 +658,17 @@ class ExplorerWindow(QMainWindow):
         self._new_context_mode = preferences.new_context_mode
         self._show_hidden = bool(preferences.show_hidden_default)
         self._show_root_dropdown = bool(preferences.show_root_dropdown)
+        self._show_storage_overview_status_row = bool(
+            preferences.show_storage_overview_status_row
+        )
         self._column_width_auto_align_mode = preferences.column_width_auto_align_mode
         self._show_refresh_button = bool(preferences.show_refresh_button)
         self._show_root_buttons = bool(preferences.show_root_buttons)
         self._show_address_bar = bool(preferences.show_address_bar)
         self._show_navigation_buttons = bool(preferences.show_navigation_buttons)
+        self._byte_format_preferences = self._build_byte_format_preferences(
+            preferences
+        )
         self._app_font_family = preferences.app_font_family
         self._app_font_size_pt = int(preferences.app_font_size_pt)
         self._file_list_use_app_font = bool(preferences.file_list_use_app_font)
@@ -714,6 +727,10 @@ class ExplorerWindow(QMainWindow):
                 file_list_font=file_list_font,
                 navigation_font=navigation_font,
             )
+            panel.apply_size_formatters(
+                file_list_size_formatter=self._format_file_list_bytes,
+                properties_size_formatter=self._format_properties_bytes,
+            )
             panel.set_role_visual_preferences(
                 active_color_hex=self._active_panel_tint_color_hex,
                 active_intensity_percent=self._active_panel_tint_intensity_percent,
@@ -721,6 +738,12 @@ class ExplorerWindow(QMainWindow):
                 target_intensity_percent=self._target_panel_tint_intensity_percent,
             )
         self._apply_operation_queue_visibility()
+        self._status_coordinator.set_storage_bytes_formatter(
+            self._format_status_bar_bytes
+        )
+        self._status_coordinator.set_storage_overview_enabled(
+            self._show_storage_overview_status_row
+        )
         self._update_pane_visuals()
 
     def _effective_panel_fonts(self) -> tuple[QFont, QFont]:
@@ -743,6 +766,48 @@ class ExplorerWindow(QMainWindow):
                 navigation_font.setPointSize(self._navigation_font_size_pt)
 
         return file_list_font, navigation_font
+
+    def _build_byte_format_preferences(
+        self,
+        preferences: UiPreferences,
+    ) -> ByteFormatPreferences:
+        return ByteFormatPreferences(
+            thousands_sep=preferences.byte_thousands_separator,
+            decimal_sep=preferences.byte_decimal_separator,
+            file_list=ByteFormatScopeConfig(
+                mode=preferences.file_list_byte_format_mode,
+                custom_template=preferences.file_list_byte_custom_template,
+            ),
+            status_bar=ByteFormatScopeConfig(
+                mode=preferences.status_bar_byte_format_mode,
+                custom_template=preferences.status_bar_byte_custom_template,
+            ),
+            properties=ByteFormatScopeConfig(
+                mode=preferences.properties_byte_format_mode,
+                custom_template=preferences.properties_byte_custom_template,
+            ),
+        )
+
+    def _format_bytes_for_scope(
+        self,
+        value: int,
+        scope_config: ByteFormatScopeConfig,
+    ) -> str:
+        preferences = self._byte_format_preferences
+        return format_bytes(
+            value,
+            scope_config,
+            (preferences.thousands_sep, preferences.decimal_sep),
+        )
+
+    def _format_file_list_bytes(self, value: int) -> str:
+        return self._format_bytes_for_scope(value, self._byte_format_preferences.file_list)
+
+    def _format_status_bar_bytes(self, value: int) -> str:
+        return self._format_bytes_for_scope(value, self._byte_format_preferences.status_bar)
+
+    def _format_properties_bytes(self, value: int) -> str:
+        return self._format_bytes_for_scope(value, self._byte_format_preferences.properties)
 
     def _resolve_new_context_path(self, active_path: Path | None) -> Path:
         mode = self._new_context_mode.strip().lower()

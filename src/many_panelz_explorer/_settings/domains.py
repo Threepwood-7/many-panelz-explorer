@@ -52,6 +52,21 @@ class UiSettingsDomain(SettingsRegistry):
         self._storage.set_value(self.SHOW_ROOT_DROPDOWN_KEY, bool(enabled))
 
     @property
+    def show_storage_overview_status_row(self) -> bool:
+        return normalize.normalize_bool(
+            self._storage.value(
+                self.SHOW_STORAGE_OVERVIEW_STATUS_ROW_KEY,
+                self.DEFAULT_SHOW_STORAGE_OVERVIEW_STATUS_ROW,
+            )
+        )
+
+    @show_storage_overview_status_row.setter
+    def show_storage_overview_status_row(self, enabled: bool) -> None:
+        self._storage.set_value(
+            self.SHOW_STORAGE_OVERVIEW_STATUS_ROW_KEY, bool(enabled)
+        )
+
+    @property
     def column_width_auto_align_mode(self) -> str:
         value = str(
             self._storage.value(
@@ -104,6 +119,184 @@ class UiSettingsDomain(SettingsRegistry):
     @show_navigation_buttons.setter
     def show_navigation_buttons(self, enabled: bool) -> None:
         self._storage.set_value(self.SHOW_NAVIGATION_BUTTONS_KEY, bool(enabled))
+
+    def _normalized_byte_separators(self) -> tuple[str, str]:
+        return normalize.normalize_byte_separators(
+            self._storage.value(
+                self.BYTES_THOUSANDS_SEPARATOR_KEY,
+                self.DEFAULT_BYTES_THOUSANDS_SEPARATOR,
+            ),
+            self._storage.value(
+                self.BYTES_DECIMAL_SEPARATOR_KEY,
+                self.DEFAULT_BYTES_DECIMAL_SEPARATOR,
+            ),
+            fallback_thousands=self.DEFAULT_BYTES_THOUSANDS_SEPARATOR,
+            fallback_decimal=self.DEFAULT_BYTES_DECIMAL_SEPARATOR,
+        )
+
+    @property
+    def byte_thousands_separator(self) -> str:
+        thousands, _ = self._normalized_byte_separators()
+        return thousands
+
+    @byte_thousands_separator.setter
+    def byte_thousands_separator(self, value: str) -> None:
+        thousands, decimal = normalize.normalize_byte_separators(
+            value,
+            self._storage.value(
+                self.BYTES_DECIMAL_SEPARATOR_KEY,
+                self.DEFAULT_BYTES_DECIMAL_SEPARATOR,
+            ),
+            fallback_thousands=self.DEFAULT_BYTES_THOUSANDS_SEPARATOR,
+            fallback_decimal=self.DEFAULT_BYTES_DECIMAL_SEPARATOR,
+        )
+        self._storage.set_value(self.BYTES_THOUSANDS_SEPARATOR_KEY, thousands)
+        self._storage.set_value(self.BYTES_DECIMAL_SEPARATOR_KEY, decimal)
+
+    @property
+    def byte_decimal_separator(self) -> str:
+        _, decimal = self._normalized_byte_separators()
+        return decimal
+
+    @byte_decimal_separator.setter
+    def byte_decimal_separator(self, value: str) -> None:
+        thousands, decimal = normalize.normalize_byte_separators(
+            self._storage.value(
+                self.BYTES_THOUSANDS_SEPARATOR_KEY,
+                self.DEFAULT_BYTES_THOUSANDS_SEPARATOR,
+            ),
+            value,
+            fallback_thousands=self.DEFAULT_BYTES_THOUSANDS_SEPARATOR,
+            fallback_decimal=self.DEFAULT_BYTES_DECIMAL_SEPARATOR,
+        )
+        self._storage.set_value(self.BYTES_THOUSANDS_SEPARATOR_KEY, thousands)
+        self._storage.set_value(self.BYTES_DECIMAL_SEPARATOR_KEY, decimal)
+
+    @property
+    def file_list_byte_format_mode(self) -> str:
+        return normalize.normalize_byte_format_mode(
+            self._storage.value(
+                self.FILE_LIST_BYTE_FORMAT_MODE_KEY,
+                self.DEFAULT_FILE_LIST_BYTE_FORMAT_MODE,
+            ),
+            fallback=self.DEFAULT_FILE_LIST_BYTE_FORMAT_MODE,
+            allowed_modes=self.ALLOWED_BYTE_FORMAT_MODES,
+        )
+
+    @file_list_byte_format_mode.setter
+    def file_list_byte_format_mode(self, mode: str) -> None:
+        self._storage.set_value(
+            self.FILE_LIST_BYTE_FORMAT_MODE_KEY,
+            normalize.normalize_byte_format_mode(
+                mode,
+                fallback=self.DEFAULT_FILE_LIST_BYTE_FORMAT_MODE,
+                allowed_modes=self.ALLOWED_BYTE_FORMAT_MODES,
+            ),
+        )
+
+    @property
+    def file_list_byte_custom_template(self) -> str:
+        return normalize.normalize_byte_custom_template(
+            self._storage.value(
+                self.FILE_LIST_BYTE_CUSTOM_TEMPLATE_KEY,
+                self.DEFAULT_FILE_LIST_BYTE_CUSTOM_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_FILE_LIST_BYTE_CUSTOM_TEMPLATE,
+        )
+
+    @file_list_byte_custom_template.setter
+    def file_list_byte_custom_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.FILE_LIST_BYTE_CUSTOM_TEMPLATE_KEY,
+            normalize.normalize_byte_custom_template(
+                value,
+                fallback=self.DEFAULT_FILE_LIST_BYTE_CUSTOM_TEMPLATE,
+            ),
+        )
+
+    @property
+    def status_bar_byte_format_mode(self) -> str:
+        return normalize.normalize_byte_format_mode(
+            self._storage.value(
+                self.STATUS_BAR_BYTE_FORMAT_MODE_KEY,
+                self.DEFAULT_STATUS_BAR_BYTE_FORMAT_MODE,
+            ),
+            fallback=self.DEFAULT_STATUS_BAR_BYTE_FORMAT_MODE,
+            allowed_modes=self.ALLOWED_BYTE_FORMAT_MODES,
+        )
+
+    @status_bar_byte_format_mode.setter
+    def status_bar_byte_format_mode(self, mode: str) -> None:
+        self._storage.set_value(
+            self.STATUS_BAR_BYTE_FORMAT_MODE_KEY,
+            normalize.normalize_byte_format_mode(
+                mode,
+                fallback=self.DEFAULT_STATUS_BAR_BYTE_FORMAT_MODE,
+                allowed_modes=self.ALLOWED_BYTE_FORMAT_MODES,
+            ),
+        )
+
+    @property
+    def status_bar_byte_custom_template(self) -> str:
+        return normalize.normalize_byte_custom_template(
+            self._storage.value(
+                self.STATUS_BAR_BYTE_CUSTOM_TEMPLATE_KEY,
+                self.DEFAULT_STATUS_BAR_BYTE_CUSTOM_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_STATUS_BAR_BYTE_CUSTOM_TEMPLATE,
+        )
+
+    @status_bar_byte_custom_template.setter
+    def status_bar_byte_custom_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.STATUS_BAR_BYTE_CUSTOM_TEMPLATE_KEY,
+            normalize.normalize_byte_custom_template(
+                value,
+                fallback=self.DEFAULT_STATUS_BAR_BYTE_CUSTOM_TEMPLATE,
+            ),
+        )
+
+    @property
+    def properties_byte_format_mode(self) -> str:
+        return normalize.normalize_byte_format_mode(
+            self._storage.value(
+                self.PROPERTIES_BYTE_FORMAT_MODE_KEY,
+                self.DEFAULT_PROPERTIES_BYTE_FORMAT_MODE,
+            ),
+            fallback=self.DEFAULT_PROPERTIES_BYTE_FORMAT_MODE,
+            allowed_modes=self.ALLOWED_BYTE_FORMAT_MODES,
+        )
+
+    @properties_byte_format_mode.setter
+    def properties_byte_format_mode(self, mode: str) -> None:
+        self._storage.set_value(
+            self.PROPERTIES_BYTE_FORMAT_MODE_KEY,
+            normalize.normalize_byte_format_mode(
+                mode,
+                fallback=self.DEFAULT_PROPERTIES_BYTE_FORMAT_MODE,
+                allowed_modes=self.ALLOWED_BYTE_FORMAT_MODES,
+            ),
+        )
+
+    @property
+    def properties_byte_custom_template(self) -> str:
+        return normalize.normalize_byte_custom_template(
+            self._storage.value(
+                self.PROPERTIES_BYTE_CUSTOM_TEMPLATE_KEY,
+                self.DEFAULT_PROPERTIES_BYTE_CUSTOM_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_PROPERTIES_BYTE_CUSTOM_TEMPLATE,
+        )
+
+    @properties_byte_custom_template.setter
+    def properties_byte_custom_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.PROPERTIES_BYTE_CUSTOM_TEMPLATE_KEY,
+            normalize.normalize_byte_custom_template(
+                value,
+                fallback=self.DEFAULT_PROPERTIES_BYTE_CUSTOM_TEMPLATE,
+            ),
+        )
 
     @property
     def app_font_family(self) -> str:

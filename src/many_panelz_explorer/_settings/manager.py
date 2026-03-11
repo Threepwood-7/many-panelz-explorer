@@ -49,11 +49,22 @@ class SettingsManager(SettingsRegistry):
     new_context_mode = _delegate_property("ui", "new_context_mode")
     show_hidden_default = _delegate_property("ui", "show_hidden_default")
     show_root_dropdown = _delegate_property("ui", "show_root_dropdown")
+    show_storage_overview_status_row = _delegate_property(
+        "ui", "show_storage_overview_status_row"
+    )
     column_width_auto_align_mode = _delegate_property("ui", "column_width_auto_align_mode")
     show_refresh_button = _delegate_property("ui", "show_refresh_button")
     show_root_buttons = _delegate_property("ui", "show_root_buttons")
     show_address_bar = _delegate_property("ui", "show_address_bar")
     show_navigation_buttons = _delegate_property("ui", "show_navigation_buttons")
+    byte_thousands_separator = _delegate_property("ui", "byte_thousands_separator")
+    byte_decimal_separator = _delegate_property("ui", "byte_decimal_separator")
+    file_list_byte_format_mode = _delegate_property("ui", "file_list_byte_format_mode")
+    file_list_byte_custom_template = _delegate_property("ui", "file_list_byte_custom_template")
+    status_bar_byte_format_mode = _delegate_property("ui", "status_bar_byte_format_mode")
+    status_bar_byte_custom_template = _delegate_property("ui", "status_bar_byte_custom_template")
+    properties_byte_format_mode = _delegate_property("ui", "properties_byte_format_mode")
+    properties_byte_custom_template = _delegate_property("ui", "properties_byte_custom_template")
     app_font_family = _delegate_property("ui", "app_font_family")
     app_font_size_pt = _delegate_property("ui", "app_font_size_pt")
     file_list_use_app_font = _delegate_property("ui", "file_list_use_app_font")
@@ -119,11 +130,20 @@ class SettingsManager(SettingsRegistry):
             new_context_mode=self.new_context_mode,
             show_hidden_default=self.show_hidden_default,
             show_root_dropdown=self.show_root_dropdown,
+            show_storage_overview_status_row=self.show_storage_overview_status_row,
             column_width_auto_align_mode=self.column_width_auto_align_mode,
             show_refresh_button=self.show_refresh_button,
             show_root_buttons=self.show_root_buttons,
             show_address_bar=self.show_address_bar,
             show_navigation_buttons=self.show_navigation_buttons,
+            byte_thousands_separator=self.byte_thousands_separator,
+            byte_decimal_separator=self.byte_decimal_separator,
+            file_list_byte_format_mode=self.file_list_byte_format_mode,
+            file_list_byte_custom_template=self.file_list_byte_custom_template,
+            status_bar_byte_format_mode=self.status_bar_byte_format_mode,
+            status_bar_byte_custom_template=self.status_bar_byte_custom_template,
+            properties_byte_format_mode=self.properties_byte_format_mode,
+            properties_byte_custom_template=self.properties_byte_custom_template,
             app_font_family=self.app_font_family,
             app_font_size_pt=self.app_font_size_pt,
             file_list_use_app_font=self.file_list_use_app_font,
@@ -179,11 +199,22 @@ class SettingsManager(SettingsRegistry):
         self.new_context_mode = preferences.new_context_mode
         self.show_hidden_default = preferences.show_hidden_default
         self.show_root_dropdown = preferences.show_root_dropdown
+        self.show_storage_overview_status_row = (
+            preferences.show_storage_overview_status_row
+        )
         self.column_width_auto_align_mode = preferences.column_width_auto_align_mode
         self.show_refresh_button = preferences.show_refresh_button
         self.show_root_buttons = preferences.show_root_buttons
         self.show_address_bar = preferences.show_address_bar
         self.show_navigation_buttons = preferences.show_navigation_buttons
+        self.byte_thousands_separator = preferences.byte_thousands_separator
+        self.byte_decimal_separator = preferences.byte_decimal_separator
+        self.file_list_byte_format_mode = preferences.file_list_byte_format_mode
+        self.file_list_byte_custom_template = preferences.file_list_byte_custom_template
+        self.status_bar_byte_format_mode = preferences.status_bar_byte_format_mode
+        self.status_bar_byte_custom_template = preferences.status_bar_byte_custom_template
+        self.properties_byte_format_mode = preferences.properties_byte_format_mode
+        self.properties_byte_custom_template = preferences.properties_byte_custom_template
         self.app_font_family = preferences.app_font_family
         self.app_font_size_pt = preferences.app_font_size_pt
         self.file_list_use_app_font = preferences.file_list_use_app_font

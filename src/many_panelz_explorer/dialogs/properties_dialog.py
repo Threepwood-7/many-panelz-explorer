@@ -14,21 +14,37 @@ from PySide6.QtWidgets import (
 from ..file_ops import compute_properties
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 
 class PropertiesDialog(QDialog):
-    def __init__(self, path: Path, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        path: Path,
+        parent: QWidget | None = None,
+        *,
+        size_formatter: Callable[[int], str] | None = None,
+    ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Properties")
         data = compute_properties(path)
+        formatter = size_formatter or (lambda value: f"{int(value):,}")
+        try:
+            size_value = int(data["size_bytes"])
+        except (KeyError, TypeError, ValueError):
+            size_value = 0
+        try:
+            size_text = str(formatter(size_value))
+        except Exception:  # pragma: no cover - defensive
+            size_text = str(size_value)
 
         root = QVBoxLayout(self)
         form = QFormLayout()
 
         form.addRow("Path", QLabel(data["path"]))
         form.addRow("Type", QLabel(data["type"]))
-        form.addRow("Size (bytes)", QLabel(data["size_bytes"]))
+        form.addRow("Size", QLabel(size_text))
         form.addRow("Files", QLabel(data["file_count"]))
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)

@@ -12,6 +12,7 @@ pytest.importorskip("pytestqt")
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QInputDialog, QMessageBox
 
+from many_panelz_explorer import mounts
 from many_panelz_explorer._operations.queue_manager import OperationQueueManager
 from many_panelz_explorer._operations.types import OperationExecutionPreferences
 from many_panelz_explorer._settings.manager import SettingsManager
@@ -595,6 +596,194 @@ def test_status_bar_persistent_source_target_paths_update_with_context_changes(
     qtbot.waitUntil(
         lambda: window._source_path_label.text() == f"Source path: {nested_source}"
     )
+
+
+def test_storage_overview_status_row_visible_and_populated_by_default(
+    qtbot, tmp_path: Path, monkeypatch
+) -> None:
+    settings = SettingsManager()
+    settings.show_storage_overview_status_row = True
+    settings.sync()
+    roots_provider = _test_roots_provider(tmp_path)
+    entries = [
+        mounts.StorageUsageEntry(
+            root_path=Path("C:\\"),
+            display_root="C:",
+            volume_label="System",
+            bytes_used=600,
+            bytes_total=1_000,
+            usage_ratio=0.6,
+        ),
+        mounts.StorageUsageEntry(
+            root_path=Path("C:\\mounts\\media01"),
+            display_root="C:\\mounts\\media01",
+            volume_label="Media",
+            bytes_used=200,
+            bytes_total=1_000,
+            usage_ratio=0.2,
+        ),
+    ]
+    monkeypatch.setattr(
+        "many_panelz_explorer.ui.window.status.mounts.list_storage_usage_entries",
+        lambda current_path=None: entries,
+    )
+
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="status-storage-default",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    qtbot.waitUntil(lambda: window._storage_overview_row.isVisible() is True)
+    tooltip = window._storage_overview_label.toolTip()
+    assert "C: System" in tooltip
+    assert "C:\\mounts\\media01 Media" in tooltip
+
+
+def test_storage_overview_status_row_hides_when_disabled(
+    qtbot, tmp_path: Path, monkeypatch
+) -> None:
+    settings = SettingsManager()
+    settings.show_storage_overview_status_row = False
+    settings.sync()
+    roots_provider = _test_roots_provider(tmp_path)
+    entries = [
+        mounts.StorageUsageEntry(
+            root_path=Path("C:\\"),
+            display_root="C:",
+            volume_label="System",
+            bytes_used=600,
+            bytes_total=1_000,
+            usage_ratio=0.6,
+        )
+    ]
+    monkeypatch.setattr(
+        "many_panelz_explorer.ui.window.status.mounts.list_storage_usage_entries",
+        lambda current_path=None: entries,
+    )
+
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="status-storage-disabled",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    assert window._storage_overview_row.isVisible() is False
+    assert window._storage_overview_label.toolTip() == ""
+
+
+def test_storage_overview_status_row_hides_when_no_valid_entries(
+    qtbot, tmp_path: Path, monkeypatch
+) -> None:
+    settings = SettingsManager()
+    settings.show_storage_overview_status_row = True
+    settings.sync()
+    roots_provider = _test_roots_provider(tmp_path)
+    monkeypatch.setattr(
+        "many_panelz_explorer.ui.window.status.mounts.list_storage_usage_entries",
+        lambda current_path=None: [],
+    )
+
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="status-storage-empty",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    assert window._storage_overview_row.isVisible() is False
+    assert window._storage_overview_label.toolTip() == ""
+
+
+def test_storage_overview_status_row_elides_with_full_tooltip(
+    qtbot, tmp_path: Path, monkeypatch
+) -> None:
+    settings = SettingsManager()
+    settings.show_storage_overview_status_row = True
+    settings.sync()
+    roots_provider = _test_roots_provider(tmp_path)
+    entries = [
+        mounts.StorageUsageEntry(
+            root_path=Path(f"C:\\mounts\\volume_{index:02d}"),
+            display_root=f"C:\\mounts\\volume_{index:02d}",
+            volume_label=f"Label_{index:02d}",
+            bytes_used=10_000_000 + index,
+            bytes_total=20_000_000 + index,
+            usage_ratio=0.5,
+        )
+        for index in range(12)
+    ]
+    monkeypatch.setattr(
+        "many_panelz_explorer.ui.window.status.mounts.list_storage_usage_entries",
+        lambda current_path=None: entries,
+    )
+
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="status-storage-elide",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.resize(380, window.height())
+    window.show()
+    window._status_coordinator.refresh_storage_overview_status()
+
+    qtbot.waitUntil(lambda: bool(window._storage_overview_label.toolTip()))
+    displayed = window._storage_overview_label.text()
+    full = window._storage_overview_label.toolTip()
+    assert full
+    assert displayed != full
+    assert "\u2026" in displayed or "..." in displayed
+
+
+def test_storage_overview_status_row_uses_configured_byte_format(
+    qtbot, tmp_path: Path, monkeypatch
+) -> None:
+    settings = SettingsManager()
+    settings.show_storage_overview_status_row = True
+    settings.byte_thousands_separator = "."
+    settings.byte_decimal_separator = ","
+    settings.status_bar_byte_format_mode = "always_mib"
+    settings.sync()
+    roots_provider = _test_roots_provider(tmp_path)
+    entries = [
+        mounts.StorageUsageEntry(
+            root_path=Path("C:\\"),
+            display_root="C:",
+            volume_label="System",
+            bytes_used=1_500_000,
+            bytes_total=3_000_000,
+            usage_ratio=0.5,
+        )
+    ]
+    monkeypatch.setattr(
+        "many_panelz_explorer.ui.window.status.mounts.list_storage_usage_entries",
+        lambda current_path=None: entries,
+    )
+
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="status-storage-byte-format",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+    window._status_coordinator.refresh_storage_overview_status()
+
+    qtbot.waitUntil(lambda: bool(window._storage_overview_label.toolTip()))
+    tooltip = window._storage_overview_label.toolTip()
+    assert "MiB" in tooltip
+    assert "1,43 MiB/2,86 MiB" in tooltip
 
 
 def test_copy_or_move_conflict_choices(qtbot, tmp_path: Path, monkeypatch) -> None:

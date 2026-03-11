@@ -46,6 +46,8 @@ class ExplorerTab(QWidget):
         self,
         initial_path: Path,
         show_hidden: bool = True,
+        file_list_size_formatter: Callable[[int], str] | None = None,
+        properties_size_formatter: Callable[[int], str] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -59,11 +61,18 @@ class ExplorerTab(QWidget):
         self._pending_column_widths: list[int] = []
         self._show_parent_entry = True
         self._inline_filter_text = ""
+        self._file_list_size_formatter = (
+            file_list_size_formatter or self._default_file_list_size_formatter
+        )
+        self._properties_size_formatter = (
+            properties_size_formatter or self._default_properties_size_formatter
+        )
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
 
         self.model = FastDirModel(self)
+        self.model.set_size_formatter(self._file_list_size_formatter)
         self.model.setReadOnly(False)
         self._apply_hidden_filter()
         self.model.directoryLoaded.connect(self._on_directory_loaded)
@@ -123,6 +132,18 @@ class ExplorerTab(QWidget):
         self._show_hidden = bool(enabled)
         self._apply_hidden_filter()
         self.refresh()
+
+    def set_file_size_formatter(self, formatter: Callable[[int], str] | None) -> None:
+        self._file_list_size_formatter = formatter or self._default_file_list_size_formatter
+        self.model.set_size_formatter(self._file_list_size_formatter)
+
+    def set_properties_size_formatter(
+        self,
+        formatter: Callable[[int], str] | None,
+    ) -> None:
+        self._properties_size_formatter = (
+            formatter or self._default_properties_size_formatter
+        )
 
     def set_path(
         self,
@@ -433,7 +454,11 @@ class ExplorerTab(QWidget):
         selected = self.selected_paths()
         if len(selected) != 1:
             return
-        dialog = PropertiesDialog(selected[0], self)
+        dialog = PropertiesDialog(
+            selected[0],
+            self,
+            size_formatter=self._properties_size_formatter,
+        )
         dialog.exec()
 
     def _zip_create(self) -> None:
@@ -525,6 +550,12 @@ class ExplorerTab(QWidget):
             if int(width) > 0:
                 normalized.append(int(width))
         return normalized
+
+    def _default_file_list_size_formatter(self, value: int) -> str:
+        return f"{int(value):,}"
+
+    def _default_properties_size_formatter(self, value: int) -> str:
+        return f"{int(value):,}"
 
     def _path_key(self, path: Path) -> str:
         return os.path.normcase(os.path.normpath(str(path)))

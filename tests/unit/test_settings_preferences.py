@@ -9,11 +9,20 @@ def _tracked_keys() -> list[str]:
         SettingsManager.NEW_CONTEXT_MODE_KEY,
         SettingsManager.SHOW_HIDDEN_DEFAULT_KEY,
         SettingsManager.SHOW_ROOT_DROPDOWN_KEY,
+        SettingsManager.SHOW_STORAGE_OVERVIEW_STATUS_ROW_KEY,
         SettingsManager.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY,
         SettingsManager.SHOW_REFRESH_BUTTON_KEY,
         SettingsManager.SHOW_ROOT_BUTTONS_KEY,
         SettingsManager.SHOW_ADDRESS_BAR_KEY,
         SettingsManager.SHOW_NAVIGATION_BUTTONS_KEY,
+        SettingsManager.BYTES_THOUSANDS_SEPARATOR_KEY,
+        SettingsManager.BYTES_DECIMAL_SEPARATOR_KEY,
+        SettingsManager.FILE_LIST_BYTE_FORMAT_MODE_KEY,
+        SettingsManager.FILE_LIST_BYTE_CUSTOM_TEMPLATE_KEY,
+        SettingsManager.STATUS_BAR_BYTE_FORMAT_MODE_KEY,
+        SettingsManager.STATUS_BAR_BYTE_CUSTOM_TEMPLATE_KEY,
+        SettingsManager.PROPERTIES_BYTE_FORMAT_MODE_KEY,
+        SettingsManager.PROPERTIES_BYTE_CUSTOM_TEMPLATE_KEY,
         SettingsManager.APP_FONT_FAMILY_KEY,
         SettingsManager.APP_FONT_SIZE_PT_KEY,
         SettingsManager.FILE_LIST_USE_APP_FONT_KEY,
@@ -88,11 +97,20 @@ def test_ui_preferences_round_trip() -> None:
             new_context_mode="cwd",
             show_hidden_default=False,
             show_root_dropdown=True,
+            show_storage_overview_status_row=False,
             column_width_auto_align_mode="all_panels_tabs",
             show_refresh_button=False,
             show_root_buttons=False,
             show_address_bar=False,
             show_navigation_buttons=False,
+            byte_thousands_separator=" ",
+            byte_decimal_separator=",",
+            file_list_byte_format_mode="custom",
+            file_list_byte_custom_template="{b} ({MiB:.2f})",
+            status_bar_byte_format_mode="always_mib",
+            status_bar_byte_custom_template="",
+            properties_byte_format_mode="always_mb",
+            properties_byte_custom_template="",
             app_font_family="Consolas",
             app_font_size_pt=11,
             file_list_use_app_font=False,
@@ -156,6 +174,7 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
     try:
         settings.set_value(SettingsManager.NEW_CONTEXT_MODE_KEY, "invalid-mode")
         settings.remove(SettingsManager.SHOW_ROOT_DROPDOWN_KEY)
+        settings.remove(SettingsManager.SHOW_STORAGE_OVERVIEW_STATUS_ROW_KEY)
         settings.set_value(
             SettingsManager.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY, "invalid-align-mode"
         )
@@ -163,6 +182,14 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.remove(SettingsManager.SHOW_ROOT_BUTTONS_KEY)
         settings.remove(SettingsManager.SHOW_ADDRESS_BAR_KEY)
         settings.remove(SettingsManager.SHOW_NAVIGATION_BUTTONS_KEY)
+        settings.set_value(SettingsManager.BYTES_THOUSANDS_SEPARATOR_KEY, ",")
+        settings.set_value(SettingsManager.BYTES_DECIMAL_SEPARATOR_KEY, ",")
+        settings.set_value(SettingsManager.FILE_LIST_BYTE_FORMAT_MODE_KEY, "invalid")
+        settings.remove(SettingsManager.FILE_LIST_BYTE_CUSTOM_TEMPLATE_KEY)
+        settings.set_value(SettingsManager.STATUS_BAR_BYTE_FORMAT_MODE_KEY, "INVALID")
+        settings.remove(SettingsManager.STATUS_BAR_BYTE_CUSTOM_TEMPLATE_KEY)
+        settings.set_value(SettingsManager.PROPERTIES_BYTE_FORMAT_MODE_KEY, "bad")
+        settings.remove(SettingsManager.PROPERTIES_BYTE_CUSTOM_TEMPLATE_KEY)
         settings.remove(SettingsManager.APP_FONT_FAMILY_KEY)
         settings.remove(SettingsManager.APP_FONT_SIZE_PT_KEY)
         settings.remove(SettingsManager.FILE_LIST_USE_APP_FONT_KEY)
@@ -217,6 +244,10 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         assert loaded.new_context_mode == "clone_active_path"
         assert loaded.show_root_dropdown is False
         assert (
+            loaded.show_storage_overview_status_row
+            == SettingsManager.DEFAULT_SHOW_STORAGE_OVERVIEW_STATUS_ROW
+        )
+        assert (
             loaded.column_width_auto_align_mode
             == SettingsManager.DEFAULT_COLUMN_WIDTH_AUTO_ALIGN_MODE
         )
@@ -224,6 +255,38 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         assert loaded.show_root_buttons is True
         assert loaded.show_address_bar is True
         assert loaded.show_navigation_buttons is True
+        assert (
+            loaded.byte_thousands_separator
+            == SettingsManager.DEFAULT_BYTES_THOUSANDS_SEPARATOR
+        )
+        assert (
+            loaded.byte_decimal_separator
+            == SettingsManager.DEFAULT_BYTES_DECIMAL_SEPARATOR
+        )
+        assert (
+            loaded.file_list_byte_format_mode
+            == SettingsManager.DEFAULT_FILE_LIST_BYTE_FORMAT_MODE
+        )
+        assert (
+            loaded.file_list_byte_custom_template
+            == SettingsManager.DEFAULT_FILE_LIST_BYTE_CUSTOM_TEMPLATE
+        )
+        assert (
+            loaded.status_bar_byte_format_mode
+            == SettingsManager.DEFAULT_STATUS_BAR_BYTE_FORMAT_MODE
+        )
+        assert (
+            loaded.status_bar_byte_custom_template
+            == SettingsManager.DEFAULT_STATUS_BAR_BYTE_CUSTOM_TEMPLATE
+        )
+        assert (
+            loaded.properties_byte_format_mode
+            == SettingsManager.DEFAULT_PROPERTIES_BYTE_FORMAT_MODE
+        )
+        assert (
+            loaded.properties_byte_custom_template
+            == SettingsManager.DEFAULT_PROPERTIES_BYTE_CUSTOM_TEMPLATE
+        )
         assert loaded.app_font_family == SettingsManager.DEFAULT_APP_FONT_FAMILY
         assert loaded.app_font_size_pt == SettingsManager.DEFAULT_APP_FONT_SIZE_PT
         assert (
