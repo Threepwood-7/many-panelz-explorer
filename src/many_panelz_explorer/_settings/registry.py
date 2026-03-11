@@ -2,6 +2,16 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from many_panelz_explorer._operations.backend_options import (
+    ExternalCopyMoveBackendOptions,
+    RobocopyBackendOptions,
+    TeraCopyBackendOptions,
+    UnstoppableBackendOptions,
+    external_copymove_options_payload,
+    robocopy_options_payload,
+    teracopy_options_payload,
+    unstoppable_options_payload,
+)
 from many_panelz_explorer._operations.types import (
     BACKEND_PYTHON,
     BACKEND_RECYCLE_BIN,
@@ -89,6 +99,12 @@ class SettingsRegistry:
     GENERIC_DELETE_ARGS_TEMPLATE_KEY = "ops/backends/generic_delete/args_template"
     ROBOCOPY_COPY_ARGS_KEY = "ops/backends/robocopy/copy_args"
     ROBOCOPY_MOVE_ARGS_KEY = "ops/backends/robocopy/move_args"
+    ROBOCOPY_STRUCTURED_OPTIONS_KEY = "ops/backends/robocopy/structured_options"
+    TERACOPY_STRUCTURED_OPTIONS_KEY = "ops/backends/teracopy/structured_options"
+    UNSTOPPABLE_STRUCTURED_OPTIONS_KEY = "ops/backends/unstoppable/structured_options"
+    EXTERNAL_COPYMOVE_STRUCTURED_OPTIONS_KEY = (
+        "ops/backends/external_copymove/structured_options"
+    )
     CMD_DELETE_ARGS_KEY = "ops/backends/cmd_delete/args"
     POWERSHELL_DELETE_ARGS_KEY = "ops/backends/powershell_delete/args"
     RIMRAF_EXECUTABLE_KEY = "ops/backends/rimraf/executable"
@@ -157,6 +173,18 @@ class SettingsRegistry:
     DEFAULT_GENERIC_DELETE_ARGS_TEMPLATE = DEFAULT_GENERIC_DELETE_ARGS
     DEFAULT_ROBOCOPY_COPY_ARGS = DEFAULT_ROBOCOPY_COPY_ARGS
     DEFAULT_ROBOCOPY_MOVE_ARGS = DEFAULT_ROBOCOPY_MOVE_ARGS
+    DEFAULT_ROBOCOPY_STRUCTURED_OPTIONS = robocopy_options_payload(
+        RobocopyBackendOptions()
+    )
+    DEFAULT_TERACOPY_STRUCTURED_OPTIONS = teracopy_options_payload(
+        TeraCopyBackendOptions()
+    )
+    DEFAULT_UNSTOPPABLE_STRUCTURED_OPTIONS = unstoppable_options_payload(
+        UnstoppableBackendOptions()
+    )
+    DEFAULT_EXTERNAL_COPYMOVE_STRUCTURED_OPTIONS = external_copymove_options_payload(
+        ExternalCopyMoveBackendOptions()
+    )
     DEFAULT_CMD_DELETE_ARGS = DEFAULT_CMD_DELETE_ARGS
     DEFAULT_POWERSHELL_DELETE_ARGS = DEFAULT_POWERSHELL_DELETE_ARGS
     DEFAULT_RIMRAF_EXECUTABLE = DEFAULT_RIMRAF_EXE

@@ -7,7 +7,6 @@ from .models import UiPreferences
 from .registry import SettingsRegistry
 from .storage import SettingsStorage
 
-
 _Domain = TypeVar("_Domain")
 
 
@@ -125,6 +124,14 @@ class SettingsManager(SettingsRegistry):
     generic_delete_args_template = _delegate_property("ops", "generic_delete_args_template")
     robocopy_copy_args = _delegate_property("ops", "robocopy_copy_args")
     robocopy_move_args = _delegate_property("ops", "robocopy_move_args")
+    robocopy_structured_options = _delegate_property("ops", "robocopy_structured_options")
+    teracopy_structured_options = _delegate_property("ops", "teracopy_structured_options")
+    unstoppable_structured_options = _delegate_property(
+        "ops", "unstoppable_structured_options"
+    )
+    external_copymove_structured_options = _delegate_property(
+        "ops", "external_copymove_structured_options"
+    )
     cmd_delete_args = _delegate_property("ops", "cmd_delete_args")
     powershell_delete_args = _delegate_property("ops", "powershell_delete_args")
     rimraf_executable = _delegate_property("ops", "rimraf_executable")
@@ -202,6 +209,10 @@ class SettingsManager(SettingsRegistry):
             generic_delete_args_template=self.generic_delete_args_template,
             robocopy_copy_args=self.robocopy_copy_args,
             robocopy_move_args=self.robocopy_move_args,
+            robocopy_structured_options=self.robocopy_structured_options,
+            teracopy_structured_options=self.teracopy_structured_options,
+            unstoppable_structured_options=self.unstoppable_structured_options,
+            external_copymove_structured_options=self.external_copymove_structured_options,
             cmd_delete_args=self.cmd_delete_args,
             powershell_delete_args=self.powershell_delete_args,
             rimraf_executable=self.rimraf_executable,
@@ -280,6 +291,12 @@ class SettingsManager(SettingsRegistry):
         self.generic_delete_args_template = preferences.generic_delete_args_template
         self.robocopy_copy_args = preferences.robocopy_copy_args
         self.robocopy_move_args = preferences.robocopy_move_args
+        self.robocopy_structured_options = preferences.robocopy_structured_options
+        self.teracopy_structured_options = preferences.teracopy_structured_options
+        self.unstoppable_structured_options = preferences.unstoppable_structured_options
+        self.external_copymove_structured_options = (
+            preferences.external_copymove_structured_options
+        )
         self.cmd_delete_args = preferences.cmd_delete_args
         self.powershell_delete_args = preferences.powershell_delete_args
         self.rimraf_executable = preferences.rimraf_executable

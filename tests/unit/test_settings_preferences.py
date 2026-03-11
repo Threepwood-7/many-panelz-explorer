@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+from many_panelz_explorer._operations.backend_options import (
+    ExternalCopyMoveBackendOptions,
+    RobocopyBackendOptions,
+    TeraCopyBackendOptions,
+    UnstoppableBackendOptions,
+)
 from many_panelz_explorer._settings.manager import SettingsManager
 from many_panelz_explorer._settings.models import UiPreferences
 
@@ -69,6 +75,10 @@ def _tracked_keys() -> list[str]:
         SettingsManager.GENERIC_DELETE_ARGS_TEMPLATE_KEY,
         SettingsManager.ROBOCOPY_COPY_ARGS_KEY,
         SettingsManager.ROBOCOPY_MOVE_ARGS_KEY,
+        SettingsManager.ROBOCOPY_STRUCTURED_OPTIONS_KEY,
+        SettingsManager.TERACOPY_STRUCTURED_OPTIONS_KEY,
+        SettingsManager.UNSTOPPABLE_STRUCTURED_OPTIONS_KEY,
+        SettingsManager.EXTERNAL_COPYMOVE_STRUCTURED_OPTIONS_KEY,
         SettingsManager.CMD_DELETE_ARGS_KEY,
         SettingsManager.POWERSHELL_DELETE_ARGS_KEY,
         SettingsManager.RIMRAF_EXECUTABLE_KEY,
@@ -162,6 +172,55 @@ def test_ui_preferences_round_trip() -> None:
             generic_delete_args_template="{operation} {sources}",
             robocopy_copy_args="/E /R:0 /W:0",
             robocopy_move_args="/E /MOVE /R:0 /W:0",
+            robocopy_structured_options=RobocopyBackendOptions(
+                include_subdirectories=True,
+                mirror_target=False,
+                move_files_for_move=True,
+                restartable_mode=True,
+                backup_mode=False,
+                list_only=False,
+                suppress_logs=False,
+                retry_count=4,
+                wait_seconds=2,
+                use_multithreading=True,
+                multithread_count=16,
+                extra_args="/XO",
+                use_raw_override=False,
+            ),
+            teracopy_structured_options=TeraCopyBackendOptions(
+                close_on_finish=True,
+                keep_open=False,
+                verify_after_copy=True,
+                no_sound=True,
+                conflict_mode="/SkipAll",
+                extra_args="/NoHistory",
+                use_raw_override=True,
+            ),
+            unstoppable_structured_options=UnstoppableBackendOptions(
+                use_defaults=True,
+                keep_attributes=True,
+                keep_owner=False,
+                keep_time=True,
+                overwrite_existing=True,
+                include_subfolders=True,
+                recover_and_resume=True,
+                copy_newer_only=False,
+                skip_damaged=True,
+                undamaged_first=False,
+                overwrite_readonly=False,
+                copy_empty_folders=True,
+                show_eta=True,
+                power_down_when_done=False,
+                extra_args="+x",
+                use_raw_override=True,
+            ),
+            external_copymove_structured_options=ExternalCopyMoveBackendOptions(
+                include_operation_token=True,
+                include_sources=True,
+                include_target=False,
+                extra_args="--mode fast",
+                use_raw_override=False,
+            ),
             cmd_delete_args="/Q",
             powershell_delete_args="-Force",
             rimraf_executable="rimraf",
@@ -242,6 +301,10 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.remove(SettingsManager.GENERIC_DELETE_ARGS_TEMPLATE_KEY)
         settings.remove(SettingsManager.ROBOCOPY_COPY_ARGS_KEY)
         settings.remove(SettingsManager.ROBOCOPY_MOVE_ARGS_KEY)
+        settings.set_value(SettingsManager.ROBOCOPY_STRUCTURED_OPTIONS_KEY, "bad")
+        settings.set_value(SettingsManager.TERACOPY_STRUCTURED_OPTIONS_KEY, "bad")
+        settings.set_value(SettingsManager.UNSTOPPABLE_STRUCTURED_OPTIONS_KEY, "bad")
+        settings.set_value(SettingsManager.EXTERNAL_COPYMOVE_STRUCTURED_OPTIONS_KEY, "bad")
         settings.remove(SettingsManager.CMD_DELETE_ARGS_KEY)
         settings.remove(SettingsManager.POWERSHELL_DELETE_ARGS_KEY)
         settings.remove(SettingsManager.RIMRAF_EXECUTABLE_KEY)
@@ -400,6 +463,13 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         assert (
             loaded.script_editor_executable
             == SettingsManager.DEFAULT_SCRIPT_EDITOR_EXECUTABLE
+        )
+        assert loaded.robocopy_structured_options == RobocopyBackendOptions()
+        assert loaded.teracopy_structured_options == TeraCopyBackendOptions()
+        assert loaded.unstoppable_structured_options == UnstoppableBackendOptions()
+        assert (
+            loaded.external_copymove_structured_options
+            == ExternalCopyMoveBackendOptions()
         )
     finally:
         _restore(settings, before)

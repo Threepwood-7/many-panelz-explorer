@@ -12,6 +12,9 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication, QMessageBox
 
+from many_panelz_explorer._operations.backend_options import (
+    resolve_copy_move_backend_args,
+)
 from many_panelz_explorer._operations.discovery import resolve_companion_tool_paths
 from many_panelz_explorer._operations.queue_manager import OperationQueueManager
 from many_panelz_explorer._operations.types import (
@@ -47,6 +50,17 @@ class _ControllerSettingsStub:
 
     def preview_ui_preferences(self, preferences: UiPreferences) -> None:
         self.preview_calls.append(preferences)
+        resolved_copy_move = resolve_copy_move_backend_args(
+            robocopy_options=preferences.robocopy_structured_options,
+            teracopy_options=preferences.teracopy_structured_options,
+            unstoppable_options=preferences.unstoppable_structured_options,
+            external_copymove_options=preferences.external_copymove_structured_options,
+            raw_robocopy_copy_args=preferences.robocopy_copy_args,
+            raw_robocopy_move_args=preferences.robocopy_move_args,
+            raw_teracopy_args_template=preferences.teracopy_args_template,
+            raw_unstoppable_args_template=preferences.unstoppable_args_template,
+            raw_external_copymove_args_template=preferences.generic_copymove_args_template,
+        )
         self.operation_queue_manager.set_preferences(
             resolve_companion_tool_paths(
                 OperationExecutionPreferences(
@@ -69,15 +83,15 @@ class _ControllerSettingsStub:
                     use_extended_paths_external_delete=preferences.use_extended_paths_external_delete,
                     script_editor_executable=preferences.default_editor_executable,
                     teracopy_executable=preferences.teracopy_executable,
-                    teracopy_args_template=preferences.teracopy_args_template,
+                    teracopy_args_template=resolved_copy_move.teracopy_args_template,
                     unstoppable_executable=preferences.unstoppable_executable,
-                    unstoppable_args_template=preferences.unstoppable_args_template,
+                    unstoppable_args_template=resolved_copy_move.unstoppable_args_template,
                     generic_copymove_executable=preferences.generic_copymove_executable,
-                    generic_copymove_args_template=preferences.generic_copymove_args_template,
+                    generic_copymove_args_template=resolved_copy_move.external_copymove_args_template,
                     generic_delete_executable=preferences.generic_delete_executable,
                     generic_delete_args_template=preferences.generic_delete_args_template,
-                    robocopy_copy_args=preferences.robocopy_copy_args,
-                    robocopy_move_args=preferences.robocopy_move_args,
+                    robocopy_copy_args=resolved_copy_move.robocopy_copy_args,
+                    robocopy_move_args=resolved_copy_move.robocopy_move_args,
                     cmd_delete_args=preferences.cmd_delete_args,
                     powershell_delete_args=preferences.powershell_delete_args,
                     rimraf_executable=preferences.rimraf_executable,
@@ -193,6 +207,10 @@ def _tracked_keys() -> list[str]:
         SettingsManager.GENERIC_DELETE_ARGS_TEMPLATE_KEY,
         SettingsManager.ROBOCOPY_COPY_ARGS_KEY,
         SettingsManager.ROBOCOPY_MOVE_ARGS_KEY,
+        SettingsManager.ROBOCOPY_STRUCTURED_OPTIONS_KEY,
+        SettingsManager.TERACOPY_STRUCTURED_OPTIONS_KEY,
+        SettingsManager.UNSTOPPABLE_STRUCTURED_OPTIONS_KEY,
+        SettingsManager.EXTERNAL_COPYMOVE_STRUCTURED_OPTIONS_KEY,
         SettingsManager.CMD_DELETE_ARGS_KEY,
         SettingsManager.POWERSHELL_DELETE_ARGS_KEY,
         SettingsManager.RIMRAF_EXECUTABLE_KEY,
@@ -627,7 +645,8 @@ def test_settings_dialog_has_larger_minimum_size_and_operations_controls(
     dialog.search_edit.setText("teracopy executable")
     qtbot.waitUntil(lambda: dialog._rows_by_key["teracopy_command"].isVisible())
     assert dialog.teracopy_executable_edit.isVisible() is True
-    assert dialog.teracopy_args_edit.isVisible() is True
+    assert dialog.teracopy_struct_conflict_combo.isVisible() is True
+    assert dialog.teracopy_args_edit.isVisible() is False
 
 
 def test_settings_dialog_has_left_section_tree_and_search_sync(
@@ -1059,3 +1078,66 @@ def test_settings_dialog_backend_test_uses_unsaved_values(
     assert captured["wait"] is True
     assert preferences.teracopy_executable == unsaved_path
     assert captured["info"] is True
+
+
+def test_settings_dialog_rich_backend_controls_update_preview_and_persist(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-rich-backend-preview",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    backend_args_item = dialog._subsection_tree_items["operations/backend_args"]
+    dialog._section_tree.setCurrentItem(backend_args_item)
+    qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is backend_args_item)
+    dialog.robocopy_struct_retry_spin.setValue(5)
+    dialog.robocopy_struct_wait_spin.setValue(7)
+    dialog.robocopy_struct_quiet_checkbox.setChecked(True)
+    qtbot.waitUntil(lambda: "/R:5" in dialog.robocopy_preview_label.text())
+    assert "/W:7" in dialog.robocopy_preview_label.text()
+    assert "/NFL" in dialog.robocopy_preview_label.text()
+
+    dialog._apply_and_commit()
+    persisted = isolated_settings.ui_preferences()
+    assert persisted.robocopy_structured_options.retry_count == 5
+    assert persisted.robocopy_structured_options.wait_seconds == 7
+    assert persisted.robocopy_structured_options.suppress_logs is True
+
+
+def test_settings_dialog_advanced_raw_override_persists_for_teracopy(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-teracopy-raw-override",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    backend_commands_item = dialog._subsection_tree_items["operations/backend_commands"]
+    dialog._section_tree.setCurrentItem(backend_commands_item)
+    qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is backend_commands_item)
+    dialog.teracopy_use_raw_override_checkbox.setChecked(True)
+    dialog.teracopy_args_edit.setText("{operation} {sources} {target} /RawOnly")
+    qtbot.waitUntil(lambda: "Effective args template" in dialog.teracopy_preview_label.text())
+    assert "/RawOnly" in dialog.teracopy_preview_label.text()
+
+    dialog._apply_and_commit()
+    persisted = isolated_settings.ui_preferences()
+    assert persisted.teracopy_structured_options.use_raw_override is True
+    assert persisted.teracopy_args_template.endswith("/RawOnly")

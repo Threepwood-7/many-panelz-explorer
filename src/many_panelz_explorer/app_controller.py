@@ -8,13 +8,8 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication, QMainWindow
 from threep_commons.paths import configure_qsettings, resolve_app_data_dir
 
-from .constants import (
-    APP_DISPLAY_NAME,
-    APP_IDENTITY,
-    SETTINGS_APP_NAME,
-    SETTINGS_ORG_NAME,
-)
 from . import file_ops
+from ._operations.backend_options import resolve_copy_move_backend_args
 from ._operations.discovery import (
     resolve_companion_tool_paths,
     resolve_system_command_paths,
@@ -22,12 +17,19 @@ from ._operations.discovery import (
 from ._operations.queue_manager import OperationQueueManager
 from ._operations.types import OperationExecutionPreferences
 from ._settings.manager import SettingsManager
-from ._settings.models import UiPreferences
+from .constants import (
+    APP_DISPLAY_NAME,
+    APP_IDENTITY,
+    SETTINGS_APP_NAME,
+    SETTINGS_ORG_NAME,
+)
 from .operation_queue_widgets import OperationQueuePanel, OperationQueueTableModel
 from .window import ExplorerWindow
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
+
+    from ._settings.models import UiPreferences
 
 
 class AppController:
@@ -257,6 +259,17 @@ class AppController:
         preferences: UiPreferences,
     ) -> OperationExecutionPreferences:
         resolved_cmd, resolved_robocopy = resolve_system_command_paths()
+        resolved_copy_move = resolve_copy_move_backend_args(
+            robocopy_options=preferences.robocopy_structured_options,
+            teracopy_options=preferences.teracopy_structured_options,
+            unstoppable_options=preferences.unstoppable_structured_options,
+            external_copymove_options=preferences.external_copymove_structured_options,
+            raw_robocopy_copy_args=preferences.robocopy_copy_args,
+            raw_robocopy_move_args=preferences.robocopy_move_args,
+            raw_teracopy_args_template=preferences.teracopy_args_template,
+            raw_unstoppable_args_template=preferences.unstoppable_args_template,
+            raw_external_copymove_args_template=preferences.generic_copymove_args_template,
+        )
         return OperationExecutionPreferences(
             default_copy_move_backend=preferences.default_copy_move_backend,
             default_delete_backend=preferences.default_delete_backend,
@@ -277,15 +290,15 @@ class AppController:
             use_extended_paths_external_delete=preferences.use_extended_paths_external_delete,
             script_editor_executable=preferences.default_editor_executable,
             teracopy_executable=preferences.teracopy_executable,
-            teracopy_args_template=preferences.teracopy_args_template,
+            teracopy_args_template=resolved_copy_move.teracopy_args_template,
             unstoppable_executable=preferences.unstoppable_executable,
-            unstoppable_args_template=preferences.unstoppable_args_template,
+            unstoppable_args_template=resolved_copy_move.unstoppable_args_template,
             generic_copymove_executable=preferences.generic_copymove_executable,
-            generic_copymove_args_template=preferences.generic_copymove_args_template,
+            generic_copymove_args_template=resolved_copy_move.external_copymove_args_template,
             generic_delete_executable=preferences.generic_delete_executable,
             generic_delete_args_template=preferences.generic_delete_args_template,
-            robocopy_copy_args=preferences.robocopy_copy_args,
-            robocopy_move_args=preferences.robocopy_move_args,
+            robocopy_copy_args=resolved_copy_move.robocopy_copy_args,
+            robocopy_move_args=resolved_copy_move.robocopy_move_args,
             cmd_delete_args=preferences.cmd_delete_args,
             powershell_delete_args=preferences.powershell_delete_args,
             rimraf_executable=preferences.rimraf_executable,

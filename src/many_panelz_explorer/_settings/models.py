@@ -1,7 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+from many_panelz_explorer._operations.backend_options import (
+    ExternalCopyMoveBackendOptions,
+    RobocopyBackendOptions,
+    TeraCopyBackendOptions,
+    UnstoppableBackendOptions,
+)
 from many_panelz_explorer._operations.types import (
     BACKEND_PYTHON,
     BACKEND_RECYCLE_BIN,
@@ -92,6 +98,18 @@ class UiPreferences:
     generic_delete_args_template: str = DEFAULT_GENERIC_DELETE_ARGS
     robocopy_copy_args: str = DEFAULT_ROBOCOPY_COPY_ARGS
     robocopy_move_args: str = DEFAULT_ROBOCOPY_MOVE_ARGS
+    robocopy_structured_options: RobocopyBackendOptions = field(
+        default_factory=RobocopyBackendOptions
+    )
+    teracopy_structured_options: TeraCopyBackendOptions = field(
+        default_factory=TeraCopyBackendOptions
+    )
+    unstoppable_structured_options: UnstoppableBackendOptions = field(
+        default_factory=UnstoppableBackendOptions
+    )
+    external_copymove_structured_options: ExternalCopyMoveBackendOptions = field(
+        default_factory=ExternalCopyMoveBackendOptions
+    )
     cmd_delete_args: str = DEFAULT_CMD_DELETE_ARGS
     powershell_delete_args: str = DEFAULT_POWERSHELL_DELETE_ARGS
     rimraf_executable: str = DEFAULT_RIMRAF_EXE

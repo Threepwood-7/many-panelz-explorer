@@ -5,6 +5,16 @@ import re
 from string import Formatter
 from typing import Any, cast
 
+from many_panelz_explorer._operations.backend_options import (
+    ExternalCopyMoveBackendOptions,
+    RobocopyBackendOptions,
+    TeraCopyBackendOptions,
+    UnstoppableBackendOptions,
+    normalize_external_copymove_options,
+    normalize_robocopy_options,
+    normalize_teracopy_options,
+    normalize_unstoppable_options,
+)
 
 HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 _FORMATTER = Formatter()
@@ -215,3 +225,49 @@ def normalize_status_storage_label_template(raw: Any, *, fallback: str) -> str:
     if not has_field:
         return str(fallback)
     return template
+
+
+def normalize_robocopy_structured_options(
+    raw: Any,
+    *,
+    legacy_copy_args: str,
+    legacy_move_args: str,
+) -> RobocopyBackendOptions:
+    return normalize_robocopy_options(
+        raw,
+        legacy_copy_args=legacy_copy_args,
+        legacy_move_args=legacy_move_args,
+    )
+
+
+def normalize_teracopy_structured_options(
+    raw: Any,
+    *,
+    legacy_args_template: str,
+) -> TeraCopyBackendOptions:
+    return normalize_teracopy_options(
+        raw,
+        legacy_args_template=legacy_args_template,
+    )
+
+
+def normalize_unstoppable_structured_options(
+    raw: Any,
+    *,
+    legacy_args_template: str,
+) -> UnstoppableBackendOptions:
+    return normalize_unstoppable_options(
+        raw,
+        legacy_args_template=legacy_args_template,
+    )
+
+
+def normalize_external_copymove_structured_options(
+    raw: Any,
+    *,
+    legacy_args_template: str,
+) -> ExternalCopyMoveBackendOptions:
+    return normalize_external_copymove_options(
+        raw,
+        legacy_args_template=legacy_args_template,
+    )

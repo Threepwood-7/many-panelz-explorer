@@ -5,7 +5,7 @@ import tempfile
 import uuid
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from PySide6.QtCore import QSignalBlocker, Qt, QTimer
 from PySide6.QtGui import QColor, QFontDatabase
@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFileDialog,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -29,6 +30,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QTableWidget,
     QTableWidgetItem,
+    QToolButton,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -36,6 +38,17 @@ from PySide6.QtWidgets import (
 )
 
 from .. import widget_naming
+from .._operations.backend_options import (
+    ExternalCopyMoveBackendOptions,
+    RobocopyBackendOptions,
+    TeraCopyBackendOptions,
+    UnstoppableBackendOptions,
+    generate_external_copymove_args_template,
+    generate_robocopy_args,
+    generate_teracopy_args_template,
+    generate_unstoppable_args_template,
+    resolve_copy_move_backend_args,
+)
 from .._operations.discovery import (
     discover_single_companion_tool,
     resolve_companion_tool_paths,
@@ -155,7 +168,7 @@ class _FontSizeSpinBox(QSpinBox):
 
 class SettingsDialog(QDialog):
     LIVE_PREVIEW_DEBOUNCE_MS = 140
-    RESETTABLE_FIELDS_BY_SECTION: dict[str, tuple[str, ...]] = {
+    RESETTABLE_FIELDS_BY_SECTION: ClassVar[dict[str, tuple[str, ...]]] = {
         "appearance": (
             "active_panel_tint_color_hex",
             "active_panel_tint_intensity_percent",
@@ -225,6 +238,10 @@ class SettingsDialog(QDialog):
             "use_extended_paths_rimraf",
             "robocopy_copy_args",
             "robocopy_move_args",
+            "robocopy_structured_options",
+            "teracopy_structured_options",
+            "unstoppable_structured_options",
+            "external_copymove_structured_options",
             "use_extended_paths_robocopy",
             "cmd_delete_args",
             "powershell_delete_args",
@@ -1063,7 +1080,7 @@ class SettingsDialog(QDialog):
             controls=[overrides_controls],
         )
 
-        # Per-backend extended-path toggles are shown alongside each backend command section.
+        # Per-backend extended-path toggles are shown alongside each backend configuration panel.
         self.use_extended_paths_robocopy_checkbox = QCheckBox(
             r"Use extended paths \\?\... as args",
             self,
@@ -1111,70 +1128,65 @@ class SettingsDialog(QDialog):
         self.teracopy_executable_edit = QLineEdit(self)
         self.teracopy_args_edit = QLineEdit(self)
         self.teracopy_test_btn = QPushButton("Test", self)
-        teracopy_controls = self._build_command_controls(
-            executable_edit=self.teracopy_executable_edit,
-            args_edit=self.teracopy_args_edit,
-            default_executable=SettingsManager.DEFAULT_TERACOPY_EXECUTABLE,
-            default_args=SettingsManager.DEFAULT_TERACOPY_ARGS_TEMPLATE,
-            discover_default_executable=DEFAULT_TERA_COPY_EXE,
-            extended_paths_checkbox=self.use_extended_paths_teracopy_checkbox,
-            test_button=self.teracopy_test_btn,
-            on_test=lambda: self._test_backend("copy", "teracopy"),
-        )
+        self.teracopy_reset_backend_btn = QPushButton("Reset Backend Defaults", self)
+        teracopy_controls = self._build_teracopy_settings_card()
         self._add_row(
             section=operations_backend_commands_group,
             key="teracopy_command",
             title="TeraCopy Command",
-            description='Executable and args template. Tokens: {operation} {sources} {target}',
-            terms="teracopy executable args template test long path extended",
+            description=(
+                "Structured options for TeraCopy behavior with generated args preview. "
+                "Use Advanced for legacy raw args-template override."
+            ),
+            terms=(
+                "teracopy executable behavior conflict close verify no sound generated preview "
+                "advanced raw args template test long path extended"
+            ),
             controls=[teracopy_controls],
         )
 
         self.unstoppable_executable_edit = QLineEdit(self)
         self.unstoppable_args_edit = QLineEdit(self)
         self.unstoppable_test_btn = QPushButton("Test", self)
-        unstoppable_controls = self._build_command_controls(
-            executable_edit=self.unstoppable_executable_edit,
-            args_edit=self.unstoppable_args_edit,
-            default_executable=SettingsManager.DEFAULT_UNSTOPPABLE_EXECUTABLE,
-            default_args=SettingsManager.DEFAULT_UNSTOPPABLE_ARGS_TEMPLATE,
-            discover_default_executable=DEFAULT_UNSTOPPABLE_EXE,
-            extended_paths_checkbox=self.use_extended_paths_unstoppable_checkbox,
-            test_button=self.unstoppable_test_btn,
-            on_test=lambda: self._test_backend("copy", "unstoppable"),
+        self.unstoppable_reset_backend_btn = QPushButton(
+            "Reset Backend Defaults", self
         )
+        unstoppable_controls = self._build_unstoppable_settings_card()
         self._add_row(
             section=operations_backend_commands_group,
             key="unstoppable_command",
             title="Unstoppable Copier Command",
             description=(
-                "Executable and args template. Tokens: {operation} {source} {sources} {target}. "
-                "For Unstoppable, {operation} maps to +d (copy) or +dm (move)."
+                "Structured toggles for documented Unstoppable switches with generated preview. "
+                "Use Advanced for legacy raw args-template override."
             ),
-            terms="unstoppable copier executable args template test long path extended",
+            terms=(
+                "unstoppable copier executable switches defaults attributes owner time overwrite "
+                "subfolders resume damaged generated preview advanced raw args template "
+                "test long path extended"
+            ),
             controls=[unstoppable_controls],
         )
 
         self.generic_copymove_executable_edit = QLineEdit(self)
         self.generic_copymove_args_edit = QLineEdit(self)
         self.generic_copymove_test_btn = QPushButton("Test", self)
-        generic_copymove_controls = self._build_command_controls(
-            executable_edit=self.generic_copymove_executable_edit,
-            args_edit=self.generic_copymove_args_edit,
-            default_executable=SettingsManager.DEFAULT_GENERIC_COPYMOVE_EXECUTABLE,
-            default_args=SettingsManager.DEFAULT_GENERIC_COPYMOVE_ARGS_TEMPLATE,
-            discover_default_executable="",
-            enable_find=False,
-            extended_paths_checkbox=self.use_extended_paths_external_copymove_checkbox,
-            test_button=self.generic_copymove_test_btn,
-            on_test=lambda: self._test_backend("copy", "external_copymove"),
+        self.external_copymove_reset_backend_btn = QPushButton(
+            "Reset Backend Defaults", self
         )
+        generic_copymove_controls = self._build_external_copymove_settings_card()
         self._add_row(
             section=operations_backend_commands_group,
             key="generic_copymove_command",
             title="Generic Copy/Move Command",
-            description='Executable and args template. Tokens: {operation} {sources} {target}',
-            terms="external generic copy move executable args template test long path extended",
+            description=(
+                "Structured template composer for external copy/move backend with "
+                "generated preview. Use Advanced for legacy raw template override."
+            ),
+            terms=(
+                "external generic copy move executable structured placeholders operation sources target "
+                "generated preview advanced raw args template test long path extended"
+            ),
             controls=[generic_copymove_controls],
         )
 
@@ -1206,20 +1218,20 @@ class SettingsDialog(QDialog):
         self.robocopy_move_args_edit = QLineEdit(self)
         self.robocopy_move_args_edit.textChanged.connect(self._on_controls_changed)
         self.robocopy_test_btn = QPushButton("Test", self)
-        robocopy_args_controls = self._build_robocopy_controls(
-            first_label="Copy Args",
-            first_edit=self.robocopy_copy_args_edit,
-            second_label="Move Args",
-            second_edit=self.robocopy_move_args_edit,
-            extended_paths_checkbox=self.use_extended_paths_robocopy_checkbox,
-            test_button=self.robocopy_test_btn,
-        )
+        self.robocopy_reset_backend_btn = QPushButton("Reset Backend Defaults", self)
+        robocopy_args_controls = self._build_robocopy_settings_card()
         self._add_row(
             section=operations_backend_args_group,
             key="robocopy_args",
-            title="Robocopy Args",
-            description="Copy args and move args for robocopy backend.",
-            terms="robocopy copy args move args test long path extended",
+            title="Robocopy Configuration",
+            description=(
+                "Structured Robocopy options with checkboxes/spinners and generated "
+                "copy/move preview. Use Advanced for legacy raw args override."
+            ),
+            terms=(
+                "robocopy checkboxes spinners retry wait multithread suppress logs "
+                "generated preview advanced raw args test long path extended"
+            ),
             controls=[robocopy_args_controls],
         )
 
@@ -1520,6 +1532,798 @@ class SettingsDialog(QDialog):
             powershell_test_button=powershell_test_button,
         )
 
+    def _build_backend_executable_controls(
+        self,
+        *,
+        executable_edit: QLineEdit,
+        default_executable: str,
+        discover_default_executable: str,
+        enable_find: bool = True,
+    ) -> QWidget:
+        executable_edit.textChanged.connect(self._on_controls_changed)
+        host = QWidget(self)
+        layout = QGridLayout(host)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setHorizontalSpacing(8)
+        layout.setVerticalSpacing(6)
+        layout.addWidget(QLabel("Executable", host), 0, 0)
+        layout.addWidget(executable_edit, 0, 1)
+
+        actions = QWidget(host)
+        actions_layout = QHBoxLayout(actions)
+        actions_layout.setContentsMargins(0, 0, 0, 0)
+        actions_layout.setSpacing(8)
+        browse_btn = QPushButton("Browse...", actions)
+        find_btn = QPushButton("Find", actions)
+        find_btn.setEnabled(bool(enable_find and discover_default_executable))
+        reset_btn = QPushButton("Reset", actions)
+        browse_btn.clicked.connect(lambda: self._browse_executable(executable_edit))
+        find_btn.clicked.connect(
+            lambda: self._find_executable(
+                executable_edit,
+                default_executable=discover_default_executable,
+            )
+        )
+        reset_btn.clicked.connect(lambda: executable_edit.setText(default_executable))
+        actions_layout.addStretch(1)
+        actions_layout.addWidget(browse_btn)
+        actions_layout.addWidget(find_btn)
+        actions_layout.addWidget(reset_btn)
+        layout.addWidget(actions, 1, 1)
+        layout.setColumnStretch(1, 1)
+        return host
+
+    def _build_collapsible_advanced_block(self, *, title: str, content: QWidget) -> QWidget:
+        host = QWidget(self)
+        layout = QVBoxLayout(host)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+        toggle = QToolButton(host)
+        toggle.setText(title)
+        toggle.setCheckable(True)
+        toggle.setChecked(False)
+        toggle.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        toggle.setArrowType(Qt.ArrowType.RightArrow)
+        content.setVisible(False)
+        toggle.toggled.connect(
+            lambda checked, t=toggle, c=content: self._on_advanced_toggle_changed(
+                t, c, checked
+            )
+        )
+        layout.addWidget(toggle)
+        layout.addWidget(content)
+        return host
+
+    def _on_advanced_toggle_changed(
+        self, toggle: QToolButton, content: QWidget, checked: bool
+    ) -> None:
+        toggle.setArrowType(
+            Qt.ArrowType.DownArrow if checked else Qt.ArrowType.RightArrow
+        )
+        content.setVisible(bool(checked))
+
+    def _build_preview_label(self) -> QLabel:
+        label = QLabel(self)
+        label.setTextFormat(Qt.TextFormat.PlainText)
+        label.setWordWrap(True)
+        label.setStyleSheet("color: #444;")
+        return label
+
+    def _build_robocopy_settings_card(self) -> QWidget:
+        host = QWidget(self)
+        layout = QVBoxLayout(host)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(6)
+        self.robocopy_struct_include_subdirs_checkbox = QCheckBox(
+            "Copy subdirectories (/E)", host
+        )
+        self.robocopy_struct_mirror_checkbox = QCheckBox("Mirror target (/MIR)", host)
+        self.robocopy_struct_move_checkbox = QCheckBox("Move files for move (/MOVE)", host)
+        self.robocopy_struct_restartable_checkbox = QCheckBox(
+            "Restartable mode (/Z)", host
+        )
+        self.robocopy_struct_backup_checkbox = QCheckBox("Backup mode (/B)", host)
+        self.robocopy_struct_list_only_checkbox = QCheckBox("List only dry-run (/L)", host)
+        self.robocopy_struct_quiet_checkbox = QCheckBox(
+            "Suppress detail logs (/NFL /NDL /NJH /NJS /NP)", host
+        )
+        self.robocopy_struct_retry_spin = QSpinBox(host)
+        self.robocopy_struct_retry_spin.setRange(0, 1_000_000)
+        self.robocopy_struct_wait_spin = QSpinBox(host)
+        self.robocopy_struct_wait_spin.setRange(0, 3_600)
+        self.robocopy_struct_multithread_checkbox = QCheckBox("Multi-threaded (/MT)", host)
+        self.robocopy_struct_multithread_spin = QSpinBox(host)
+        self.robocopy_struct_multithread_spin.setRange(1, 128)
+        self.robocopy_struct_extra_args_edit = QLineEdit(host)
+        self.robocopy_struct_extra_args_edit.setPlaceholderText("Extra args")
+
+        for widget in [
+            self.robocopy_struct_include_subdirs_checkbox,
+            self.robocopy_struct_mirror_checkbox,
+            self.robocopy_struct_move_checkbox,
+            self.robocopy_struct_restartable_checkbox,
+            self.robocopy_struct_backup_checkbox,
+            self.robocopy_struct_list_only_checkbox,
+            self.robocopy_struct_quiet_checkbox,
+            self.robocopy_struct_multithread_checkbox,
+        ]:
+            widget.toggled.connect(self._on_controls_changed)
+
+        for widget in [
+            self.robocopy_struct_retry_spin,
+            self.robocopy_struct_wait_spin,
+            self.robocopy_struct_multithread_spin,
+        ]:
+            widget.valueChanged.connect(self._on_controls_changed)
+        self.robocopy_struct_extra_args_edit.textChanged.connect(self._on_controls_changed)
+        self.robocopy_struct_multithread_checkbox.toggled.connect(
+            self.robocopy_struct_multithread_spin.setEnabled
+        )
+
+        grid.addWidget(self.robocopy_struct_include_subdirs_checkbox, 0, 0, 1, 2)
+        grid.addWidget(self.robocopy_struct_mirror_checkbox, 1, 0, 1, 2)
+        grid.addWidget(self.robocopy_struct_move_checkbox, 2, 0, 1, 2)
+        grid.addWidget(self.robocopy_struct_restartable_checkbox, 3, 0, 1, 2)
+        grid.addWidget(self.robocopy_struct_backup_checkbox, 4, 0, 1, 2)
+        grid.addWidget(self.robocopy_struct_list_only_checkbox, 5, 0, 1, 2)
+        grid.addWidget(self.robocopy_struct_quiet_checkbox, 6, 0, 1, 2)
+        grid.addWidget(QLabel("Retry count (/R)", host), 7, 0)
+        grid.addWidget(self.robocopy_struct_retry_spin, 7, 1)
+        grid.addWidget(QLabel("Wait seconds (/W)", host), 8, 0)
+        grid.addWidget(self.robocopy_struct_wait_spin, 8, 1)
+        grid.addWidget(self.robocopy_struct_multithread_checkbox, 9, 0)
+        grid.addWidget(self.robocopy_struct_multithread_spin, 9, 1)
+        grid.addWidget(QLabel("Extra args", host), 10, 0)
+        grid.addWidget(self.robocopy_struct_extra_args_edit, 10, 1)
+        grid.addWidget(self.use_extended_paths_robocopy_checkbox, 11, 1)
+        layout.addLayout(grid)
+
+        self.robocopy_preview_label = self._build_preview_label()
+        layout.addWidget(self.robocopy_preview_label)
+
+        actions = QWidget(host)
+        actions_layout = QHBoxLayout(actions)
+        actions_layout.setContentsMargins(0, 0, 0, 0)
+        actions_layout.setSpacing(8)
+        actions_layout.addStretch(1)
+        self.robocopy_reset_backend_btn.clicked.connect(
+            self._reset_robocopy_backend_defaults
+        )
+        self.robocopy_test_btn.clicked.connect(lambda: self._test_backend("copy", "robocopy"))
+        actions_layout.addWidget(self.robocopy_reset_backend_btn)
+        actions_layout.addWidget(self.robocopy_test_btn)
+        layout.addWidget(actions)
+
+        self.robocopy_use_raw_override_checkbox = QCheckBox(
+            "Use legacy raw args override", host
+        )
+        self.robocopy_use_raw_override_checkbox.toggled.connect(self._on_controls_changed)
+        advanced_content = QWidget(host)
+        advanced_layout = QVBoxLayout(advanced_content)
+        advanced_layout.setContentsMargins(0, 0, 0, 0)
+        advanced_layout.setSpacing(6)
+        advanced_layout.addWidget(self.robocopy_use_raw_override_checkbox)
+        advanced_layout.addWidget(
+            self._build_dual_text_controls(
+                first_label="Raw Copy Args",
+                first_edit=self.robocopy_copy_args_edit,
+                second_label="Raw Move Args",
+                second_edit=self.robocopy_move_args_edit,
+            )
+        )
+        layout.addWidget(
+            self._build_collapsible_advanced_block(
+                title="Advanced (Legacy Raw Fields)",
+                content=advanced_content,
+            )
+        )
+        return host
+
+    def _build_teracopy_settings_card(self) -> QWidget:
+        host = QWidget(self)
+        layout = QVBoxLayout(host)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        layout.addWidget(
+            self._build_backend_executable_controls(
+                executable_edit=self.teracopy_executable_edit,
+                default_executable=SettingsManager.DEFAULT_TERACOPY_EXECUTABLE,
+                discover_default_executable=DEFAULT_TERA_COPY_EXE,
+            )
+        )
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(6)
+        self.teracopy_struct_close_checkbox = QCheckBox("Close when done (/Close)", host)
+        self.teracopy_struct_keep_open_checkbox = QCheckBox("Keep open (/NoClose)", host)
+        self.teracopy_struct_verify_checkbox = QCheckBox("Verify after copy (/Verify)", host)
+        self.teracopy_struct_no_sound_checkbox = QCheckBox("Disable sounds (/NoSound)", host)
+        self.teracopy_struct_conflict_combo = QComboBox(host)
+        self.teracopy_struct_conflict_combo.addItem("No explicit override", "")
+        self.teracopy_struct_conflict_combo.addItem("Overwrite All", "/OverwriteAll")
+        self.teracopy_struct_conflict_combo.addItem("Skip All", "/SkipAll")
+        self.teracopy_struct_conflict_combo.addItem("Rename All", "/RenameAll")
+        self.teracopy_struct_conflict_combo.addItem("Overwrite Older", "/OverwriteOlder")
+        self.teracopy_struct_conflict_combo.addItem(
+            "Overwrite Different Size", "/OverwriteDiffSize"
+        )
+        self.teracopy_struct_conflict_combo.addItem("Rename Copied", "/RenameCopied")
+        self.teracopy_struct_conflict_combo.addItem(
+            "Rename Destination", "/RenameDestination"
+        )
+        self.teracopy_struct_extra_args_edit = QLineEdit(host)
+        self.teracopy_struct_extra_args_edit.setPlaceholderText("Extra args")
+
+        self.teracopy_struct_close_checkbox.toggled.connect(
+            self._on_teracopy_struct_close_toggled
+        )
+        self.teracopy_struct_keep_open_checkbox.toggled.connect(
+            self._on_teracopy_struct_keep_open_toggled
+        )
+        for widget in [
+            self.teracopy_struct_verify_checkbox,
+            self.teracopy_struct_no_sound_checkbox,
+            self.use_extended_paths_teracopy_checkbox,
+        ]:
+            widget.toggled.connect(self._on_controls_changed)
+        self.teracopy_struct_conflict_combo.currentIndexChanged.connect(
+            self._on_controls_changed
+        )
+        self.teracopy_struct_extra_args_edit.textChanged.connect(self._on_controls_changed)
+
+        grid.addWidget(self.teracopy_struct_close_checkbox, 0, 0, 1, 2)
+        grid.addWidget(self.teracopy_struct_keep_open_checkbox, 1, 0, 1, 2)
+        grid.addWidget(self.teracopy_struct_verify_checkbox, 2, 0, 1, 2)
+        grid.addWidget(self.teracopy_struct_no_sound_checkbox, 3, 0, 1, 2)
+        grid.addWidget(QLabel("Conflict mode", host), 4, 0)
+        grid.addWidget(self.teracopy_struct_conflict_combo, 4, 1)
+        grid.addWidget(QLabel("Extra args", host), 5, 0)
+        grid.addWidget(self.teracopy_struct_extra_args_edit, 5, 1)
+        grid.addWidget(self.use_extended_paths_teracopy_checkbox, 6, 1)
+        grid.setColumnStretch(1, 1)
+        layout.addLayout(grid)
+
+        self.teracopy_preview_label = self._build_preview_label()
+        layout.addWidget(self.teracopy_preview_label)
+
+        actions = QWidget(host)
+        actions_layout = QHBoxLayout(actions)
+        actions_layout.setContentsMargins(0, 0, 0, 0)
+        actions_layout.setSpacing(8)
+        actions_layout.addStretch(1)
+        self.teracopy_reset_backend_btn.clicked.connect(
+            self._reset_teracopy_backend_defaults
+        )
+        self.teracopy_test_btn.clicked.connect(lambda: self._test_backend("copy", "teracopy"))
+        actions_layout.addWidget(self.teracopy_reset_backend_btn)
+        actions_layout.addWidget(self.teracopy_test_btn)
+        layout.addWidget(actions)
+
+        self.teracopy_use_raw_override_checkbox = QCheckBox(
+            "Use legacy raw args-template override",
+            host,
+        )
+        self.teracopy_use_raw_override_checkbox.toggled.connect(self._on_controls_changed)
+        self.teracopy_args_edit.textChanged.connect(self._on_controls_changed)
+        advanced_content = QWidget(host)
+        advanced_layout = QVBoxLayout(advanced_content)
+        advanced_layout.setContentsMargins(0, 0, 0, 0)
+        advanced_layout.setSpacing(6)
+        advanced_layout.addWidget(self.teracopy_use_raw_override_checkbox)
+        advanced_layout.addWidget(QLabel("Raw Args Template", advanced_content))
+        advanced_layout.addWidget(self.teracopy_args_edit)
+        layout.addWidget(
+            self._build_collapsible_advanced_block(
+                title="Advanced (Legacy Raw Fields)",
+                content=advanced_content,
+            )
+        )
+        return host
+
+    def _build_unstoppable_settings_card(self) -> QWidget:
+        host = QWidget(self)
+        layout = QVBoxLayout(host)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        layout.addWidget(
+            self._build_backend_executable_controls(
+                executable_edit=self.unstoppable_executable_edit,
+                default_executable=SettingsManager.DEFAULT_UNSTOPPABLE_EXECUTABLE,
+                discover_default_executable=DEFAULT_UNSTOPPABLE_EXE,
+            )
+        )
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(6)
+        self.unstoppable_struct_defaults_checkbox = QCheckBox("Use defaults (+d)", host)
+        self.unstoppable_struct_keep_attributes_checkbox = QCheckBox(
+            "Copy attributes (+a)", host
+        )
+        self.unstoppable_struct_keep_owner_checkbox = QCheckBox("Copy ownership (+o)", host)
+        self.unstoppable_struct_keep_time_checkbox = QCheckBox("Copy date/time (+t)", host)
+        self.unstoppable_struct_overwrite_checkbox = QCheckBox("Overwrite existing (+e)", host)
+        self.unstoppable_struct_include_subdirs_checkbox = QCheckBox(
+            "Include subfolders (+i)", host
+        )
+        self.unstoppable_struct_resume_checkbox = QCheckBox(
+            "Recover and resume (+r)", host
+        )
+        self.unstoppable_struct_copy_newer_checkbox = QCheckBox(
+            "Copy newer only (+c)", host
+        )
+        self.unstoppable_struct_skip_damaged_checkbox = QCheckBox(
+            "Auto-skip damaged (+s)", host
+        )
+        self.unstoppable_struct_undamaged_first_checkbox = QCheckBox(
+            "Undamaged first (+u)", host
+        )
+        self.unstoppable_struct_overwrite_readonly_checkbox = QCheckBox(
+            "Overwrite read-only (+w)", host
+        )
+        self.unstoppable_struct_copy_empty_folders_checkbox = QCheckBox(
+            "Copy empty folders (+f)", host
+        )
+        self.unstoppable_struct_eta_checkbox = QCheckBox("Show ETA (+z)", host)
+        self.unstoppable_struct_power_down_checkbox = QCheckBox(
+            "Power down after completion (+p)", host
+        )
+        self.unstoppable_struct_extra_args_edit = QLineEdit(host)
+        self.unstoppable_struct_extra_args_edit.setPlaceholderText("Extra args")
+        self.unstoppable_struct_extra_args_edit.textChanged.connect(
+            self._on_controls_changed
+        )
+        for widget in [
+            self.unstoppable_struct_defaults_checkbox,
+            self.unstoppable_struct_keep_attributes_checkbox,
+            self.unstoppable_struct_keep_owner_checkbox,
+            self.unstoppable_struct_keep_time_checkbox,
+            self.unstoppable_struct_overwrite_checkbox,
+            self.unstoppable_struct_include_subdirs_checkbox,
+            self.unstoppable_struct_resume_checkbox,
+            self.unstoppable_struct_copy_newer_checkbox,
+            self.unstoppable_struct_skip_damaged_checkbox,
+            self.unstoppable_struct_undamaged_first_checkbox,
+            self.unstoppable_struct_overwrite_readonly_checkbox,
+            self.unstoppable_struct_copy_empty_folders_checkbox,
+            self.unstoppable_struct_eta_checkbox,
+            self.unstoppable_struct_power_down_checkbox,
+            self.use_extended_paths_unstoppable_checkbox,
+        ]:
+            widget.toggled.connect(self._on_controls_changed)
+
+        grid.addWidget(self.unstoppable_struct_defaults_checkbox, 0, 0, 1, 2)
+        grid.addWidget(self.unstoppable_struct_keep_attributes_checkbox, 1, 0, 1, 2)
+        grid.addWidget(self.unstoppable_struct_keep_owner_checkbox, 2, 0, 1, 2)
+        grid.addWidget(self.unstoppable_struct_keep_time_checkbox, 3, 0, 1, 2)
+        grid.addWidget(self.unstoppable_struct_overwrite_checkbox, 4, 0, 1, 2)
+        grid.addWidget(self.unstoppable_struct_include_subdirs_checkbox, 5, 0, 1, 2)
+        grid.addWidget(self.unstoppable_struct_resume_checkbox, 6, 0, 1, 2)
+        grid.addWidget(self.unstoppable_struct_copy_newer_checkbox, 7, 0, 1, 2)
+        grid.addWidget(self.unstoppable_struct_skip_damaged_checkbox, 8, 0, 1, 2)
+        grid.addWidget(self.unstoppable_struct_undamaged_first_checkbox, 9, 0, 1, 2)
+        grid.addWidget(
+            self.unstoppable_struct_overwrite_readonly_checkbox, 10, 0, 1, 2
+        )
+        grid.addWidget(
+            self.unstoppable_struct_copy_empty_folders_checkbox, 11, 0, 1, 2
+        )
+        grid.addWidget(self.unstoppable_struct_eta_checkbox, 12, 0, 1, 2)
+        grid.addWidget(self.unstoppable_struct_power_down_checkbox, 13, 0, 1, 2)
+        grid.addWidget(QLabel("Extra args", host), 14, 0)
+        grid.addWidget(self.unstoppable_struct_extra_args_edit, 14, 1)
+        grid.addWidget(self.use_extended_paths_unstoppable_checkbox, 15, 1)
+        grid.setColumnStretch(1, 1)
+        layout.addLayout(grid)
+
+        self.unstoppable_preview_label = self._build_preview_label()
+        layout.addWidget(self.unstoppable_preview_label)
+
+        actions = QWidget(host)
+        actions_layout = QHBoxLayout(actions)
+        actions_layout.setContentsMargins(0, 0, 0, 0)
+        actions_layout.setSpacing(8)
+        actions_layout.addStretch(1)
+        self.unstoppable_reset_backend_btn.clicked.connect(
+            self._reset_unstoppable_backend_defaults
+        )
+        self.unstoppable_test_btn.clicked.connect(
+            lambda: self._test_backend("copy", "unstoppable")
+        )
+        actions_layout.addWidget(self.unstoppable_reset_backend_btn)
+        actions_layout.addWidget(self.unstoppable_test_btn)
+        layout.addWidget(actions)
+
+        self.unstoppable_use_raw_override_checkbox = QCheckBox(
+            "Use legacy raw args-template override",
+            host,
+        )
+        self.unstoppable_use_raw_override_checkbox.toggled.connect(
+            self._on_controls_changed
+        )
+        self.unstoppable_args_edit.textChanged.connect(self._on_controls_changed)
+        advanced_content = QWidget(host)
+        advanced_layout = QVBoxLayout(advanced_content)
+        advanced_layout.setContentsMargins(0, 0, 0, 0)
+        advanced_layout.setSpacing(6)
+        advanced_layout.addWidget(self.unstoppable_use_raw_override_checkbox)
+        advanced_layout.addWidget(QLabel("Raw Args Template", advanced_content))
+        advanced_layout.addWidget(self.unstoppable_args_edit)
+        layout.addWidget(
+            self._build_collapsible_advanced_block(
+                title="Advanced (Legacy Raw Fields)",
+                content=advanced_content,
+            )
+        )
+        return host
+
+    def _build_external_copymove_settings_card(self) -> QWidget:
+        host = QWidget(self)
+        layout = QVBoxLayout(host)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        layout.addWidget(
+            self._build_backend_executable_controls(
+                executable_edit=self.generic_copymove_executable_edit,
+                default_executable=SettingsManager.DEFAULT_GENERIC_COPYMOVE_EXECUTABLE,
+                discover_default_executable="",
+                enable_find=False,
+            )
+        )
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(6)
+        self.external_copymove_struct_include_operation_checkbox = QCheckBox(
+            "Include {operation} placeholder",
+            host,
+        )
+        self.external_copymove_struct_include_sources_checkbox = QCheckBox(
+            "Include {sources} placeholder",
+            host,
+        )
+        self.external_copymove_struct_include_target_checkbox = QCheckBox(
+            "Include {target} placeholder",
+            host,
+        )
+        self.external_copymove_struct_extra_args_edit = QLineEdit(host)
+        self.external_copymove_struct_extra_args_edit.setPlaceholderText("Extra args")
+        self.external_copymove_struct_extra_args_edit.textChanged.connect(
+            self._on_controls_changed
+        )
+        for widget in [
+            self.external_copymove_struct_include_operation_checkbox,
+            self.external_copymove_struct_include_sources_checkbox,
+            self.external_copymove_struct_include_target_checkbox,
+            self.use_extended_paths_external_copymove_checkbox,
+        ]:
+            widget.toggled.connect(self._on_controls_changed)
+        grid.addWidget(
+            self.external_copymove_struct_include_operation_checkbox,
+            0,
+            0,
+            1,
+            2,
+        )
+        grid.addWidget(
+            self.external_copymove_struct_include_sources_checkbox,
+            1,
+            0,
+            1,
+            2,
+        )
+        grid.addWidget(
+            self.external_copymove_struct_include_target_checkbox,
+            2,
+            0,
+            1,
+            2,
+        )
+        grid.addWidget(QLabel("Extra args", host), 3, 0)
+        grid.addWidget(self.external_copymove_struct_extra_args_edit, 3, 1)
+        grid.addWidget(self.use_extended_paths_external_copymove_checkbox, 4, 1)
+        grid.setColumnStretch(1, 1)
+        layout.addLayout(grid)
+
+        self.external_copymove_preview_label = self._build_preview_label()
+        layout.addWidget(self.external_copymove_preview_label)
+
+        actions = QWidget(host)
+        actions_layout = QHBoxLayout(actions)
+        actions_layout.setContentsMargins(0, 0, 0, 0)
+        actions_layout.setSpacing(8)
+        actions_layout.addStretch(1)
+        self.external_copymove_reset_backend_btn.clicked.connect(
+            self._reset_external_copymove_backend_defaults
+        )
+        self.generic_copymove_test_btn.clicked.connect(
+            lambda: self._test_backend("copy", "external_copymove")
+        )
+        actions_layout.addWidget(self.external_copymove_reset_backend_btn)
+        actions_layout.addWidget(self.generic_copymove_test_btn)
+        layout.addWidget(actions)
+
+        self.external_copymove_use_raw_override_checkbox = QCheckBox(
+            "Use legacy raw args-template override",
+            host,
+        )
+        self.external_copymove_use_raw_override_checkbox.toggled.connect(
+            self._on_controls_changed
+        )
+        self.generic_copymove_args_edit.textChanged.connect(self._on_controls_changed)
+        advanced_content = QWidget(host)
+        advanced_layout = QVBoxLayout(advanced_content)
+        advanced_layout.setContentsMargins(0, 0, 0, 0)
+        advanced_layout.setSpacing(6)
+        advanced_layout.addWidget(self.external_copymove_use_raw_override_checkbox)
+        advanced_layout.addWidget(QLabel("Raw Args Template", advanced_content))
+        advanced_layout.addWidget(self.generic_copymove_args_edit)
+        layout.addWidget(
+            self._build_collapsible_advanced_block(
+                title="Advanced (Legacy Raw Fields)",
+                content=advanced_content,
+            )
+        )
+        return host
+
+    def _on_teracopy_struct_close_toggled(self, checked: bool) -> None:
+        if checked and self.teracopy_struct_keep_open_checkbox.isChecked():
+            with QSignalBlocker(self.teracopy_struct_keep_open_checkbox):
+                self.teracopy_struct_keep_open_checkbox.setChecked(False)
+        self._on_controls_changed()
+
+    def _on_teracopy_struct_keep_open_toggled(self, checked: bool) -> None:
+        if checked and self.teracopy_struct_close_checkbox.isChecked():
+            with QSignalBlocker(self.teracopy_struct_close_checkbox):
+                self.teracopy_struct_close_checkbox.setChecked(False)
+        self._on_controls_changed()
+
+    def _robocopy_structured_options_from_controls(self) -> RobocopyBackendOptions:
+        return RobocopyBackendOptions(
+            include_subdirectories=self.robocopy_struct_include_subdirs_checkbox.isChecked(),
+            mirror_target=self.robocopy_struct_mirror_checkbox.isChecked(),
+            move_files_for_move=self.robocopy_struct_move_checkbox.isChecked(),
+            restartable_mode=self.robocopy_struct_restartable_checkbox.isChecked(),
+            backup_mode=self.robocopy_struct_backup_checkbox.isChecked(),
+            list_only=self.robocopy_struct_list_only_checkbox.isChecked(),
+            suppress_logs=self.robocopy_struct_quiet_checkbox.isChecked(),
+            retry_count=self.robocopy_struct_retry_spin.value(),
+            wait_seconds=self.robocopy_struct_wait_spin.value(),
+            use_multithreading=self.robocopy_struct_multithread_checkbox.isChecked(),
+            multithread_count=self.robocopy_struct_multithread_spin.value(),
+            extra_args=self.robocopy_struct_extra_args_edit.text().strip(),
+            use_raw_override=self.robocopy_use_raw_override_checkbox.isChecked(),
+        )
+
+    def _teracopy_structured_options_from_controls(self) -> TeraCopyBackendOptions:
+        return TeraCopyBackendOptions(
+            close_on_finish=self.teracopy_struct_close_checkbox.isChecked(),
+            keep_open=self.teracopy_struct_keep_open_checkbox.isChecked(),
+            verify_after_copy=self.teracopy_struct_verify_checkbox.isChecked(),
+            no_sound=self.teracopy_struct_no_sound_checkbox.isChecked(),
+            conflict_mode=str(self.teracopy_struct_conflict_combo.currentData() or ""),
+            extra_args=self.teracopy_struct_extra_args_edit.text().strip(),
+            use_raw_override=self.teracopy_use_raw_override_checkbox.isChecked(),
+        )
+
+    def _unstoppable_structured_options_from_controls(self) -> UnstoppableBackendOptions:
+        return UnstoppableBackendOptions(
+            use_defaults=self.unstoppable_struct_defaults_checkbox.isChecked(),
+            keep_attributes=self.unstoppable_struct_keep_attributes_checkbox.isChecked(),
+            keep_owner=self.unstoppable_struct_keep_owner_checkbox.isChecked(),
+            keep_time=self.unstoppable_struct_keep_time_checkbox.isChecked(),
+            overwrite_existing=self.unstoppable_struct_overwrite_checkbox.isChecked(),
+            include_subfolders=self.unstoppable_struct_include_subdirs_checkbox.isChecked(),
+            recover_and_resume=self.unstoppable_struct_resume_checkbox.isChecked(),
+            copy_newer_only=self.unstoppable_struct_copy_newer_checkbox.isChecked(),
+            skip_damaged=self.unstoppable_struct_skip_damaged_checkbox.isChecked(),
+            undamaged_first=self.unstoppable_struct_undamaged_first_checkbox.isChecked(),
+            overwrite_readonly=self.unstoppable_struct_overwrite_readonly_checkbox.isChecked(),
+            copy_empty_folders=self.unstoppable_struct_copy_empty_folders_checkbox.isChecked(),
+            show_eta=self.unstoppable_struct_eta_checkbox.isChecked(),
+            power_down_when_done=self.unstoppable_struct_power_down_checkbox.isChecked(),
+            extra_args=self.unstoppable_struct_extra_args_edit.text().strip(),
+            use_raw_override=self.unstoppable_use_raw_override_checkbox.isChecked(),
+        )
+
+    def _external_copymove_structured_options_from_controls(
+        self,
+    ) -> ExternalCopyMoveBackendOptions:
+        return ExternalCopyMoveBackendOptions(
+            include_operation_token=self.external_copymove_struct_include_operation_checkbox.isChecked(),
+            include_sources=self.external_copymove_struct_include_sources_checkbox.isChecked(),
+            include_target=self.external_copymove_struct_include_target_checkbox.isChecked(),
+            extra_args=self.external_copymove_struct_extra_args_edit.text().strip(),
+            use_raw_override=self.external_copymove_use_raw_override_checkbox.isChecked(),
+        )
+
+    def _apply_robocopy_structured_options_to_controls(
+        self, options: RobocopyBackendOptions
+    ) -> None:
+        self.robocopy_struct_include_subdirs_checkbox.setChecked(
+            options.include_subdirectories
+        )
+        self.robocopy_struct_mirror_checkbox.setChecked(options.mirror_target)
+        self.robocopy_struct_move_checkbox.setChecked(options.move_files_for_move)
+        self.robocopy_struct_restartable_checkbox.setChecked(options.restartable_mode)
+        self.robocopy_struct_backup_checkbox.setChecked(options.backup_mode)
+        self.robocopy_struct_list_only_checkbox.setChecked(options.list_only)
+        self.robocopy_struct_quiet_checkbox.setChecked(options.suppress_logs)
+        self.robocopy_struct_retry_spin.setValue(options.retry_count)
+        self.robocopy_struct_wait_spin.setValue(options.wait_seconds)
+        self.robocopy_struct_multithread_checkbox.setChecked(options.use_multithreading)
+        self.robocopy_struct_multithread_spin.setValue(options.multithread_count)
+        self.robocopy_struct_extra_args_edit.setText(options.extra_args)
+        self.robocopy_use_raw_override_checkbox.setChecked(options.use_raw_override)
+
+    def _apply_teracopy_structured_options_to_controls(
+        self, options: TeraCopyBackendOptions
+    ) -> None:
+        self.teracopy_struct_close_checkbox.setChecked(options.close_on_finish)
+        self.teracopy_struct_keep_open_checkbox.setChecked(options.keep_open)
+        self.teracopy_struct_verify_checkbox.setChecked(options.verify_after_copy)
+        self.teracopy_struct_no_sound_checkbox.setChecked(options.no_sound)
+        self._set_combo_value(self.teracopy_struct_conflict_combo, options.conflict_mode)
+        self.teracopy_struct_extra_args_edit.setText(options.extra_args)
+        self.teracopy_use_raw_override_checkbox.setChecked(options.use_raw_override)
+
+    def _apply_unstoppable_structured_options_to_controls(
+        self, options: UnstoppableBackendOptions
+    ) -> None:
+        self.unstoppable_struct_defaults_checkbox.setChecked(options.use_defaults)
+        self.unstoppable_struct_keep_attributes_checkbox.setChecked(
+            options.keep_attributes
+        )
+        self.unstoppable_struct_keep_owner_checkbox.setChecked(options.keep_owner)
+        self.unstoppable_struct_keep_time_checkbox.setChecked(options.keep_time)
+        self.unstoppable_struct_overwrite_checkbox.setChecked(options.overwrite_existing)
+        self.unstoppable_struct_include_subdirs_checkbox.setChecked(
+            options.include_subfolders
+        )
+        self.unstoppable_struct_resume_checkbox.setChecked(options.recover_and_resume)
+        self.unstoppable_struct_copy_newer_checkbox.setChecked(options.copy_newer_only)
+        self.unstoppable_struct_skip_damaged_checkbox.setChecked(options.skip_damaged)
+        self.unstoppable_struct_undamaged_first_checkbox.setChecked(
+            options.undamaged_first
+        )
+        self.unstoppable_struct_overwrite_readonly_checkbox.setChecked(
+            options.overwrite_readonly
+        )
+        self.unstoppable_struct_copy_empty_folders_checkbox.setChecked(
+            options.copy_empty_folders
+        )
+        self.unstoppable_struct_eta_checkbox.setChecked(options.show_eta)
+        self.unstoppable_struct_power_down_checkbox.setChecked(
+            options.power_down_when_done
+        )
+        self.unstoppable_struct_extra_args_edit.setText(options.extra_args)
+        self.unstoppable_use_raw_override_checkbox.setChecked(options.use_raw_override)
+
+    def _apply_external_copymove_structured_options_to_controls(
+        self, options: ExternalCopyMoveBackendOptions
+    ) -> None:
+        self.external_copymove_struct_include_operation_checkbox.setChecked(
+            options.include_operation_token
+        )
+        self.external_copymove_struct_include_sources_checkbox.setChecked(
+            options.include_sources
+        )
+        self.external_copymove_struct_include_target_checkbox.setChecked(
+            options.include_target
+        )
+        self.external_copymove_struct_extra_args_edit.setText(options.extra_args)
+        self.external_copymove_use_raw_override_checkbox.setChecked(
+            options.use_raw_override
+        )
+
+    def _reset_robocopy_backend_defaults(self) -> None:
+        self._apply_robocopy_structured_options_to_controls(RobocopyBackendOptions())
+        self.robocopy_copy_args_edit.setText(SettingsManager.DEFAULT_ROBOCOPY_COPY_ARGS)
+        self.robocopy_move_args_edit.setText(SettingsManager.DEFAULT_ROBOCOPY_MOVE_ARGS)
+        self._on_controls_changed()
+
+    def _reset_teracopy_backend_defaults(self) -> None:
+        self._apply_teracopy_structured_options_to_controls(TeraCopyBackendOptions())
+        self.teracopy_executable_edit.setText(SettingsManager.DEFAULT_TERACOPY_EXECUTABLE)
+        self.teracopy_args_edit.setText(SettingsManager.DEFAULT_TERACOPY_ARGS_TEMPLATE)
+        self._on_controls_changed()
+
+    def _reset_unstoppable_backend_defaults(self) -> None:
+        self._apply_unstoppable_structured_options_to_controls(
+            UnstoppableBackendOptions()
+        )
+        self.unstoppable_executable_edit.setText(
+            SettingsManager.DEFAULT_UNSTOPPABLE_EXECUTABLE
+        )
+        self.unstoppable_args_edit.setText(SettingsManager.DEFAULT_UNSTOPPABLE_ARGS_TEMPLATE)
+        self._on_controls_changed()
+
+    def _reset_external_copymove_backend_defaults(self) -> None:
+        self._apply_external_copymove_structured_options_to_controls(
+            ExternalCopyMoveBackendOptions()
+        )
+        self.generic_copymove_executable_edit.setText(
+            SettingsManager.DEFAULT_GENERIC_COPYMOVE_EXECUTABLE
+        )
+        self.generic_copymove_args_edit.setText(
+            SettingsManager.DEFAULT_GENERIC_COPYMOVE_ARGS_TEMPLATE
+        )
+        self._on_controls_changed()
+
+    def _sync_backend_raw_override_controls(self) -> None:
+        self.robocopy_copy_args_edit.setEnabled(
+            self.robocopy_use_raw_override_checkbox.isChecked()
+        )
+        self.robocopy_move_args_edit.setEnabled(
+            self.robocopy_use_raw_override_checkbox.isChecked()
+        )
+        self.teracopy_args_edit.setEnabled(
+            self.teracopy_use_raw_override_checkbox.isChecked()
+        )
+        self.unstoppable_args_edit.setEnabled(
+            self.unstoppable_use_raw_override_checkbox.isChecked()
+        )
+        self.generic_copymove_args_edit.setEnabled(
+            self.external_copymove_use_raw_override_checkbox.isChecked()
+        )
+
+    def _update_backend_generated_previews(self) -> None:
+        robocopy_options = self._robocopy_structured_options_from_controls()
+        teracopy_options = self._teracopy_structured_options_from_controls()
+        unstoppable_options = self._unstoppable_structured_options_from_controls()
+        external_options = self._external_copymove_structured_options_from_controls()
+        resolved = resolve_copy_move_backend_args(
+            robocopy_options=robocopy_options,
+            teracopy_options=teracopy_options,
+            unstoppable_options=unstoppable_options,
+            external_copymove_options=external_options,
+            raw_robocopy_copy_args=self.robocopy_copy_args_edit.text().strip(),
+            raw_robocopy_move_args=self.robocopy_move_args_edit.text().strip(),
+            raw_teracopy_args_template=self.teracopy_args_edit.text().strip(),
+            raw_unstoppable_args_template=self.unstoppable_args_edit.text().strip(),
+            raw_external_copymove_args_template=self.generic_copymove_args_edit.text().strip(),
+        )
+        generated_robocopy_copy = generate_robocopy_args(robocopy_options, kind="copy")
+        generated_robocopy_move = generate_robocopy_args(robocopy_options, kind="move")
+        generated_teracopy = generate_teracopy_args_template(teracopy_options)
+        generated_unstoppable = generate_unstoppable_args_template(unstoppable_options)
+        generated_external = generate_external_copymove_args_template(external_options)
+
+        self.robocopy_preview_label.setText(
+            "Generated copy args: "
+            f"{generated_robocopy_copy or '(empty)'}\n"
+            "Generated move args: "
+            f"{generated_robocopy_move or '(empty)'}\n"
+            "Effective copy args: "
+            f"{resolved.robocopy_copy_args}\n"
+            "Effective move args: "
+            f"{resolved.robocopy_move_args}"
+        )
+        self.teracopy_preview_label.setText(
+            "Generated args template: "
+            f"{generated_teracopy or '(empty)'}\n"
+            "Effective args template: "
+            f"{resolved.teracopy_args_template}"
+        )
+        self.unstoppable_preview_label.setText(
+            "Generated args template: "
+            f"{generated_unstoppable or '(empty)'}\n"
+            "Effective args template: "
+            f"{resolved.unstoppable_args_template}"
+        )
+        self.external_copymove_preview_label.setText(
+            "Generated args template: "
+            f"{generated_external or '(empty)'}\n"
+            "Effective args template: "
+            f"{resolved.external_copymove_args_template}"
+        )
+        self._sync_backend_raw_override_controls()
+
     def _build_file_open_overrides_controls(self) -> QWidget:
         host = QWidget(self)
         layout = QVBoxLayout(host)
@@ -1766,6 +2570,17 @@ class SettingsDialog(QDialog):
     def _operation_execution_preferences_from_working(self) -> OperationExecutionPreferences:
         preferences = self._working_preferences
         resolved_cmd, resolved_robocopy = resolve_system_command_paths()
+        resolved_copy_move = resolve_copy_move_backend_args(
+            robocopy_options=preferences.robocopy_structured_options,
+            teracopy_options=preferences.teracopy_structured_options,
+            unstoppable_options=preferences.unstoppable_structured_options,
+            external_copymove_options=preferences.external_copymove_structured_options,
+            raw_robocopy_copy_args=preferences.robocopy_copy_args,
+            raw_robocopy_move_args=preferences.robocopy_move_args,
+            raw_teracopy_args_template=preferences.teracopy_args_template,
+            raw_unstoppable_args_template=preferences.unstoppable_args_template,
+            raw_external_copymove_args_template=preferences.generic_copymove_args_template,
+        )
         base = OperationExecutionPreferences(
             default_copy_move_backend=preferences.default_copy_move_backend,
             default_delete_backend=preferences.default_delete_backend,
@@ -1786,15 +2601,15 @@ class SettingsDialog(QDialog):
             use_extended_paths_external_delete=preferences.use_extended_paths_external_delete,
             script_editor_executable=preferences.default_editor_executable,
             teracopy_executable=preferences.teracopy_executable,
-            teracopy_args_template=preferences.teracopy_args_template,
+            teracopy_args_template=resolved_copy_move.teracopy_args_template,
             unstoppable_executable=preferences.unstoppable_executable,
-            unstoppable_args_template=preferences.unstoppable_args_template,
+            unstoppable_args_template=resolved_copy_move.unstoppable_args_template,
             generic_copymove_executable=preferences.generic_copymove_executable,
-            generic_copymove_args_template=preferences.generic_copymove_args_template,
+            generic_copymove_args_template=resolved_copy_move.external_copymove_args_template,
             generic_delete_executable=preferences.generic_delete_executable,
             generic_delete_args_template=preferences.generic_delete_args_template,
-            robocopy_copy_args=preferences.robocopy_copy_args,
-            robocopy_move_args=preferences.robocopy_move_args,
+            robocopy_copy_args=resolved_copy_move.robocopy_copy_args,
+            robocopy_move_args=resolved_copy_move.robocopy_move_args,
             cmd_delete_args=preferences.cmd_delete_args,
             powershell_delete_args=preferences.powershell_delete_args,
             rimraf_executable=preferences.rimraf_executable,
@@ -2012,6 +2827,18 @@ class SettingsDialog(QDialog):
             )
             self.robocopy_copy_args_edit.setText(preferences.robocopy_copy_args)
             self.robocopy_move_args_edit.setText(preferences.robocopy_move_args)
+            self._apply_robocopy_structured_options_to_controls(
+                preferences.robocopy_structured_options
+            )
+            self._apply_teracopy_structured_options_to_controls(
+                preferences.teracopy_structured_options
+            )
+            self._apply_unstoppable_structured_options_to_controls(
+                preferences.unstoppable_structured_options
+            )
+            self._apply_external_copymove_structured_options_to_controls(
+                preferences.external_copymove_structured_options
+            )
             self.cmd_delete_args_edit.setText(preferences.cmd_delete_args)
             self.powershell_delete_args_edit.setText(preferences.powershell_delete_args)
             self.rimraf_executable_edit.setText(preferences.rimraf_executable)
@@ -2043,6 +2870,8 @@ class SettingsDialog(QDialog):
             )
             self._sync_font_override_controls()
             self._sync_byte_format_controls()
+            self._sync_backend_raw_override_controls()
+            self._update_backend_generated_previews()
             self._sync_slider_value_labels()
             self._update_reset_controls()
         finally:
@@ -2138,6 +2967,10 @@ class SettingsDialog(QDialog):
             generic_delete_args_template=self.generic_delete_args_edit.text().strip(),
             robocopy_copy_args=self.robocopy_copy_args_edit.text().strip(),
             robocopy_move_args=self.robocopy_move_args_edit.text().strip(),
+            robocopy_structured_options=self._robocopy_structured_options_from_controls(),
+            teracopy_structured_options=self._teracopy_structured_options_from_controls(),
+            unstoppable_structured_options=self._unstoppable_structured_options_from_controls(),
+            external_copymove_structured_options=self._external_copymove_structured_options_from_controls(),
             cmd_delete_args=self.cmd_delete_args_edit.text().strip(),
             powershell_delete_args=self.powershell_delete_args_edit.text().strip(),
             rimraf_executable=self.rimraf_executable_edit.text().strip(),
@@ -2159,6 +2992,7 @@ class SettingsDialog(QDialog):
             target_panel_tint_color_hex=self._target_color_hex,
             target_panel_tint_intensity_percent=self.target_intensity_slider.value(),
         )
+        self._update_backend_generated_previews()
         self._pending_live_preview = True
         self._live_preview_timer.start(self.LIVE_PREVIEW_DEBOUNCE_MS)
 

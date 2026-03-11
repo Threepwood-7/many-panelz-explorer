@@ -1,7 +1,17 @@
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
+from many_panelz_explorer._operations.backend_options import (
+    ExternalCopyMoveBackendOptions,
+    RobocopyBackendOptions,
+    TeraCopyBackendOptions,
+    UnstoppableBackendOptions,
+    external_copymove_options_payload,
+    robocopy_options_payload,
+    teracopy_options_payload,
+    unstoppable_options_payload,
+)
 from many_panelz_explorer._operations.normalize import (
     normalize_conflict_policy,
     normalize_copy_move_backend,
@@ -13,7 +23,9 @@ from many_panelz_explorer._operations.normalize import (
 
 from . import normalize
 from .registry import SettingsRegistry
-from .storage import SettingsStorage
+
+if TYPE_CHECKING:
+    from .storage import SettingsStorage
 
 
 class UiSettingsDomain(SettingsRegistry):
@@ -1069,6 +1081,94 @@ class OpsSettingsDomain(SettingsRegistry):
         self._storage.set_value(
             self.ROBOCOPY_MOVE_ARGS_KEY,
             normalize.normalize_text(value, fallback=self.DEFAULT_ROBOCOPY_MOVE_ARGS),
+        )
+
+    @property
+    def robocopy_structured_options(self) -> RobocopyBackendOptions:
+        return normalize.normalize_robocopy_structured_options(
+            self._storage.get_json(
+                self.ROBOCOPY_STRUCTURED_OPTIONS_KEY,
+                self.DEFAULT_ROBOCOPY_STRUCTURED_OPTIONS,
+            ),
+            legacy_copy_args=self.robocopy_copy_args,
+            legacy_move_args=self.robocopy_move_args,
+        )
+
+    @robocopy_structured_options.setter
+    def robocopy_structured_options(self, value: RobocopyBackendOptions) -> None:
+        normalized = normalize.normalize_robocopy_structured_options(
+            robocopy_options_payload(value),
+            legacy_copy_args=self.robocopy_copy_args,
+            legacy_move_args=self.robocopy_move_args,
+        )
+        self._storage.set_json(
+            self.ROBOCOPY_STRUCTURED_OPTIONS_KEY,
+            robocopy_options_payload(normalized),
+        )
+
+    @property
+    def teracopy_structured_options(self) -> TeraCopyBackendOptions:
+        return normalize.normalize_teracopy_structured_options(
+            self._storage.get_json(
+                self.TERACOPY_STRUCTURED_OPTIONS_KEY,
+                self.DEFAULT_TERACOPY_STRUCTURED_OPTIONS,
+            ),
+            legacy_args_template=self.teracopy_args_template,
+        )
+
+    @teracopy_structured_options.setter
+    def teracopy_structured_options(self, value: TeraCopyBackendOptions) -> None:
+        normalized = normalize.normalize_teracopy_structured_options(
+            teracopy_options_payload(value),
+            legacy_args_template=self.teracopy_args_template,
+        )
+        self._storage.set_json(
+            self.TERACOPY_STRUCTURED_OPTIONS_KEY,
+            teracopy_options_payload(normalized),
+        )
+
+    @property
+    def unstoppable_structured_options(self) -> UnstoppableBackendOptions:
+        return normalize.normalize_unstoppable_structured_options(
+            self._storage.get_json(
+                self.UNSTOPPABLE_STRUCTURED_OPTIONS_KEY,
+                self.DEFAULT_UNSTOPPABLE_STRUCTURED_OPTIONS,
+            ),
+            legacy_args_template=self.unstoppable_args_template,
+        )
+
+    @unstoppable_structured_options.setter
+    def unstoppable_structured_options(self, value: UnstoppableBackendOptions) -> None:
+        normalized = normalize.normalize_unstoppable_structured_options(
+            unstoppable_options_payload(value),
+            legacy_args_template=self.unstoppable_args_template,
+        )
+        self._storage.set_json(
+            self.UNSTOPPABLE_STRUCTURED_OPTIONS_KEY,
+            unstoppable_options_payload(normalized),
+        )
+
+    @property
+    def external_copymove_structured_options(self) -> ExternalCopyMoveBackendOptions:
+        return normalize.normalize_external_copymove_structured_options(
+            self._storage.get_json(
+                self.EXTERNAL_COPYMOVE_STRUCTURED_OPTIONS_KEY,
+                self.DEFAULT_EXTERNAL_COPYMOVE_STRUCTURED_OPTIONS,
+            ),
+            legacy_args_template=self.generic_copymove_args_template,
+        )
+
+    @external_copymove_structured_options.setter
+    def external_copymove_structured_options(
+        self, value: ExternalCopyMoveBackendOptions
+    ) -> None:
+        normalized = normalize.normalize_external_copymove_structured_options(
+            external_copymove_options_payload(value),
+            legacy_args_template=self.generic_copymove_args_template,
+        )
+        self._storage.set_json(
+            self.EXTERNAL_COPYMOVE_STRUCTURED_OPTIONS_KEY,
+            external_copymove_options_payload(normalized),
         )
 
     @property
