@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
@@ -23,6 +22,14 @@ from PySide6.QtWidgets import (
 from .._operations.types import OperationRequest
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
+    from .._operations.backend_options import (
+        ExternalCopyMoveBackendOptions,
+        RobocopyBackendOptions,
+        TeraCopyBackendOptions,
+        UnstoppableBackendOptions,
+    )
     from .._settings.models import UiPreferences
 
 
@@ -272,7 +279,7 @@ class OperationDialog(QDialog):
         self._backend_options_layout.addWidget(self.unstoppable_options_group)
         self._backend_options_layout.addWidget(self.external_options_group)
         self._backend_options_layout.addStretch(1)
-        self._load_robocopy_options_from_preferences()
+        self._load_backend_options_from_preferences()
         root.addWidget(self._backend_options_host)
         self._sync_backend_options_visibility()
 
@@ -329,78 +336,80 @@ class OperationDialog(QDialog):
         if checked and self.teracopy_close_checkbox.isChecked():
             self.teracopy_close_checkbox.setChecked(False)
 
-    def _load_robocopy_options_from_preferences(self) -> None:
-        raw = (
-            self._preferences.robocopy_move_args
-            if self._kind == "move"
-            else self._preferences.robocopy_copy_args
+    def _load_backend_options_from_preferences(self) -> None:
+        self._apply_robocopy_structured_options_to_controls(
+            self._preferences.robocopy_structured_options
         )
-        tokens = [part.strip() for part in str(raw or "").split(" ") if part.strip()]
-        if tokens:
-            self.robocopy_include_subdirs_checkbox.setChecked(False)
-            self.robocopy_mirror_checkbox.setChecked(False)
-            if self._kind == "move":
-                self.robocopy_move_checkbox.setChecked(False)
-            self.robocopy_restartable_checkbox.setChecked(False)
-            self.robocopy_backup_mode_checkbox.setChecked(False)
-            self.robocopy_list_only_checkbox.setChecked(False)
-            self.robocopy_quiet_checkbox.setChecked(False)
-            self.robocopy_retry_spin.setValue(0)
-            self.robocopy_wait_spin.setValue(0)
-            self.robocopy_multithread_checkbox.setChecked(False)
-            self.robocopy_multithread_spin.setValue(8)
-            self.robocopy_extra_args_edit.setText("")
-        quiet_flags = {"/NFL", "/NDL", "/NJH", "/NJS", "/NP"}
-        seen_quiet: set[str] = set()
-        extra_tokens: list[str] = []
-        for token in tokens:
-            upper = token.upper()
-            if upper == "/E":
-                self.robocopy_include_subdirs_checkbox.setChecked(True)
-                continue
-            if upper == "/MIR":
-                self.robocopy_mirror_checkbox.setChecked(True)
-                continue
-            if upper == "/MOVE":
-                if self._kind == "move":
-                    self.robocopy_move_checkbox.setChecked(True)
-                continue
-            if upper == "/Z":
-                self.robocopy_restartable_checkbox.setChecked(True)
-                continue
-            if upper == "/B":
-                self.robocopy_backup_mode_checkbox.setChecked(True)
-                continue
-            if upper == "/L":
-                self.robocopy_list_only_checkbox.setChecked(True)
-                continue
-            if upper.startswith("/R:"):
-                try:
-                    self.robocopy_retry_spin.setValue(max(0, int(upper.split(":", 1)[1])))
-                except ValueError:
-                    extra_tokens.append(token)
-                continue
-            if upper.startswith("/W:"):
-                try:
-                    self.robocopy_wait_spin.setValue(max(0, int(upper.split(":", 1)[1])))
-                except ValueError:
-                    extra_tokens.append(token)
-                continue
-            if upper.startswith("/MT:"):
-                try:
-                    value = int(upper.split(":", 1)[1])
-                except ValueError:
-                    extra_tokens.append(token)
-                    continue
-                self.robocopy_multithread_checkbox.setChecked(True)
-                self.robocopy_multithread_spin.setValue(max(1, min(128, value)))
-                continue
-            if upper in quiet_flags:
-                seen_quiet.add(upper)
-                continue
-            extra_tokens.append(token)
-        self.robocopy_quiet_checkbox.setChecked(seen_quiet == quiet_flags)
-        self.robocopy_extra_args_edit.setText(" ".join(extra_tokens))
+        self._apply_teracopy_structured_options_to_controls(
+            self._preferences.teracopy_structured_options
+        )
+        self._apply_unstoppable_structured_options_to_controls(
+            self._preferences.unstoppable_structured_options
+        )
+        self._apply_external_copymove_structured_options_to_controls(
+            self._preferences.external_copymove_structured_options
+        )
+
+    def _apply_robocopy_structured_options_to_controls(
+        self, options: RobocopyBackendOptions
+    ) -> None:
+        self.robocopy_include_subdirs_checkbox.setChecked(options.include_subdirectories)
+        self.robocopy_mirror_checkbox.setChecked(options.mirror_target)
+        if self._kind == "move":
+            self.robocopy_move_checkbox.setChecked(options.move_files_for_move)
+        self.robocopy_restartable_checkbox.setChecked(options.restartable_mode)
+        self.robocopy_backup_mode_checkbox.setChecked(options.backup_mode)
+        self.robocopy_list_only_checkbox.setChecked(options.list_only)
+        self.robocopy_quiet_checkbox.setChecked(options.suppress_logs)
+        self.robocopy_retry_spin.setValue(int(options.retry_count))
+        self.robocopy_wait_spin.setValue(int(options.wait_seconds))
+        self.robocopy_multithread_checkbox.setChecked(options.use_multithreading)
+        self.robocopy_multithread_spin.setValue(int(options.multithread_count))
+        self.robocopy_extra_args_edit.setText(str(options.extra_args or "").strip())
+
+    def _apply_teracopy_structured_options_to_controls(
+        self, options: TeraCopyBackendOptions
+    ) -> None:
+        self.teracopy_close_checkbox.setChecked(options.close_on_finish)
+        self.teracopy_no_close_checkbox.setChecked(options.keep_open)
+        self._set_combo_data(self.teracopy_conflict_combo, options.conflict_mode)
+        extra_parts: list[str] = []
+        if options.verify_after_copy:
+            extra_parts.append("/Verify")
+        if options.no_sound:
+            extra_parts.append("/NoSound")
+        extra = str(options.extra_args or "").strip()
+        if extra:
+            extra_parts.append(extra)
+        self.teracopy_extra_args_edit.setText(" ".join(extra_parts))
+
+    def _apply_unstoppable_structured_options_to_controls(
+        self, options: UnstoppableBackendOptions
+    ) -> None:
+        self.unstoppable_defaults_checkbox.setChecked(options.use_defaults)
+        self.unstoppable_keep_attributes_checkbox.setChecked(options.keep_attributes)
+        self.unstoppable_keep_owner_checkbox.setChecked(options.keep_owner)
+        self.unstoppable_keep_time_checkbox.setChecked(options.keep_time)
+        self.unstoppable_overwrite_checkbox.setChecked(options.overwrite_existing)
+        self.unstoppable_include_subdirs_checkbox.setChecked(options.include_subfolders)
+        self.unstoppable_resume_checkbox.setChecked(options.recover_and_resume)
+        self.unstoppable_copy_newer_checkbox.setChecked(options.copy_newer_only)
+        self.unstoppable_skip_damaged_checkbox.setChecked(options.skip_damaged)
+        self.unstoppable_undamaged_first_checkbox.setChecked(options.undamaged_first)
+        self.unstoppable_overwrite_readonly_checkbox.setChecked(
+            options.overwrite_readonly
+        )
+        self.unstoppable_copy_empty_folders_checkbox.setChecked(
+            options.copy_empty_folders
+        )
+        self.unstoppable_eta_checkbox.setChecked(options.show_eta)
+        self.unstoppable_power_down_checkbox.setChecked(options.power_down_when_done)
+        self.unstoppable_extra_args_edit.setText(str(options.extra_args or "").strip())
+
+    def _apply_external_copymove_structured_options_to_controls(
+        self, options: ExternalCopyMoveBackendOptions
+    ) -> None:
+        self.external_extra_args_edit.setText(str(options.extra_args or "").strip())
 
     def _sync_backend_options_visibility(self) -> None:
         backend = str(self.backend_combo.currentData() or "")
