@@ -931,23 +931,6 @@ class OpsSettingsDomain(SettingsRegistry):
         )
 
     @property
-    def teracopy_args_template(self) -> str:
-        return normalize.normalize_text(
-            self._storage.value(
-                self.TERACOPY_ARGS_TEMPLATE_KEY,
-                self.DEFAULT_TERACOPY_ARGS_TEMPLATE,
-            ),
-            fallback=self.DEFAULT_TERACOPY_ARGS_TEMPLATE,
-        )
-
-    @teracopy_args_template.setter
-    def teracopy_args_template(self, value: str) -> None:
-        self._storage.set_value(
-            self.TERACOPY_ARGS_TEMPLATE_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_TERACOPY_ARGS_TEMPLATE),
-        )
-
-    @property
     def unstoppable_executable(self) -> str:
         return normalize.normalize_text(
             self._storage.value(
@@ -965,23 +948,6 @@ class OpsSettingsDomain(SettingsRegistry):
         )
 
     @property
-    def unstoppable_args_template(self) -> str:
-        return normalize.normalize_text(
-            self._storage.value(
-                self.UNSTOPPABLE_ARGS_TEMPLATE_KEY,
-                self.DEFAULT_UNSTOPPABLE_ARGS_TEMPLATE,
-            ),
-            fallback=self.DEFAULT_UNSTOPPABLE_ARGS_TEMPLATE,
-        )
-
-    @unstoppable_args_template.setter
-    def unstoppable_args_template(self, value: str) -> None:
-        self._storage.set_value(
-            self.UNSTOPPABLE_ARGS_TEMPLATE_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_UNSTOPPABLE_ARGS_TEMPLATE),
-        )
-
-    @property
     def generic_copymove_executable(self) -> str:
         return normalize.normalize_text(
             self._storage.value(
@@ -996,23 +962,6 @@ class OpsSettingsDomain(SettingsRegistry):
         self._storage.set_value(
             self.GENERIC_COPYMOVE_EXECUTABLE_KEY,
             normalize.normalize_text(value, fallback=self.DEFAULT_GENERIC_COPYMOVE_EXECUTABLE),
-        )
-
-    @property
-    def generic_copymove_args_template(self) -> str:
-        return normalize.normalize_text(
-            self._storage.value(
-                self.GENERIC_COPYMOVE_ARGS_TEMPLATE_KEY,
-                self.DEFAULT_GENERIC_COPYMOVE_ARGS_TEMPLATE,
-            ),
-            fallback=self.DEFAULT_GENERIC_COPYMOVE_ARGS_TEMPLATE,
-        )
-
-    @generic_copymove_args_template.setter
-    def generic_copymove_args_template(self, value: str) -> None:
-        self._storage.set_value(
-            self.GENERIC_COPYMOVE_ARGS_TEMPLATE_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_GENERIC_COPYMOVE_ARGS_TEMPLATE),
         )
 
     @property
@@ -1050,56 +999,18 @@ class OpsSettingsDomain(SettingsRegistry):
         )
 
     @property
-    def robocopy_copy_args(self) -> str:
-        return normalize.normalize_text(
-            self._storage.value(
-                self.ROBOCOPY_COPY_ARGS_KEY,
-                self.DEFAULT_ROBOCOPY_COPY_ARGS,
-            ),
-            fallback=self.DEFAULT_ROBOCOPY_COPY_ARGS,
-        )
-
-    @robocopy_copy_args.setter
-    def robocopy_copy_args(self, value: str) -> None:
-        self._storage.set_value(
-            self.ROBOCOPY_COPY_ARGS_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_ROBOCOPY_COPY_ARGS),
-        )
-
-    @property
-    def robocopy_move_args(self) -> str:
-        return normalize.normalize_text(
-            self._storage.value(
-                self.ROBOCOPY_MOVE_ARGS_KEY,
-                self.DEFAULT_ROBOCOPY_MOVE_ARGS,
-            ),
-            fallback=self.DEFAULT_ROBOCOPY_MOVE_ARGS,
-        )
-
-    @robocopy_move_args.setter
-    def robocopy_move_args(self, value: str) -> None:
-        self._storage.set_value(
-            self.ROBOCOPY_MOVE_ARGS_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_ROBOCOPY_MOVE_ARGS),
-        )
-
-    @property
     def robocopy_structured_options(self) -> RobocopyBackendOptions:
         return normalize.normalize_robocopy_structured_options(
             self._storage.get_json(
                 self.ROBOCOPY_STRUCTURED_OPTIONS_KEY,
                 self.DEFAULT_ROBOCOPY_STRUCTURED_OPTIONS,
-            ),
-            legacy_copy_args=self.robocopy_copy_args,
-            legacy_move_args=self.robocopy_move_args,
+            )
         )
 
     @robocopy_structured_options.setter
     def robocopy_structured_options(self, value: RobocopyBackendOptions) -> None:
         normalized = normalize.normalize_robocopy_structured_options(
             robocopy_options_payload(value),
-            legacy_copy_args=self.robocopy_copy_args,
-            legacy_move_args=self.robocopy_move_args,
         )
         self._storage.set_json(
             self.ROBOCOPY_STRUCTURED_OPTIONS_KEY,
@@ -1112,15 +1023,13 @@ class OpsSettingsDomain(SettingsRegistry):
             self._storage.get_json(
                 self.TERACOPY_STRUCTURED_OPTIONS_KEY,
                 self.DEFAULT_TERACOPY_STRUCTURED_OPTIONS,
-            ),
-            legacy_args_template=self.teracopy_args_template,
+            )
         )
 
     @teracopy_structured_options.setter
     def teracopy_structured_options(self, value: TeraCopyBackendOptions) -> None:
         normalized = normalize.normalize_teracopy_structured_options(
             teracopy_options_payload(value),
-            legacy_args_template=self.teracopy_args_template,
         )
         self._storage.set_json(
             self.TERACOPY_STRUCTURED_OPTIONS_KEY,
@@ -1133,15 +1042,13 @@ class OpsSettingsDomain(SettingsRegistry):
             self._storage.get_json(
                 self.UNSTOPPABLE_STRUCTURED_OPTIONS_KEY,
                 self.DEFAULT_UNSTOPPABLE_STRUCTURED_OPTIONS,
-            ),
-            legacy_args_template=self.unstoppable_args_template,
+            )
         )
 
     @unstoppable_structured_options.setter
     def unstoppable_structured_options(self, value: UnstoppableBackendOptions) -> None:
         normalized = normalize.normalize_unstoppable_structured_options(
             unstoppable_options_payload(value),
-            legacy_args_template=self.unstoppable_args_template,
         )
         self._storage.set_json(
             self.UNSTOPPABLE_STRUCTURED_OPTIONS_KEY,
@@ -1154,8 +1061,7 @@ class OpsSettingsDomain(SettingsRegistry):
             self._storage.get_json(
                 self.EXTERNAL_COPYMOVE_STRUCTURED_OPTIONS_KEY,
                 self.DEFAULT_EXTERNAL_COPYMOVE_STRUCTURED_OPTIONS,
-            ),
-            legacy_args_template=self.generic_copymove_args_template,
+            )
         )
 
     @external_copymove_structured_options.setter
@@ -1164,7 +1070,6 @@ class OpsSettingsDomain(SettingsRegistry):
     ) -> None:
         normalized = normalize.normalize_external_copymove_structured_options(
             external_copymove_options_payload(value),
-            legacy_args_template=self.generic_copymove_args_template,
         )
         self._storage.set_json(
             self.EXTERNAL_COPYMOVE_STRUCTURED_OPTIONS_KEY,

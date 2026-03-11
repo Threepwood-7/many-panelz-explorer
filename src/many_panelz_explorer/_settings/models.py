@@ -12,18 +12,13 @@ from many_panelz_explorer._operations.types import (
     BACKEND_PYTHON,
     BACKEND_RECYCLE_BIN,
     DEFAULT_CMD_DELETE_ARGS,
-    DEFAULT_GENERIC_COPYMOVE_ARGS,
     DEFAULT_GENERIC_COPYMOVE_EXE,
     DEFAULT_GENERIC_DELETE_ARGS,
     DEFAULT_GENERIC_DELETE_EXE,
     DEFAULT_POWERSHELL_DELETE_ARGS,
     DEFAULT_RIMRAF_ARGS,
     DEFAULT_RIMRAF_EXE,
-    DEFAULT_ROBOCOPY_COPY_ARGS,
-    DEFAULT_ROBOCOPY_MOVE_ARGS,
-    DEFAULT_TERA_COPY_ARGS,
     DEFAULT_TERA_COPY_EXE,
-    DEFAULT_UNSTOPPABLE_ARGS,
     DEFAULT_UNSTOPPABLE_EXE,
     DISPATCH_MODE_QUEUE,
     QUEUE_VIEW_DOCK,
@@ -89,15 +84,10 @@ class UiPreferences:
     use_extended_paths_external_delete: bool = False
     script_editor_executable: str = ""
     teracopy_executable: str = DEFAULT_TERA_COPY_EXE
-    teracopy_args_template: str = DEFAULT_TERA_COPY_ARGS
     unstoppable_executable: str = DEFAULT_UNSTOPPABLE_EXE
-    unstoppable_args_template: str = DEFAULT_UNSTOPPABLE_ARGS
     generic_copymove_executable: str = DEFAULT_GENERIC_COPYMOVE_EXE
-    generic_copymove_args_template: str = DEFAULT_GENERIC_COPYMOVE_ARGS
     generic_delete_executable: str = DEFAULT_GENERIC_DELETE_EXE
     generic_delete_args_template: str = DEFAULT_GENERIC_DELETE_ARGS
-    robocopy_copy_args: str = DEFAULT_ROBOCOPY_COPY_ARGS
-    robocopy_move_args: str = DEFAULT_ROBOCOPY_MOVE_ARGS
     robocopy_structured_options: RobocopyBackendOptions = field(
         default_factory=RobocopyBackendOptions
     )

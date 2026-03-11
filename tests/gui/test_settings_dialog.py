@@ -55,11 +55,6 @@ class _ControllerSettingsStub:
             teracopy_options=preferences.teracopy_structured_options,
             unstoppable_options=preferences.unstoppable_structured_options,
             external_copymove_options=preferences.external_copymove_structured_options,
-            raw_robocopy_copy_args=preferences.robocopy_copy_args,
-            raw_robocopy_move_args=preferences.robocopy_move_args,
-            raw_teracopy_args_template=preferences.teracopy_args_template,
-            raw_unstoppable_args_template=preferences.unstoppable_args_template,
-            raw_external_copymove_args_template=preferences.generic_copymove_args_template,
         )
         self.operation_queue_manager.set_preferences(
             resolve_companion_tool_paths(
@@ -198,15 +193,10 @@ def _tracked_keys() -> list[str]:
         SettingsManager.USE_EXTENDED_PATHS_EXTERNAL_DELETE_KEY,
         SettingsManager.SCRIPT_EDITOR_EXECUTABLE_KEY,
         SettingsManager.TERACOPY_EXECUTABLE_KEY,
-        SettingsManager.TERACOPY_ARGS_TEMPLATE_KEY,
         SettingsManager.UNSTOPPABLE_EXECUTABLE_KEY,
-        SettingsManager.UNSTOPPABLE_ARGS_TEMPLATE_KEY,
         SettingsManager.GENERIC_COPYMOVE_EXECUTABLE_KEY,
-        SettingsManager.GENERIC_COPYMOVE_ARGS_TEMPLATE_KEY,
         SettingsManager.GENERIC_DELETE_EXECUTABLE_KEY,
         SettingsManager.GENERIC_DELETE_ARGS_TEMPLATE_KEY,
-        SettingsManager.ROBOCOPY_COPY_ARGS_KEY,
-        SettingsManager.ROBOCOPY_MOVE_ARGS_KEY,
         SettingsManager.ROBOCOPY_STRUCTURED_OPTIONS_KEY,
         SettingsManager.TERACOPY_STRUCTURED_OPTIONS_KEY,
         SettingsManager.UNSTOPPABLE_STRUCTURED_OPTIONS_KEY,
@@ -646,7 +636,7 @@ def test_settings_dialog_has_larger_minimum_size_and_operations_controls(
     qtbot.waitUntil(lambda: dialog._rows_by_key["teracopy_command"].isVisible())
     assert dialog.teracopy_executable_edit.isVisible() is True
     assert dialog.teracopy_struct_conflict_combo.isVisible() is True
-    assert dialog.teracopy_args_edit.isVisible() is False
+    assert hasattr(dialog, "teracopy_args_edit") is False
 
 
 def test_settings_dialog_has_left_section_tree_and_search_sync(
@@ -1113,7 +1103,7 @@ def test_settings_dialog_rich_backend_controls_update_preview_and_persist(
     assert persisted.robocopy_structured_options.suppress_logs is True
 
 
-def test_settings_dialog_advanced_raw_override_persists_for_teracopy(
+def test_settings_dialog_removes_legacy_raw_backend_controls(
     qtbot, tmp_path: Path, isolated_settings: SettingsManager
 ) -> None:
     roots_provider = _test_roots_provider(tmp_path)
@@ -1122,7 +1112,7 @@ def test_settings_dialog_advanced_raw_override_persists_for_teracopy(
         qtbot,
         controller=controller,
         settings=isolated_settings,
-        window_id="settings-teracopy-raw-override",
+        window_id="settings-no-legacy-raw-fields",
         roots_provider=roots_provider,
     )
     dialog = SettingsDialog(controller=controller, parent=window)
@@ -1132,12 +1122,9 @@ def test_settings_dialog_advanced_raw_override_persists_for_teracopy(
     backend_commands_item = dialog._subsection_tree_items["operations/backend_commands"]
     dialog._section_tree.setCurrentItem(backend_commands_item)
     qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is backend_commands_item)
-    dialog.teracopy_use_raw_override_checkbox.setChecked(True)
-    dialog.teracopy_args_edit.setText("{operation} {sources} {target} /RawOnly")
-    qtbot.waitUntil(lambda: "Effective args template" in dialog.teracopy_preview_label.text())
-    assert "/RawOnly" in dialog.teracopy_preview_label.text()
-
-    dialog._apply_and_commit()
-    persisted = isolated_settings.ui_preferences()
-    assert persisted.teracopy_structured_options.use_raw_override is True
-    assert persisted.teracopy_args_template.endswith("/RawOnly")
+    assert hasattr(dialog, "teracopy_use_raw_override_checkbox") is False
+    assert hasattr(dialog, "teracopy_args_edit") is False
+    assert hasattr(dialog, "robocopy_copy_args_edit") is False
+    assert hasattr(dialog, "robocopy_move_args_edit") is False
+    assert hasattr(dialog, "unstoppable_args_edit") is False
+    assert hasattr(dialog, "generic_copymove_args_edit") is False

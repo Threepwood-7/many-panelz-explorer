@@ -264,11 +264,6 @@ class AppController:
             teracopy_options=preferences.teracopy_structured_options,
             unstoppable_options=preferences.unstoppable_structured_options,
             external_copymove_options=preferences.external_copymove_structured_options,
-            raw_robocopy_copy_args=preferences.robocopy_copy_args,
-            raw_robocopy_move_args=preferences.robocopy_move_args,
-            raw_teracopy_args_template=preferences.teracopy_args_template,
-            raw_unstoppable_args_template=preferences.unstoppable_args_template,
-            raw_external_copymove_args_template=preferences.generic_copymove_args_template,
         )
         return OperationExecutionPreferences(
             default_copy_move_backend=preferences.default_copy_move_backend,

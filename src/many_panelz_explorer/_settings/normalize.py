@@ -227,47 +227,19 @@ def normalize_status_storage_label_template(raw: Any, *, fallback: str) -> str:
     return template
 
 
-def normalize_robocopy_structured_options(
-    raw: Any,
-    *,
-    legacy_copy_args: str,
-    legacy_move_args: str,
-) -> RobocopyBackendOptions:
-    return normalize_robocopy_options(
-        raw,
-        legacy_copy_args=legacy_copy_args,
-        legacy_move_args=legacy_move_args,
-    )
+def normalize_robocopy_structured_options(raw: Any) -> RobocopyBackendOptions:
+    return normalize_robocopy_options(raw)
 
 
-def normalize_teracopy_structured_options(
-    raw: Any,
-    *,
-    legacy_args_template: str,
-) -> TeraCopyBackendOptions:
-    return normalize_teracopy_options(
-        raw,
-        legacy_args_template=legacy_args_template,
-    )
+def normalize_teracopy_structured_options(raw: Any) -> TeraCopyBackendOptions:
+    return normalize_teracopy_options(raw)
 
 
-def normalize_unstoppable_structured_options(
-    raw: Any,
-    *,
-    legacy_args_template: str,
-) -> UnstoppableBackendOptions:
-    return normalize_unstoppable_options(
-        raw,
-        legacy_args_template=legacy_args_template,
-    )
+def normalize_unstoppable_structured_options(raw: Any) -> UnstoppableBackendOptions:
+    return normalize_unstoppable_options(raw)
 
 
 def normalize_external_copymove_structured_options(
     raw: Any,
-    *,
-    legacy_args_template: str,
 ) -> ExternalCopyMoveBackendOptions:
-    return normalize_external_copymove_options(
-        raw,
-        legacy_args_template=legacy_args_template,
-    )
+    return normalize_external_copymove_options(raw)

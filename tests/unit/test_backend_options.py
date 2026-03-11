@@ -37,70 +37,61 @@ def test_structured_normalization_clamps_ranges() -> None:
             "wait_seconds": -3,
             "multithread_count": 0,
             "use_multithreading": True,
-        },
-        legacy_copy_args="/E /R:0 /W:0",
-        legacy_move_args="/E /MOVE /R:0 /W:0",
+        }
     )
     assert options.retry_count == 1_000_000
     assert options.wait_seconds == 0
     assert options.multithread_count == 1
 
 
-def test_resolve_precedence_prefers_raw_when_override_enabled() -> None:
+def test_resolve_uses_structured_generation_only() -> None:
     resolved = resolve_copy_move_backend_args(
-        robocopy_options=RobocopyBackendOptions(use_raw_override=True),
-        teracopy_options=TeraCopyBackendOptions(
-            use_raw_override=True,
-            close_on_finish=True,
+        robocopy_options=RobocopyBackendOptions(
+            retry_count=5,
+            wait_seconds=2,
+            extra_args="/XO",
         ),
-        unstoppable_options=UnstoppableBackendOptions(use_raw_override=False),
-        external_copymove_options=ExternalCopyMoveBackendOptions(use_raw_override=True),
-        raw_robocopy_copy_args="/RAW-COPY",
-        raw_robocopy_move_args="/RAW-MOVE",
-        raw_teracopy_args_template="{operation} {sources} {target} /RawOnly",
-        raw_unstoppable_args_template="{operation} {sources} {target} +x",
-        raw_external_copymove_args_template="{sources} {target} --raw",
+        teracopy_options=TeraCopyBackendOptions(
+            close_on_finish=True,
+            extra_args="/NoHistory",
+        ),
+        unstoppable_options=UnstoppableBackendOptions(extra_args="+x"),
+        external_copymove_options=ExternalCopyMoveBackendOptions(
+            include_operation_token=False,
+            include_sources=True,
+            include_target=True,
+            extra_args="--raw",
+        ),
     )
 
-    assert resolved.robocopy_copy_args == "/RAW-COPY"
-    assert resolved.robocopy_move_args == "/RAW-MOVE"
-    assert resolved.teracopy_args_template.endswith("/RawOnly")
-    assert "/Close" not in resolved.teracopy_args_template
-    assert "+x" not in resolved.unstoppable_args_template
+    assert "/R:5" in resolved.robocopy_copy_args
+    assert "/W:2" in resolved.robocopy_copy_args
+    assert "/XO" in resolved.robocopy_copy_args
+    assert "/MOVE" not in resolved.robocopy_copy_args
+    assert "/Close" in resolved.teracopy_args_template
+    assert "/NoHistory" in resolved.teracopy_args_template
+    assert "+x" in resolved.unstoppable_args_template
     assert resolved.external_copymove_args_template.endswith("--raw")
 
 
-def test_invalid_payloads_fallback_to_legacy_hydration() -> None:
+def test_invalid_payloads_fallback_to_defaults() -> None:
     robocopy = normalize_robocopy_options(
         "invalid",
-        legacy_copy_args="/E /R:3 /W:4 /MT:16 /XO",
-        legacy_move_args="/E /MOVE /R:3 /W:4 /MT:16 /XO",
     )
     teracopy = normalize_teracopy_options(
         "invalid",
-        legacy_args_template="{operation} {sources} {target} /Close /SkipAll /NoSound",
     )
     unstoppable = normalize_unstoppable_options(
         "invalid",
-        legacy_args_template="{operation} {sources} {target} +a -o +s",
     )
     external = normalize_external_copymove_options(
         "invalid",
-        legacy_args_template="{sources} {target} --flag",
     )
 
-    assert robocopy.retry_count == 3
-    assert robocopy.wait_seconds == 4
-    assert robocopy.use_multithreading is True
-    assert robocopy.extra_args == "/XO"
-    assert teracopy.close_on_finish is True
-    assert teracopy.conflict_mode == "/SkipAll"
-    assert unstoppable.keep_attributes is True
-    assert unstoppable.keep_owner is False
-    assert unstoppable.skip_damaged is True
-    assert external.include_operation_token is False
-    assert external.include_sources is True
-    assert external.include_target is True
+    assert robocopy == RobocopyBackendOptions()
+    assert teracopy == TeraCopyBackendOptions()
+    assert unstoppable == UnstoppableBackendOptions()
+    assert external == ExternalCopyMoveBackendOptions()
 
 
 def test_backend_generators_include_structured_values() -> None:

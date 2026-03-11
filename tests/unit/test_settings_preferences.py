@@ -66,15 +66,10 @@ def _tracked_keys() -> list[str]:
         SettingsManager.USE_EXTENDED_PATHS_EXTERNAL_DELETE_KEY,
         SettingsManager.SCRIPT_EDITOR_EXECUTABLE_KEY,
         SettingsManager.TERACOPY_EXECUTABLE_KEY,
-        SettingsManager.TERACOPY_ARGS_TEMPLATE_KEY,
         SettingsManager.UNSTOPPABLE_EXECUTABLE_KEY,
-        SettingsManager.UNSTOPPABLE_ARGS_TEMPLATE_KEY,
         SettingsManager.GENERIC_COPYMOVE_EXECUTABLE_KEY,
-        SettingsManager.GENERIC_COPYMOVE_ARGS_TEMPLATE_KEY,
         SettingsManager.GENERIC_DELETE_EXECUTABLE_KEY,
         SettingsManager.GENERIC_DELETE_ARGS_TEMPLATE_KEY,
-        SettingsManager.ROBOCOPY_COPY_ARGS_KEY,
-        SettingsManager.ROBOCOPY_MOVE_ARGS_KEY,
         SettingsManager.ROBOCOPY_STRUCTURED_OPTIONS_KEY,
         SettingsManager.TERACOPY_STRUCTURED_OPTIONS_KEY,
         SettingsManager.UNSTOPPABLE_STRUCTURED_OPTIONS_KEY,
@@ -163,15 +158,10 @@ def test_ui_preferences_round_trip() -> None:
             use_extended_paths_external_delete=True,
             script_editor_executable=r"C:\tools\my-editor.exe",
             teracopy_executable="TeraCopy.exe",
-            teracopy_args_template="{operation} {sources} {target} /close",
             unstoppable_executable="UnstoppableCopier.exe",
-            unstoppable_args_template="{operation} {sources} {target}",
             generic_copymove_executable="my-copy.exe",
-            generic_copymove_args_template="{operation} {sources} {target}",
             generic_delete_executable="my-del.exe",
             generic_delete_args_template="{operation} {sources}",
-            robocopy_copy_args="/E /R:0 /W:0",
-            robocopy_move_args="/E /MOVE /R:0 /W:0",
             robocopy_structured_options=RobocopyBackendOptions(
                 include_subdirectories=True,
                 mirror_target=False,
@@ -185,7 +175,6 @@ def test_ui_preferences_round_trip() -> None:
                 use_multithreading=True,
                 multithread_count=16,
                 extra_args="/XO",
-                use_raw_override=False,
             ),
             teracopy_structured_options=TeraCopyBackendOptions(
                 close_on_finish=True,
@@ -194,7 +183,6 @@ def test_ui_preferences_round_trip() -> None:
                 no_sound=True,
                 conflict_mode="/SkipAll",
                 extra_args="/NoHistory",
-                use_raw_override=True,
             ),
             unstoppable_structured_options=UnstoppableBackendOptions(
                 use_defaults=True,
@@ -212,14 +200,12 @@ def test_ui_preferences_round_trip() -> None:
                 show_eta=True,
                 power_down_when_done=False,
                 extra_args="+x",
-                use_raw_override=True,
             ),
             external_copymove_structured_options=ExternalCopyMoveBackendOptions(
                 include_operation_token=True,
                 include_sources=True,
                 include_target=False,
                 extra_args="--mode fast",
-                use_raw_override=False,
             ),
             cmd_delete_args="/Q",
             powershell_delete_args="-Force",
@@ -292,15 +278,10 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.set_value(SettingsManager.USE_EXTENDED_PATHS_EXTERNAL_DELETE_KEY, "")
         settings.remove(SettingsManager.SCRIPT_EDITOR_EXECUTABLE_KEY)
         settings.remove(SettingsManager.TERACOPY_EXECUTABLE_KEY)
-        settings.remove(SettingsManager.TERACOPY_ARGS_TEMPLATE_KEY)
         settings.remove(SettingsManager.UNSTOPPABLE_EXECUTABLE_KEY)
-        settings.remove(SettingsManager.UNSTOPPABLE_ARGS_TEMPLATE_KEY)
         settings.remove(SettingsManager.GENERIC_COPYMOVE_EXECUTABLE_KEY)
-        settings.remove(SettingsManager.GENERIC_COPYMOVE_ARGS_TEMPLATE_KEY)
         settings.remove(SettingsManager.GENERIC_DELETE_EXECUTABLE_KEY)
         settings.remove(SettingsManager.GENERIC_DELETE_ARGS_TEMPLATE_KEY)
-        settings.remove(SettingsManager.ROBOCOPY_COPY_ARGS_KEY)
-        settings.remove(SettingsManager.ROBOCOPY_MOVE_ARGS_KEY)
         settings.set_value(SettingsManager.ROBOCOPY_STRUCTURED_OPTIONS_KEY, "bad")
         settings.set_value(SettingsManager.TERACOPY_STRUCTURED_OPTIONS_KEY, "bad")
         settings.set_value(SettingsManager.UNSTOPPABLE_STRUCTURED_OPTIONS_KEY, "bad")

@@ -38,7 +38,6 @@ class RobocopyBackendOptions:
     use_multithreading: bool = False
     multithread_count: int = 8
     extra_args: str = ""
-    use_raw_override: bool = False
 
 
 @dataclass(frozen=True)
@@ -49,7 +48,6 @@ class TeraCopyBackendOptions:
     no_sound: bool = False
     conflict_mode: str = ""
     extra_args: str = ""
-    use_raw_override: bool = False
 
 
 @dataclass(frozen=True)
@@ -69,7 +67,6 @@ class UnstoppableBackendOptions:
     show_eta: bool = False
     power_down_when_done: bool = False
     extra_args: str = ""
-    use_raw_override: bool = False
 
 
 @dataclass(frozen=True)
@@ -78,7 +75,6 @@ class ExternalCopyMoveBackendOptions:
     include_sources: bool = True
     include_target: bool = True
     extra_args: str = ""
-    use_raw_override: bool = False
 
 
 @dataclass(frozen=True)
@@ -149,127 +145,9 @@ def external_copymove_options_payload(
     return asdict(options)
 
 
-def _parse_robocopy_args_line(raw: str, *, is_move: bool) -> RobocopyBackendOptions:
-    defaults = RobocopyBackendOptions(move_files_for_move=is_move)
-    tokens = split_args(raw)
-    if not tokens:
-        return defaults
-    options = replace(
-        defaults,
-        include_subdirectories=False,
-        mirror_target=False,
-        move_files_for_move=False,
-        restartable_mode=False,
-        backup_mode=False,
-        list_only=False,
-        suppress_logs=False,
-        retry_count=0,
-        wait_seconds=0,
-        use_multithreading=False,
-        multithread_count=8,
-        extra_args="",
-    )
-    quiet_flags = {"/NFL", "/NDL", "/NJH", "/NJS", "/NP"}
-    seen_quiet: set[str] = set()
-    extra_tokens: list[str] = []
-
-    for token in tokens:
-        upper = token.upper()
-        if upper == "/E":
-            options = replace(options, include_subdirectories=True)
-            continue
-        if upper == "/MIR":
-            options = replace(options, mirror_target=True)
-            continue
-        if upper == "/MOVE":
-            options = replace(options, move_files_for_move=True)
-            continue
-        if upper == "/Z":
-            options = replace(options, restartable_mode=True)
-            continue
-        if upper == "/B":
-            options = replace(options, backup_mode=True)
-            continue
-        if upper == "/L":
-            options = replace(options, list_only=True)
-            continue
-        if upper.startswith("/R:"):
-            options = replace(
-                options,
-                retry_count=_normalize_int(
-                    upper.split(":", 1)[1],
-                    fallback=0,
-                    minimum=0,
-                    maximum=1_000_000,
-                ),
-            )
-            continue
-        if upper.startswith("/W:"):
-            options = replace(
-                options,
-                wait_seconds=_normalize_int(
-                    upper.split(":", 1)[1],
-                    fallback=0,
-                    minimum=0,
-                    maximum=3_600,
-                ),
-            )
-            continue
-        if upper.startswith("/MT:"):
-            options = replace(
-                options,
-                use_multithreading=True,
-                multithread_count=_normalize_int(
-                    upper.split(":", 1)[1],
-                    fallback=8,
-                    minimum=1,
-                    maximum=128,
-                ),
-            )
-            continue
-        if upper == "/MT":
-            options = replace(options, use_multithreading=True)
-            continue
-        if upper in quiet_flags:
-            seen_quiet.add(upper)
-            continue
-        extra_tokens.append(token)
-
-    options = replace(
-        options,
-        suppress_logs=seen_quiet == quiet_flags,
-        extra_args=" ".join(extra_tokens).strip(),
-    )
-    return options
-
-
-def hydrate_robocopy_options_from_legacy(
-    copy_args: str,
-    move_args: str,
-) -> RobocopyBackendOptions:
-    copy_options = _parse_robocopy_args_line(copy_args, is_move=False)
-    move_options = _parse_robocopy_args_line(move_args, is_move=True)
-    if str(copy_args or "").strip():
-        merged = copy_options
-    elif str(move_args or "").strip():
-        merged = replace(move_options, move_files_for_move=move_options.move_files_for_move)
-    else:
-        merged = RobocopyBackendOptions()
-
-    merged = replace(merged, move_files_for_move=move_options.move_files_for_move)
-    if not merged.extra_args and move_options.extra_args:
-        merged = replace(merged, extra_args=move_options.extra_args)
-    return merged
-
-
-def normalize_robocopy_options(
-    raw: Any,
-    *,
-    legacy_copy_args: str,
-    legacy_move_args: str,
-) -> RobocopyBackendOptions:
+def normalize_robocopy_options(raw: Any) -> RobocopyBackendOptions:
     if not isinstance(raw, dict):
-        return hydrate_robocopy_options_from_legacy(legacy_copy_args, legacy_move_args)
+        return RobocopyBackendOptions()
     options = RobocopyBackendOptions(
         include_subdirectories=_normalize_bool(
             raw.get("include_subdirectories"),
@@ -322,50 +200,15 @@ def normalize_robocopy_options(
             maximum=128,
         ),
         extra_args=_normalize_text(raw.get("extra_args"), fallback=""),
-        use_raw_override=_normalize_bool(raw.get("use_raw_override"), fallback=False),
     )
-    return options
-
-
-def hydrate_teracopy_options_from_legacy(raw_template: str) -> TeraCopyBackendOptions:
-    options = TeraCopyBackendOptions()
-    tokens = split_args(raw_template)
-    if not tokens:
+    if options.use_multithreading:
         return options
-    extra_tokens: list[str] = []
-    for token in tokens:
-        upper = token.upper()
-        if token in {"{operation}", "{sources}", "{target}"}:
-            continue
-        if upper == "/CLOSE":
-            options = replace(options, close_on_finish=True)
-            continue
-        if upper == "/NOCLOSE":
-            options = replace(options, keep_open=True)
-            continue
-        if upper == "/VERIFY":
-            options = replace(options, verify_after_copy=True)
-            continue
-        if upper == "/NOSOUND":
-            options = replace(options, no_sound=True)
-            continue
-        if upper in _TERACOPY_CONFLICT_OPTIONS:
-            options = replace(options, conflict_mode=token)
-            continue
-        extra_tokens.append(token)
-    options = replace(options, extra_args=" ".join(extra_tokens).strip())
-    if options.close_on_finish and options.keep_open:
-        options = replace(options, keep_open=False)
-    return options
+    return replace(options, multithread_count=RobocopyBackendOptions.multithread_count)
 
 
-def normalize_teracopy_options(
-    raw: Any,
-    *,
-    legacy_args_template: str,
-) -> TeraCopyBackendOptions:
+def normalize_teracopy_options(raw: Any) -> TeraCopyBackendOptions:
     if not isinstance(raw, dict):
-        return hydrate_teracopy_options_from_legacy(legacy_args_template)
+        return TeraCopyBackendOptions()
     options = TeraCopyBackendOptions(
         close_on_finish=_normalize_bool(
             raw.get("close_on_finish"),
@@ -385,59 +228,15 @@ def normalize_teracopy_options(
         ),
         conflict_mode=_normalize_conflict_mode(raw.get("conflict_mode")),
         extra_args=_normalize_text(raw.get("extra_args"), fallback=""),
-        use_raw_override=_normalize_bool(raw.get("use_raw_override"), fallback=False),
     )
     if options.close_on_finish and options.keep_open:
         options = replace(options, keep_open=False)
     return options
 
 
-def hydrate_unstoppable_options_from_legacy(raw_template: str) -> UnstoppableBackendOptions:
-    options = UnstoppableBackendOptions()
-    tokens = split_args(raw_template)
-    if not tokens:
-        return options
-    extra_tokens: list[str] = []
-    flag_map = {
-        "d": "use_defaults",
-        "a": "keep_attributes",
-        "o": "keep_owner",
-        "t": "keep_time",
-        "e": "overwrite_existing",
-        "i": "include_subfolders",
-        "r": "recover_and_resume",
-        "c": "copy_newer_only",
-        "s": "skip_damaged",
-        "u": "undamaged_first",
-        "w": "overwrite_readonly",
-        "f": "copy_empty_folders",
-        "z": "show_eta",
-        "p": "power_down_when_done",
-    }
-    for token in tokens:
-        if token in {"{operation}", "{sources}", "{target}"}:
-            continue
-        if len(token) == 2 and token[0] in {"+", "-"} and token[1].lower() in flag_map:
-            field = flag_map[token[1].lower()]
-            options = replace(options, **{field: token[0] == "+"})
-            continue
-        if token.startswith("+dm") or token.startswith("+d") or token.startswith("-d"):
-            if token.startswith("-d"):
-                options = replace(options, use_defaults=False)
-            elif token.startswith("+d"):
-                options = replace(options, use_defaults=True)
-            continue
-        extra_tokens.append(token)
-    return replace(options, extra_args=" ".join(extra_tokens).strip())
-
-
-def normalize_unstoppable_options(
-    raw: Any,
-    *,
-    legacy_args_template: str,
-) -> UnstoppableBackendOptions:
+def normalize_unstoppable_options(raw: Any) -> UnstoppableBackendOptions:
     if not isinstance(raw, dict):
-        return hydrate_unstoppable_options_from_legacy(legacy_args_template)
+        return UnstoppableBackendOptions()
     return UnstoppableBackendOptions(
         use_defaults=_normalize_bool(
             raw.get("use_defaults"),
@@ -496,51 +295,12 @@ def normalize_unstoppable_options(
             fallback=UnstoppableBackendOptions.power_down_when_done,
         ),
         extra_args=_normalize_text(raw.get("extra_args"), fallback=""),
-        use_raw_override=_normalize_bool(raw.get("use_raw_override"), fallback=False),
     )
 
 
-def hydrate_external_copymove_options_from_legacy(
-    raw_template: str,
-) -> ExternalCopyMoveBackendOptions:
-    options = ExternalCopyMoveBackendOptions()
-    tokens = split_args(raw_template)
-    if not tokens:
-        return options
-    include_operation = False
-    include_sources = False
-    include_target = False
-    extra_tokens: list[str] = []
-    for token in tokens:
-        if token == "{operation}":
-            include_operation = True
-            continue
-        if token in {"{source}", "{sources}"}:
-            include_sources = True
-            continue
-        if token == "{target}":
-            include_target = True
-            continue
-        extra_tokens.append(token)
-    if not include_operation and not include_sources and not include_target:
-        include_operation = True
-        include_sources = True
-        include_target = True
-    return ExternalCopyMoveBackendOptions(
-        include_operation_token=include_operation,
-        include_sources=include_sources,
-        include_target=include_target,
-        extra_args=" ".join(extra_tokens).strip(),
-    )
-
-
-def normalize_external_copymove_options(
-    raw: Any,
-    *,
-    legacy_args_template: str,
-) -> ExternalCopyMoveBackendOptions:
+def normalize_external_copymove_options(raw: Any) -> ExternalCopyMoveBackendOptions:
     if not isinstance(raw, dict):
-        return hydrate_external_copymove_options_from_legacy(legacy_args_template)
+        return ExternalCopyMoveBackendOptions()
     options = ExternalCopyMoveBackendOptions(
         include_operation_token=_normalize_bool(
             raw.get("include_operation_token"),
@@ -555,7 +315,6 @@ def normalize_external_copymove_options(
             fallback=ExternalCopyMoveBackendOptions.include_target,
         ),
         extra_args=_normalize_text(raw.get("extra_args"), fallback=""),
-        use_raw_override=_normalize_bool(raw.get("use_raw_override"), fallback=False),
     )
     if not options.include_operation_token and not options.include_sources and not options.include_target:
         return replace(
@@ -657,12 +416,8 @@ def generate_external_copymove_args_template(
     return " ".join(parts).strip()
 
 
-def _resolve_value(*, raw_value: str, generated_value: str, use_raw_override: bool, fallback: str) -> str:
+def _resolve_value(*, generated_value: str, fallback: str) -> str:
     generated = _normalize_text(generated_value, fallback="")
-    if use_raw_override:
-        raw = _normalize_text(raw_value, fallback="")
-        if raw:
-            return raw
     if generated:
         return generated
     return fallback
@@ -674,11 +429,6 @@ def resolve_copy_move_backend_args(
     teracopy_options: TeraCopyBackendOptions,
     unstoppable_options: UnstoppableBackendOptions,
     external_copymove_options: ExternalCopyMoveBackendOptions,
-    raw_robocopy_copy_args: str,
-    raw_robocopy_move_args: str,
-    raw_teracopy_args_template: str,
-    raw_unstoppable_args_template: str,
-    raw_external_copymove_args_template: str,
 ) -> ResolvedCopyMoveBackendArgs:
     generated_robocopy_copy = generate_robocopy_args(robocopy_options, kind="copy")
     generated_robocopy_move = generate_robocopy_args(robocopy_options, kind="move")
@@ -690,33 +440,23 @@ def resolve_copy_move_backend_args(
 
     return ResolvedCopyMoveBackendArgs(
         robocopy_copy_args=_resolve_value(
-            raw_value=raw_robocopy_copy_args,
             generated_value=generated_robocopy_copy,
-            use_raw_override=robocopy_options.use_raw_override,
             fallback=DEFAULT_ROBOCOPY_COPY_ARGS,
         ),
         robocopy_move_args=_resolve_value(
-            raw_value=raw_robocopy_move_args,
             generated_value=generated_robocopy_move,
-            use_raw_override=robocopy_options.use_raw_override,
             fallback=DEFAULT_ROBOCOPY_MOVE_ARGS,
         ),
         teracopy_args_template=_resolve_value(
-            raw_value=raw_teracopy_args_template,
             generated_value=generated_teracopy,
-            use_raw_override=teracopy_options.use_raw_override,
             fallback=DEFAULT_TERA_COPY_ARGS,
         ),
         unstoppable_args_template=_resolve_value(
-            raw_value=raw_unstoppable_args_template,
             generated_value=generated_unstoppable,
-            use_raw_override=unstoppable_options.use_raw_override,
             fallback=DEFAULT_UNSTOPPABLE_ARGS,
         ),
         external_copymove_args_template=_resolve_value(
-            raw_value=raw_external_copymove_args_template,
             generated_value=generated_external,
-            use_raw_override=external_copymove_options.use_raw_override,
             fallback=DEFAULT_GENERIC_COPYMOVE_ARGS,
         ),
     )
