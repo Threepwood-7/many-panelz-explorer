@@ -124,7 +124,24 @@ def test_backend_generators_include_structured_values() -> None:
     assert "/Close" in teracopy
     assert "/Verify" in teracopy
     assert "/RenameAll" in teracopy
-    assert "-d" in unstoppable
     assert "-o" in unstoppable
     assert "+s" in unstoppable
+    assert "+a" not in unstoppable
+    assert "+o" not in unstoppable
+    assert "+t" not in unstoppable
+    assert "-d" not in unstoppable
     assert external == "{sources} --fast"
+
+
+def test_unstoppable_generator_groups_switches_and_omits_defaults() -> None:
+    unstoppable = generate_unstoppable_args_template(
+        UnstoppableBackendOptions(
+            use_defaults=False,
+            keep_owner=False,
+            skip_damaged=True,
+            power_down_when_done=True,
+            extra_args="+x",
+        )
+    )
+
+    assert unstoppable == "+ps -o +x"

@@ -23,7 +23,6 @@ _TERACOPY_CONFLICT_OPTIONS = {
     "/RENAMEDESTINATION",
 }
 
-
 @dataclass(frozen=True)
 class RobocopyBackendOptions:
     include_subdirectories: bool = True
@@ -67,6 +66,23 @@ class UnstoppableBackendOptions:
     show_eta: bool = False
     power_down_when_done: bool = False
     extra_args: str = ""
+
+
+_UNSTOPPABLE_DEFAULT_FLAG_STATES: tuple[tuple[str, bool, str], ...] = (
+    ("a", UnstoppableBackendOptions.keep_attributes, "keep_attributes"),
+    ("o", UnstoppableBackendOptions.keep_owner, "keep_owner"),
+    ("t", UnstoppableBackendOptions.keep_time, "keep_time"),
+    ("e", UnstoppableBackendOptions.overwrite_existing, "overwrite_existing"),
+    ("r", UnstoppableBackendOptions.recover_and_resume, "recover_and_resume"),
+    ("p", UnstoppableBackendOptions.power_down_when_done, "power_down_when_done"),
+    ("c", UnstoppableBackendOptions.copy_newer_only, "copy_newer_only"),
+    ("s", UnstoppableBackendOptions.skip_damaged, "skip_damaged"),
+    ("u", UnstoppableBackendOptions.undamaged_first, "undamaged_first"),
+    ("i", UnstoppableBackendOptions.include_subfolders, "include_subfolders"),
+    ("w", UnstoppableBackendOptions.overwrite_readonly, "overwrite_readonly"),
+    ("f", UnstoppableBackendOptions.copy_empty_folders, "copy_empty_folders"),
+    ("z", UnstoppableBackendOptions.show_eta, "show_eta"),
+)
 
 
 @dataclass(frozen=True)
@@ -371,27 +387,32 @@ def generate_teracopy_args_template(options: TeraCopyBackendOptions) -> str:
     return " ".join(parts).strip()
 
 
+def generate_unstoppable_switch_args(
+    options: UnstoppableBackendOptions,
+) -> list[str]:
+    plus_letters: list[str] = []
+    minus_letters: list[str] = []
+    if options.use_defaults:
+        plus_letters.append("d")
+    for code, default_enabled, attr_name in _UNSTOPPABLE_DEFAULT_FLAG_STATES:
+        enabled = bool(getattr(options, attr_name))
+        if enabled == bool(default_enabled):
+            continue
+        if enabled:
+            plus_letters.append(code)
+        else:
+            minus_letters.append(code)
+
+    tokens: list[str] = []
+    if plus_letters:
+        tokens.append(f"+{''.join(plus_letters)}")
+    if minus_letters:
+        tokens.append(f"-{''.join(minus_letters)}")
+    return tokens
+
+
 def generate_unstoppable_args_template(options: UnstoppableBackendOptions) -> str:
-    parts = ["{operation}", "{sources}", "{target}"]
-    if not options.use_defaults:
-        parts.append("-d")
-    flag_map = [
-        ("a", options.keep_attributes),
-        ("o", options.keep_owner),
-        ("t", options.keep_time),
-        ("e", options.overwrite_existing),
-        ("i", options.include_subfolders),
-        ("r", options.recover_and_resume),
-        ("c", options.copy_newer_only),
-        ("s", options.skip_damaged),
-        ("u", options.undamaged_first),
-        ("w", options.overwrite_readonly),
-        ("f", options.copy_empty_folders),
-        ("z", options.show_eta),
-        ("p", options.power_down_when_done),
-    ]
-    for code, enabled in flag_map:
-        parts.append(f"+{code}" if enabled else f"-{code}")
+    parts = generate_unstoppable_switch_args(options)
     extra = _normalize_text(options.extra_args, fallback="")
     if extra:
         parts.extend(split_args(extra))

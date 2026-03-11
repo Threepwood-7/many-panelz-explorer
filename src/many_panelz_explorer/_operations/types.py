@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 OperationKind = Literal["copy", "move", "delete"]
@@ -63,7 +65,7 @@ BACKEND_EXTERNAL_DELETE: DeleteBackendId = "external_delete"
 DEFAULT_TERA_COPY_EXE = "TeraCopy.exe"
 DEFAULT_TERA_COPY_ARGS = "{operation} {sources} {target}"
 DEFAULT_UNSTOPPABLE_EXE = "UnstoppableCopier.exe"
-DEFAULT_UNSTOPPABLE_ARGS = "{operation} {sources} {target}"
+DEFAULT_UNSTOPPABLE_ARGS = ""
 DEFAULT_GENERIC_COPYMOVE_EXE = ""
 DEFAULT_GENERIC_COPYMOVE_ARGS = "{operation} {sources} {target}"
 DEFAULT_GENERIC_DELETE_EXE = ""

@@ -19,6 +19,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .._operations.backend_options import (
+    UnstoppableBackendOptions,
+    generate_unstoppable_switch_args,
+)
 from .._operations.types import OperationRequest
 
 if TYPE_CHECKING:
@@ -28,7 +32,6 @@ if TYPE_CHECKING:
         ExternalCopyMoveBackendOptions,
         RobocopyBackendOptions,
         TeraCopyBackendOptions,
-        UnstoppableBackendOptions,
     )
     from .._settings.models import UiPreferences
 
@@ -465,27 +468,24 @@ class OperationDialog(QDialog):
         return " ".join(parts).strip()
 
     def _collect_unstoppable_extra_args(self) -> str:
-        flags: list[str] = []
-        flag_map = [
-            ("d", self.unstoppable_defaults_checkbox.isChecked()),
-            ("a", self.unstoppable_keep_attributes_checkbox.isChecked()),
-            ("o", self.unstoppable_keep_owner_checkbox.isChecked()),
-            ("t", self.unstoppable_keep_time_checkbox.isChecked()),
-            ("e", self.unstoppable_overwrite_checkbox.isChecked()),
-            ("i", self.unstoppable_include_subdirs_checkbox.isChecked()),
-            ("r", self.unstoppable_resume_checkbox.isChecked()),
-            ("c", self.unstoppable_copy_newer_checkbox.isChecked()),
-            ("s", self.unstoppable_skip_damaged_checkbox.isChecked()),
-            ("u", self.unstoppable_undamaged_first_checkbox.isChecked()),
-            ("w", self.unstoppable_overwrite_readonly_checkbox.isChecked()),
-            ("f", self.unstoppable_copy_empty_folders_checkbox.isChecked()),
-            ("z", self.unstoppable_eta_checkbox.isChecked()),
-            ("p", self.unstoppable_power_down_checkbox.isChecked()),
-        ]
-        for code, enabled in flag_map:
-            flags.append(f"+{code}" if enabled else f"-{code}")
-        flags.append("+m" if self._kind == "move" else "-m")
-
+        flags = generate_unstoppable_switch_args(
+            UnstoppableBackendOptions(
+                use_defaults=self.unstoppable_defaults_checkbox.isChecked(),
+                keep_attributes=self.unstoppable_keep_attributes_checkbox.isChecked(),
+                keep_owner=self.unstoppable_keep_owner_checkbox.isChecked(),
+                keep_time=self.unstoppable_keep_time_checkbox.isChecked(),
+                overwrite_existing=self.unstoppable_overwrite_checkbox.isChecked(),
+                include_subfolders=self.unstoppable_include_subdirs_checkbox.isChecked(),
+                recover_and_resume=self.unstoppable_resume_checkbox.isChecked(),
+                copy_newer_only=self.unstoppable_copy_newer_checkbox.isChecked(),
+                skip_damaged=self.unstoppable_skip_damaged_checkbox.isChecked(),
+                undamaged_first=self.unstoppable_undamaged_first_checkbox.isChecked(),
+                overwrite_readonly=self.unstoppable_overwrite_readonly_checkbox.isChecked(),
+                copy_empty_folders=self.unstoppable_copy_empty_folders_checkbox.isChecked(),
+                show_eta=self.unstoppable_eta_checkbox.isChecked(),
+                power_down_when_done=self.unstoppable_power_down_checkbox.isChecked(),
+            )
+        )
         extra = self.unstoppable_extra_args_edit.text().strip()
         if extra:
             flags.extend(part for part in extra.split(" ") if part.strip())

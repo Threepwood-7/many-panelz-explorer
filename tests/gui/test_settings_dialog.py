@@ -1131,15 +1131,20 @@ def test_settings_dialog_rich_backend_controls_update_preview_and_persist(
     dialog.robocopy_struct_retry_spin.setValue(5)
     dialog.robocopy_struct_wait_spin.setValue(7)
     dialog.robocopy_struct_quiet_checkbox.setChecked(True)
+    dialog.unstoppable_struct_power_down_checkbox.setChecked(True)
     qtbot.waitUntil(lambda: "/R:5" in dialog.robocopy_preview_label.text())
     assert "/W:7" in dialog.robocopy_preview_label.text()
     assert "/NFL" in dialog.robocopy_preview_label.text()
+    assert "{job_file}" in dialog.unstoppable_preview_label.text()
+    assert "{sources}" not in dialog.unstoppable_preview_label.text()
+    assert "{target}" not in dialog.unstoppable_preview_label.text()
 
     dialog._apply_and_commit()
     persisted = isolated_settings.ui_preferences()
     assert persisted.robocopy_structured_options.retry_count == 5
     assert persisted.robocopy_structured_options.wait_seconds == 7
     assert persisted.robocopy_structured_options.suppress_logs is True
+    assert persisted.unstoppable_structured_options.power_down_when_done is True
 
 
 def test_settings_dialog_removes_legacy_raw_backend_controls(

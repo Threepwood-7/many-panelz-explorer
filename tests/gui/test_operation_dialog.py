@@ -141,12 +141,12 @@ def test_unstoppable_collects_documented_switches(qtbot) -> None:
     options = dialog._collect_backend_options()
     extra = options.get("extra_args", "")
     tokens = set(extra.split())
-    assert "+d" in tokens
-    assert "+a" in tokens
     assert "-o" in tokens
-    assert "+s" in tokens
-    assert "-m" in tokens
+    assert "+ds" in tokens
     assert "+x" in tokens
+    assert "+d" not in tokens
+    assert "+a" not in tokens
+    assert "-m" not in tokens
 
 
 def test_operation_dialog_loads_structured_backend_preferences(qtbot) -> None:

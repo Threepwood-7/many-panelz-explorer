@@ -5,7 +5,12 @@ from pathlib import Path
 
 from send2trash import send2trash
 
-from .artifacts import expand_template, run_script, write_script
+from .artifacts import (
+    expand_template,
+    run_script,
+    write_script,
+    write_unstoppable_job_file,
+)
 from .path_helpers import (
     display_path,
     normalize_path,
@@ -31,6 +36,7 @@ from .types import (
     BACKEND_TERACOPY,
     BACKEND_UNSTOPPABLE,
     COMPANION_TOOL_NOT_FOUND,
+    DEFAULT_UNSTOPPABLE_ARGS,
     OperationArtifacts,
     OperationExecutionPreferences,
     OperationRequest,
@@ -252,10 +258,39 @@ def execute_external_command(
 def _unstoppable_operation_token(kind: str) -> str:
     normalized = str(kind or "").strip().lower()
     if normalized == "move":
-        # +d: load program defaults, +m: move mode.
-        return "+dm"
-    # +d: load program defaults for predictable copy behavior.
-    return "+d"
+        return "+m"
+    return ""
+
+
+def _merge_unstoppable_switch_args(
+    *args_groups: str,
+) -> str:
+    plus_letters: list[str] = []
+    minus_letters: list[str] = []
+    other_tokens: list[str] = []
+
+    def _append_unique(target: list[str], value: str) -> None:
+        for letter in value:
+            if letter and letter not in target:
+                target.append(letter)
+
+    for raw_group in args_groups:
+        for token in split_args(raw_group):
+            if token.startswith("+") and len(token) > 1:
+                _append_unique(plus_letters, token[1:])
+                continue
+            if token.startswith("-") and len(token) > 1:
+                _append_unique(minus_letters, token[1:])
+                continue
+            other_tokens.append(token)
+
+    parts: list[str] = []
+    if plus_letters:
+        parts.append(f"+{''.join(plus_letters)}")
+    if minus_letters:
+        parts.append(f"-{''.join(minus_letters)}")
+    parts.extend(other_tokens)
+    return " ".join(parts).strip()
 
 
 def execute_unstoppable(
@@ -287,21 +322,33 @@ def execute_unstoppable(
     )
     operation_token = _unstoppable_operation_token(request.kind)
     extra_args = str(request.backend_options.get("extra_args", "")).strip()
+    job_file_path = write_unstoppable_job_file(
+        artifacts,
+        sources=tuple(normalize_path(source) for source in request.sources),
+        target_dir=request.target_dir,
+        use_extended_paths=use_extended_paths,
+    )
 
-    script_lines: list[str] = []
-    for source in request.sources:
-        expanded = expand_template(
-            preferences.unstoppable_args_template,
-            kind=operation_token,
-            sources=(normalize_path(source),),
-            target_dir=request.target_dir,
-            use_extended_paths=use_extended_paths,
-        )
-        if extra_args:
-            expanded = f"{expanded} {extra_args}".strip()
-        cmd_line = " ".join([quoted(exe), expanded]).strip()
-        script_lines.append(cmd_line)
-        script_lines.append("if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%")
+    args_template = str(preferences.unstoppable_args_template or "").strip()
+    if not args_template:
+        args_template = DEFAULT_UNSTOPPABLE_ARGS
+    expanded = expand_template(
+        args_template,
+        kind=operation_token,
+        sources=(),
+        target_dir=None,
+        use_extended_paths=use_extended_paths,
+    )
+    expanded = _merge_unstoppable_switch_args(
+        expanded,
+        operation_token,
+        extra_args,
+    )
+    expanded = " ".join(
+        part for part in [expanded.strip(), quoted(str(job_file_path))] if part
+    ).strip()
+    cmd_line = " ".join([quoted(exe), expanded]).strip()
+    script_lines = [cmd_line, "if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%"]
 
     script_path = write_script(artifacts, script_lines)
     return run_script(

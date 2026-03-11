@@ -66,6 +66,28 @@ def write_script(artifacts: OperationArtifacts, script_lines: list[str]) -> Path
     return script_path
 
 
+def write_unstoppable_job_file(
+    artifacts: OperationArtifacts,
+    *,
+    sources: tuple[Path, ...],
+    target_dir: Path,
+    use_extended_paths: bool,
+) -> Path:
+    job_path = artifacts.job_dir / "unstoppable.ucb"
+    lines = [
+        (
+            f"{to_windows_arg_path(source, use_extended_paths=use_extended_paths)}"
+            f"|{to_windows_arg_path(target_dir, use_extended_paths=use_extended_paths)}"
+        )
+        for source in sources
+    ]
+    payload = "\r\n".join(lines)
+    if payload:
+        payload = f"{payload}\r\n"
+    job_path.write_text(payload, encoding="utf-16", newline="")
+    return job_path
+
+
 def run_script(
     script_path: Path,
     log_path: Path,

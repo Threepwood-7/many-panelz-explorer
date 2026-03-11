@@ -2142,9 +2142,9 @@ class SettingsDialog(QDialog):
         )
         self.unstoppable_preview_label.setText(
             "Generated args template: "
-            f"{generated_unstoppable or '(empty)'}\n"
+            f"{(generated_unstoppable + ' {job_file}') if generated_unstoppable else '{job_file}'}\n"
             "Effective args template: "
-            f"{resolved.unstoppable_args_template}"
+            f"{(resolved.unstoppable_args_template + ' {job_file}') if resolved.unstoppable_args_template else '{job_file}'}"
         )
         self.external_copymove_preview_label.setText(
             "Generated args template: "
