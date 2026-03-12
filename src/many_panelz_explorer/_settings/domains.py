@@ -730,17 +730,13 @@ class OpsSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
     @property
     def default_editor_executable(self) -> str:
-        value = normalize.normalize_windows_path_text(
+        return normalize.normalize_windows_path_text(
             self._storage.value(
                 self.DEFAULT_EDITOR_EXECUTABLE_KEY,
                 self.DEFAULT_DEFAULT_EDITOR_EXECUTABLE,
             ),
             fallback=self.DEFAULT_DEFAULT_EDITOR_EXECUTABLE,
         )
-        if value:
-            return value
-        # Backward compatibility with earlier script-only editor setting.
-        return self.script_editor_executable
 
     @default_editor_executable.setter
     def default_editor_executable(self, value: str) -> None:

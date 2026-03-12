@@ -510,6 +510,26 @@ def test_ui_preferences_font_size_clamps_to_range() -> None:
         _restore(settings, before)
 
 
+def test_default_editor_executable_ignores_old_script_editor_key() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    try:
+        settings.remove(SettingsManager.DEFAULT_EDITOR_EXECUTABLE_KEY)
+        settings.set_value(
+            SettingsManager.SCRIPT_EDITOR_EXECUTABLE_KEY,
+            r"C:\tools\legacy-script-editor.exe",
+        )
+
+        loaded = settings.ui_preferences()
+
+        assert (
+            loaded.default_editor_executable
+            == SettingsManager.DEFAULT_DEFAULT_EDITOR_EXECUTABLE
+        )
+    finally:
+        _restore(settings, before)
+
+
 def test_ui_preferences_intensity_clamps_to_range() -> None:
     settings = SettingsManager()
     before = _snapshot(settings)
