@@ -240,13 +240,19 @@ class AppController:
         window.setCentralWidget(panel)
         window.resize(900, 380)
         window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
-        window.destroyed.connect(
-            lambda _obj=None, w=window: self._on_queue_window_destroyed(w)
-        )
+        window.destroyed.connect(self._queue_window_destroyed_callback(window))
         self._queue_windows.append(window)
         window.show()
         window.raise_()
         return window
+
+    def _queue_window_destroyed_callback(
+        self, window: QMainWindow
+    ) -> "Callable[[object | None], None]":
+        def _handle_destroyed(_obj: object | None = None) -> None:
+            self._on_queue_window_destroyed(window)
+
+        return _handle_destroyed
 
     def _on_queue_window_destroyed(self, window: QMainWindow) -> None:
         if window in self._queue_windows:

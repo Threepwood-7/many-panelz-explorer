@@ -29,7 +29,11 @@ class PropertiesDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Properties")
         data = compute_properties(path)
-        formatter = size_formatter or (lambda value: f"{int(value):,}")
+        formatter: Callable[[int], str]
+        if size_formatter is not None:
+            formatter = size_formatter
+        else:
+            formatter = lambda value: f"{int(value):,}"
         try:
             size_value = int(data["size_bytes"])
         except (KeyError, TypeError, ValueError):

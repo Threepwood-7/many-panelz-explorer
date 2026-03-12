@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 from .types import (
     BACKEND_CMD_DELETE,
     BACKEND_EXPLORER,
@@ -32,7 +34,7 @@ def normalize_operation_kind(
 ) -> OperationKind:
     normalized = str(value).strip().lower()
     if normalized in {"copy", "move", "delete"}:
-        return normalized
+        return cast("OperationKind", normalized)
     return fallback
 
 
@@ -47,7 +49,7 @@ def normalize_dispatch_mode(
         DISPATCH_MODE_LAUNCH_NO_WAIT,
         DISPATCH_MODE_RUN_WAIT,
     }:
-        return normalized
+        return cast("OperationDispatchMode", normalized)
     return fallback
 
 
@@ -58,7 +60,7 @@ def normalize_conflict_policy(
 ) -> OperationConflictPolicy:
     normalized = str(value).strip().lower()
     if normalized in {"overwrite", "skip", "rename", "cancel"}:
-        return normalized
+        return cast("OperationConflictPolicy", normalized)
     return fallback
 
 

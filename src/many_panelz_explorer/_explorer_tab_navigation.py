@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import QDir, QItemSelectionModel, QObject, QTimer, Signal
 from PySide6.QtWidgets import QAbstractItemView, QTreeView, QWidget
@@ -146,12 +146,13 @@ class ExplorerTabNavigation(QObject):
         self.set_path(self._history[self._history_index], push_history=False)
 
     def _apply_model_filters(self) -> None:
-        filters = QDir.Filter.AllEntries | QDir.Filter.AllDirs | QDir.Filter.NoDot
+        filters: Any = QDir.Filter.AllEntries | QDir.Filter.AllDirs | QDir.Filter.NoDot
         if not self._show_parent_entry:
             filters |= QDir.Filter.NoDotDot
         if self._show_hidden:
             filters |= QDir.Filter.Hidden | QDir.Filter.System
-        self._model.setFilter(filters)
+        model_any: Any = self._model
+        model_any.setFilter(filters)
         if self._inline_filter_text:
             self._model.setNameFilterDisables(False)
             self._model.setNameFilters([f"*{self._inline_filter_text}*"])
