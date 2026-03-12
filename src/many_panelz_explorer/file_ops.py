@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Literal
 
 from send2trash import send2trash
 
+from ._paths import is_explicit_path_text, normalize_windows_path_text, resolve_executable_path
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
@@ -103,17 +105,14 @@ def configure_open_routing(
 
 
 def _resolve_launch_executable(executable: str) -> str:
-    text = str(executable or "").strip()
+    text = normalize_windows_path_text(str(executable or "").strip())
     if not text:
         return ""
-    candidate = Path(text)
-    if candidate.is_absolute() or ("\\" in text or "/" in text):
-        if candidate.exists():
-            return str(candidate)
+    resolved = resolve_executable_path(text)
+    if resolved is not None:
+        return str(resolved)
+    if is_explicit_path_text(text):
         raise RuntimeError(f"Configured executable does not exist: {text}")
-    which_hit = shutil.which(text)
-    if which_hit:
-        return str(Path(which_hit))
     raise RuntimeError(f"Configured executable is unavailable: {text}")
 
 

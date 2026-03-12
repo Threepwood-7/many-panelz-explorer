@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from ._paths import coerce_path, dedup_paths, display_root, is_windows, path_key
 from threep_commons.platform.windows.storage import (
     WindowsStorageUsage,
     list_windows_storage_roots,
@@ -27,40 +28,6 @@ class StorageUsageEntry:
     usage_ratio: float
 
 
-def _is_windows() -> bool:
-    return os.name == "nt"
-
-
-def _dedup_roots(paths: list[Path], *, require_existing: bool) -> list[Path]:
-    deduped: list[Path] = []
-    seen: set[str] = set()
-
-    for path in paths:
-        normalized = os.path.normcase(os.path.normpath(str(path)))
-        if normalized in seen:
-            continue
-        if require_existing and (not path.exists() or not path.is_dir()):
-            continue
-        seen.add(normalized)
-        deduped.append(path)
-
-    return deduped
-
-
-def _strip_windows_long_path(path: str) -> str:
-    return path[4:] if path.startswith("\\\\?\\") else path
-
-
-def _display_root(path: Path) -> str:
-    normalized = os.path.normcase(os.path.normpath(str(path)))
-    drive = path.drive
-    if drive:
-        drive_root = os.path.normcase(os.path.normpath(f"{drive}{os.sep}"))
-        if normalized == drive_root:
-            return drive
-    return _strip_windows_long_path(str(path))
-
-
 def _monotonic_seconds() -> float:
     return time.monotonic()
 
@@ -81,7 +48,7 @@ def _list_windows_roots_cached() -> list[Path]:
         if now - cached_at < WINDOWS_ROOTS_CACHE_TTL_SECONDS:
             return list(cached_roots)
 
-    roots = _dedup_roots(list_windows_storage_roots(), require_existing=False)
+    roots = dedup_paths(list_windows_storage_roots(), require_existing=False)
     _windows_roots_cache = (now, roots)
     return list(roots)
 
@@ -94,11 +61,11 @@ def _list_non_windows_roots(current_path: Path | None) -> list[Path]:
             candidates.append(Path(anchor))
     if not candidates:
         candidates.append(Path(os.sep))
-    return _dedup_roots(candidates, require_existing=True)
+    return dedup_paths(candidates, require_existing=True)
 
 
 def list_roots_for_navigation(current_path: Path | None = None) -> list[Path]:
-    if _is_windows():
+    if is_windows():
         return _list_windows_roots_cached()
     return _list_non_windows_roots(current_path)
 
@@ -110,8 +77,8 @@ def _storage_usage_entry_from_raw(raw: WindowsStorageUsage) -> StorageUsageEntry
     used = max(0, min(int(raw.bytes_used), total))
     ratio = float(used / total) if total else 0.0
     return StorageUsageEntry(
-        root_path=Path(raw.root_path),
-        display_root=_display_root(Path(raw.root_path)),
+        root_path=coerce_path(raw.root_path),
+        display_root=display_root(raw.root_path),
         volume_label=str(raw.volume_label or "").strip(),
         bytes_used=used,
         bytes_total=total,
@@ -125,7 +92,7 @@ def list_storage_usage_entries(
     _ = current_path
     global _storage_usage_cache
 
-    if not _is_windows():
+    if not is_windows():
         return []
 
     now = _monotonic_seconds()
@@ -141,7 +108,7 @@ def list_storage_usage_entries(
         entry = _storage_usage_entry_from_raw(raw)
         if entry is None:
             continue
-        key = os.path.normcase(os.path.normpath(str(entry.root_path)))
+        key = path_key(entry.root_path)
         if key in seen:
             continue
         seen.add(key)

@@ -11,7 +11,6 @@ pytest.importorskip("pytestqt")
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
 
-import many_panelz_explorer.panel_widget as panel_widget_module
 from many_panelz_explorer.panel_widget import PanelWidget
 from many_panelz_explorer import widget_naming
 
@@ -104,6 +103,28 @@ def test_panel_toolbar_address_updates_on_tab_switch(qtbot, tmp_path: Path) -> N
     panel.address_edit.returnPressed.emit()
     assert panel.current_tab() is not None
     assert panel.current_tab().navigation.path == root
+
+
+def test_address_submission_normalizes_windows_slashes(qtbot, tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    child = root / "child"
+    child.mkdir(parents=True)
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    tab = panel.add_tab(root)
+
+    panel.address_edit.setText(str(child).replace("\\", "/"))
+    panel.address_edit.returnPressed.emit()
+
+    qtbot.waitUntil(lambda: tab.navigation.path == child)
+    assert panel.address_edit.text() == str(child)
 
 
 def test_address_autocomplete_shows_live_directory_suggestions(
@@ -395,13 +416,11 @@ def test_toolbar_visibility_flags_are_independent(qtbot, tmp_path: Path) -> None
 
 
 def test_windows_mountpoint_uses_last_segment_and_tooltip(
-    qtbot, tmp_path: Path, monkeypatch
+    qtbot, tmp_path: Path
 ) -> None:
     root = tmp_path / "root"
     mount = root / "M" / "HDD01"
     mount.mkdir(parents=True)
-
-    monkeypatch.setattr(panel_widget_module, "_is_windows", lambda: True)
 
     panel = PanelWidget(
         panel_id=1,
@@ -417,9 +436,7 @@ def test_windows_mountpoint_uses_last_segment_and_tooltip(
     assert panel.root_buttons[0].text() == "HDD01"
     assert panel.root_buttons[0].toolTip().endswith("HDD01")
     assert panel.root_combo.itemText(0) == "HDD01"
-    assert str(
-        panel.root_combo.itemData(0, panel_widget_module.Qt.ToolTipRole)
-    ).endswith("HDD01")
+    assert str(panel.root_combo.itemData(0, Qt.ToolTipRole)).endswith("HDD01")
 
 
 def test_alt_down_shows_current_tab_history_menu(qtbot, tmp_path: Path) -> None:

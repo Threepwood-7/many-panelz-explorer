@@ -26,7 +26,7 @@ from .types import (
 
 
 def common_tool_search_dirs() -> list[Path]:
-    dirs: list[Path] = [Path("C:/bin")]
+    dirs: list[Path] = [Path(r"C:\bin")]
     env_vars = [
         "ProgramFiles",
         "ProgramFiles(x86)",

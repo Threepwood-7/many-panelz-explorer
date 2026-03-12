@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ._paths import display_path_text
 from . import widget_naming
 from .explorer_tab import ExplorerTab
 from .mounts import list_roots_for_navigation
@@ -50,12 +51,8 @@ if TYPE_CHECKING:
 def _tab_label(path: Path) -> str:
     anchor = path.anchor
     if anchor and path == Path(anchor):
-        return str(path)
-    return path.name or str(path)
-
-
-def _strip_windows_long_path(path: str) -> str:
-    return path[4:] if path.startswith("\\\\?\\") else path
+        return display_path_text(path)
+    return path.name or display_path_text(path)
 
 
 def _is_hidden_or_system_entry(entry: os.DirEntry[str]) -> bool:
@@ -70,44 +67,6 @@ def _is_hidden_or_system_entry(entry: os.DirEntry[str]) -> bool:
     hidden = hidden or bool(attributes & 0x2)
     system = bool(attributes & 0x4)
     return hidden or system
-
-
-def _is_path_under_root(path: Path, root: Path) -> bool:
-    norm_path = os.path.normcase(os.path.normpath(str(path)))
-    norm_root = os.path.normcase(os.path.normpath(str(root)))
-    if norm_path == norm_root:
-        return True
-    prefix = norm_root if norm_root.endswith(os.sep) else f"{norm_root}{os.sep}"
-    return norm_path.startswith(prefix)
-
-
-def _path_key(path: Path) -> str:
-    return os.path.normcase(os.path.normpath(str(path)))
-
-
-def _is_windows() -> bool:
-    return os.name == "nt"
-
-
-def _is_drive_root(path: Path) -> bool:
-    drive = path.drive
-    if drive:
-        drive_root = Path(f"{drive}{os.sep}")
-        if os.path.normcase(os.path.normpath(str(path))) == os.path.normcase(
-            os.path.normpath(str(drive_root))
-        ):
-            return True
-    return False
-
-
-def _root_display_text(path: Path) -> str:
-    if _is_drive_root(path):
-        return path.drive
-    if _is_windows():
-        name = path.name.strip()
-        if name:
-            return name
-    return _strip_windows_long_path(str(path))
 
 
 class _FocusWatcher(QObject):
@@ -248,10 +207,6 @@ class PanelWidget(QWidget):
         )
         self._navigation_coordinator = PanelNavigationCoordinator(
             self,
-            root_display_text=_root_display_text,
-            strip_windows_long_path=_strip_windows_long_path,
-            is_path_under_root=_is_path_under_root,
-            path_key=_path_key,
             is_hidden_or_system_entry=_is_hidden_or_system_entry,
         )
 
@@ -910,7 +865,7 @@ class PanelWidget(QWidget):
         self.root_btn.setEnabled(True)
         self.refresh_btn.setEnabled(True)
         self._set_address_text_programmatically(
-            _strip_windows_long_path(str(tab.navigation.path))
+            display_path_text(tab.navigation.path)
         )
         self._rebuild_root_controls(tab.navigation.path)
         if self.filter_edit.isVisible():

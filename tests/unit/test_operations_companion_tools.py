@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from many_panelz_explorer._operations.discovery import (
+    common_tool_search_dirs,
     resolve_companion_tool_paths,
     resolve_system_command_paths,
 )
@@ -105,3 +106,9 @@ def test_resolve_system_command_paths_has_fallbacks(monkeypatch) -> None:
     resolved_cmd, resolved_robocopy = resolve_system_command_paths()
     assert resolved_cmd == DEFAULT_SYSTEM_CMD_FALLBACK
     assert resolved_robocopy == DEFAULT_SYSTEM_ROBOCOPY_FALLBACK
+
+
+def test_common_tool_search_dirs_starts_with_windows_bin() -> None:
+    dirs = common_tool_search_dirs()
+
+    assert dirs[0] == Path(r"C:\bin")

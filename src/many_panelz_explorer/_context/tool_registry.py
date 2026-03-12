@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import os
 import shlex
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from .._paths import is_explicit_path_text, normalize_windows_path_text, resolve_executable_path
 
 if TYPE_CHECKING:
     from .._settings.models import UiPreferences
@@ -85,17 +86,14 @@ def expand_tool_args(
 
 
 def _resolve_executable_path(raw: str) -> tuple[str | None, str | None]:
-    value = str(raw or "").strip()
+    value = normalize_windows_path_text(str(raw or "").strip())
     if not value:
         return None, "Configure this tool path in Settings."
-    candidate = Path(value)
-    if candidate.is_absolute() or ("\\" in value or "/" in value):
-        if candidate.exists():
-            return str(candidate), None
+    resolved = resolve_executable_path(value)
+    if resolved is not None:
+        return str(resolved), None
+    if is_explicit_path_text(value):
         return None, f"Configured executable does not exist: {value}"
-    hit = shutil.which(value)
-    if hit:
-        return str(Path(hit)), None
     return None, f"Configured executable was not found in PATH: {value}"
 
 

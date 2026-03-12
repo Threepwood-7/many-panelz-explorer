@@ -12,6 +12,8 @@ from typing import cast
 
 from PySide6.QtCore import QAbstractTableModel, QDir, QModelIndex, QObject, Qt, Signal
 
+from ._paths import path_key
+
 _HIDDEN_ATTRIBUTE_MASK = 0x2
 _SYSTEM_ATTRIBUTE_MASK = 0x4
 
@@ -407,4 +409,4 @@ class FastDirModel(QAbstractTableModel):
         return f"{int(value):,}"
 
     def _path_key(self, path: Path) -> str:
-        return os.path.normcase(os.path.normpath(str(path)))
+        return path_key(path)

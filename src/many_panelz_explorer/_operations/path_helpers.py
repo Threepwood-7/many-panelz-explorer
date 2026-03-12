@@ -4,41 +4,40 @@ import os
 import shutil
 from pathlib import Path
 
+from .._paths import coerce_path, normalize_windows_path_text, strip_windows_long_path_text
 from .types import OperationRequest
 
 
 def normalize_path(path: Path | str) -> Path:
-    return Path(path).expanduser()
-
-
-def _windows_native_separators(raw: str) -> str:
     if os.name != "nt":
-        return raw
-    return str(raw).replace("/", "\\")
+        return Path(path).expanduser()
+    return coerce_path(path)
 
 
 def to_windows_long_path(path: Path | str) -> str:
-    raw = _windows_native_separators(str(normalize_path(path)))
+    raw = str(normalize_path(path))
     if os.name != "nt":
         return raw
+    raw = normalize_windows_path_text(raw)
     if raw.startswith("\\\\?\\"):
-        return _windows_native_separators(raw)
+        return normalize_windows_path_text(raw)
     absolute = os.path.abspath(raw)
-    absolute = _windows_native_separators(absolute)
+    absolute = normalize_windows_path_text(absolute)
     if absolute.startswith("\\\\"):
         return f"\\\\?\\UNC\\{absolute[2:]}"
     return f"\\\\?\\{absolute}"
 
 
 def to_windows_arg_path(path: Path | str, *, use_extended_paths: bool) -> str:
-    raw = _windows_native_separators(str(normalize_path(path)))
+    raw = str(normalize_path(path))
     if os.name != "nt":
         return raw
+    raw = normalize_windows_path_text(raw)
     if use_extended_paths:
         return to_windows_long_path(raw)
     if raw.startswith("\\\\?\\"):
-        return _windows_native_separators(display_path(raw))
-    return _windows_native_separators(os.path.abspath(raw))
+        return normalize_windows_path_text(display_path(raw))
+    return normalize_windows_path_text(os.path.abspath(raw))
 
 
 def resolve_use_extended_paths(
@@ -54,12 +53,7 @@ def display_path(path: Path | str) -> str:
     raw = str(path)
     if os.name != "nt":
         return raw
-    raw = _windows_native_separators(raw)
-    if raw.startswith("\\\\?\\UNC\\"):
-        return _windows_native_separators(f"\\\\{raw[8:]}")
-    if raw.startswith("\\\\?\\"):
-        return _windows_native_separators(raw[4:])
-    return _windows_native_separators(raw)
+    return strip_windows_long_path_text(raw)
 
 
 def quoted(value: str) -> str:

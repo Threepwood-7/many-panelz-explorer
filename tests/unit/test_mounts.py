@@ -40,7 +40,7 @@ def test_windows_roots_include_drives_and_directory_mount_points(
     drive.mkdir(parents=True)
     current.mkdir(parents=True)
 
-    monkeypatch.setattr(mounts, "_is_windows", lambda: True)
+    monkeypatch.setattr(mounts, "is_windows", lambda: True)
     monkeypatch.setattr(mounts, "list_windows_storage_roots", lambda: [drive, mount])
 
     roots = mounts.list_roots_for_navigation(current)
@@ -55,7 +55,7 @@ def test_windows_roots_do_not_probe_path_existence(monkeypatch) -> None:
     def _boom(_self: Path) -> bool:
         raise AssertionError("exists/is_dir should not be called on Windows roots")
 
-    monkeypatch.setattr(mounts, "_is_windows", lambda: True)
+    monkeypatch.setattr(mounts, "is_windows", lambda: True)
     monkeypatch.setattr(mounts, "list_windows_storage_roots", lambda: [drive, network])
     monkeypatch.setattr(mounts.Path, "exists", _boom, raising=False)
     monkeypatch.setattr(mounts.Path, "is_dir", _boom, raising=False)
@@ -73,7 +73,7 @@ def test_root_dedup_and_order_stability(monkeypatch, tmp_path: Path) -> None:
     mount_a.mkdir(parents=True)
     mount_b.mkdir(parents=True)
 
-    monkeypatch.setattr(mounts, "_is_windows", lambda: True)
+    monkeypatch.setattr(mounts, "is_windows", lambda: True)
     monkeypatch.setattr(
         mounts,
         "list_windows_storage_roots",
@@ -93,7 +93,7 @@ def test_windows_roots_use_cache_within_ttl(monkeypatch) -> None:
         counters["roots"] += 1
         return [Path("C:\\"), Path("D:\\mount")]
 
-    monkeypatch.setattr(mounts, "_is_windows", lambda: True)
+    monkeypatch.setattr(mounts, "is_windows", lambda: True)
     monkeypatch.setattr(mounts, "list_windows_storage_roots", _roots)
     monkeypatch.setattr(mounts, "_monotonic_seconds", lambda: next(times))
 
@@ -114,7 +114,7 @@ def test_clear_roots_cache_forces_windows_rediscovery(monkeypatch) -> None:
         counters["roots"] += 1
         return [Path("C:\\"), Path("D:\\mount")]
 
-    monkeypatch.setattr(mounts, "_is_windows", lambda: True)
+    monkeypatch.setattr(mounts, "is_windows", lambda: True)
     monkeypatch.setattr(mounts, "list_windows_storage_roots", _roots)
     monkeypatch.setattr(mounts, "_monotonic_seconds", lambda: 100.0)
 
@@ -130,7 +130,7 @@ def test_non_windows_fallback_uses_current_anchor(monkeypatch, tmp_path: Path) -
     current = tmp_path / "nested" / "path"
     current.parent.mkdir(parents=True)
 
-    monkeypatch.setattr(mounts, "_is_windows", lambda: False)
+    monkeypatch.setattr(mounts, "is_windows", lambda: False)
 
     roots = mounts.list_roots_for_navigation(current)
 
@@ -143,7 +143,7 @@ def test_storage_usage_entries_include_windows_drive_and_mount_points(
     drive = Path("C:\\")
     mount = Path("C:\\mounts\\media01")
 
-    monkeypatch.setattr(mounts, "_is_windows", lambda: True)
+    monkeypatch.setattr(mounts, "is_windows", lambda: True)
     monkeypatch.setattr(
         mounts,
         "list_windows_storage_usage",
@@ -170,7 +170,7 @@ def test_storage_usage_entries_skip_zero_total(monkeypatch) -> None:
     good = Path("C:\\")
     unavailable = Path("E:\\")
 
-    monkeypatch.setattr(mounts, "_is_windows", lambda: True)
+    monkeypatch.setattr(mounts, "is_windows", lambda: True)
     monkeypatch.setattr(
         mounts,
         "list_windows_storage_usage",
@@ -189,7 +189,7 @@ def test_storage_usage_entries_dedup_exact_roots_stable_order(monkeypatch) -> No
     drive = Path("C:\\")
     mount = Path("C:\\mounts\\vol1")
 
-    monkeypatch.setattr(mounts, "_is_windows", lambda: True)
+    monkeypatch.setattr(mounts, "is_windows", lambda: True)
     monkeypatch.setattr(
         mounts,
         "list_windows_storage_usage",
@@ -209,7 +209,7 @@ def test_storage_usage_entries_dedup_exact_roots_stable_order(monkeypatch) -> No
 def test_storage_usage_entries_clamp_used_bytes(monkeypatch) -> None:
     drive = Path("C:\\")
 
-    monkeypatch.setattr(mounts, "_is_windows", lambda: True)
+    monkeypatch.setattr(mounts, "is_windows", lambda: True)
     monkeypatch.setattr(
         mounts,
         "list_windows_storage_usage",
@@ -239,7 +239,7 @@ def test_storage_usage_entries_use_cache_within_ttl(monkeypatch) -> None:
         counters["storage"] += 1
         return [_raw_usage(drive, total=200, used=50, label="System")]
 
-    monkeypatch.setattr(mounts, "_is_windows", lambda: True)
+    monkeypatch.setattr(mounts, "is_windows", lambda: True)
     monkeypatch.setattr(mounts, "list_windows_storage_usage", _storage)
     monkeypatch.setattr(mounts, "_monotonic_seconds", lambda: next(times))
 

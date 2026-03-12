@@ -1,15 +1,24 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMenu, QPushButton, QSizePolicy
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
+from ..._paths import (
+    coerce_path,
+    dedup_paths,
+    display_path_text,
+    is_path_under_root,
+    navigation_root_text,
+    normalize_windows_path_text,
+    path_key,
+)
 
+if TYPE_CHECKING:
     from ...panel_widget import PanelWidget
 
 
@@ -18,17 +27,9 @@ class PanelNavigationCoordinator:
         self,
         panel: PanelWidget,
         *,
-        root_display_text: Callable[[Path], str],
-        strip_windows_long_path: Callable[[str], str],
-        is_path_under_root: Callable[[Path, Path], bool],
-        path_key: Callable[[Path], str],
         is_hidden_or_system_entry: Callable[[os.DirEntry[str]], bool],
     ) -> None:
         self.panel = panel
-        self._root_display_text = root_display_text
-        self._strip_windows_long_path = strip_windows_long_path
-        self._is_path_under_root = is_path_under_root
-        self._path_key = path_key
         self._is_hidden_or_system_entry = is_hidden_or_system_entry
 
     def rebuild_root_controls(self, current_path: Path | None) -> None:
@@ -48,15 +49,13 @@ class PanelNavigationCoordinator:
 
         self.panel.root_buttons = []
         for root_path in roots:
-            button = QPushButton(self._root_display_text(root_path))
+            button = QPushButton(navigation_root_text(root_path))
             button.setFont(self.panel._navigation_font)
             button.setMinimumWidth(0)
             button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-            button.setToolTip(self._strip_windows_long_path(str(root_path)))
+            button.setToolTip(display_path_text(root_path))
             button.setCheckable(True)
-            button.setChecked(
-                current_path is not None and self._is_path_under_root(current_path, root_path)
-            )
+            button.setChecked(current_path is not None and is_path_under_root(current_path, root_path))
             button.clicked.connect(
                 lambda _checked=False, p=root_path: self.navigate_to_root(p)
             )
@@ -75,13 +74,11 @@ class PanelNavigationCoordinator:
         try:
             self.panel.root_combo.clear()
             for root_path in roots:
-                self.panel.root_combo.addItem(
-                    self._root_display_text(root_path), str(root_path)
-                )
+                self.panel.root_combo.addItem(navigation_root_text(root_path), str(root_path))
                 combo_idx = self.panel.root_combo.count() - 1
                 self.panel.root_combo.setItemData(
                     combo_idx,
-                    self._strip_windows_long_path(str(root_path)),
+                    display_path_text(root_path),
                     Qt.ItemDataRole.ToolTipRole,
                 )
 
@@ -90,7 +87,7 @@ class PanelNavigationCoordinator:
 
             match_index = -1
             for index, root_path in enumerate(roots):
-                if self._is_path_under_root(current_path, root_path):
+                if is_path_under_root(current_path, root_path):
                     match_index = index
                     break
 
@@ -101,7 +98,7 @@ class PanelNavigationCoordinator:
 
     def safe_roots(self, current_path: Path | None) -> list[Path]:
         try:
-            provided_roots = [Path(p) for p in self.panel._roots_provider(current_path)]
+            provided_roots = [coerce_path(p) for p in self.panel._roots_provider(current_path)]
         except Exception:
             provided_roots = []
         roots = self.existing_unique_paths(provided_roots)
@@ -110,24 +107,13 @@ class PanelNavigationCoordinator:
         return sorted(
             roots,
             key=lambda p: (
-                self._root_display_text(p).lower(),
-                self._strip_windows_long_path(str(p)).lower(),
+                navigation_root_text(p).lower(),
+                display_path_text(p).lower(),
             ),
         )
 
     def existing_unique_paths(self, paths: list[Path]) -> list[Path]:
-        unique: list[Path] = []
-        seen: set[str] = set()
-        for candidate in paths:
-            path = Path(candidate).expanduser()
-            if not path.exists() or not path.is_dir():
-                continue
-            key = self._path_key(path)
-            if key in seen:
-                continue
-            seen.add(key)
-            unique.append(path)
-        return unique
+        return dedup_paths(paths, require_existing=True)
 
     def fallback_roots(self, current_path: Path | None) -> list[Path]:
         candidates: list[Path] = []
@@ -174,10 +160,10 @@ class PanelNavigationCoordinator:
         matches = [
             root
             for root in self.panel._root_paths
-            if self._is_path_under_root(current_path, root)
+            if is_path_under_root(current_path, root)
         ]
         if matches:
-            root_path = max(matches, key=lambda p: len(os.path.normpath(str(p))))
+            root_path = max(matches, key=lambda p: len(path_key(p)))
             tab.navigation.set_path(root_path)
             return
 
@@ -202,7 +188,7 @@ class PanelNavigationCoordinator:
             return
         self.panel._address_completion_timer.stop()
         self.hide_address_completion_popup()
-        tab.navigation.set_path(Path(text))
+        tab.navigation.set_path(coerce_path(normalize_windows_path_text(text)))
 
     def set_address_text_programmatically(self, text: str) -> None:
         self.panel._address_completions_enabled = False
@@ -274,9 +260,7 @@ class PanelNavigationCoordinator:
                     name = entry.name
                     if prefix_cmp and not name.casefold().startswith(prefix_cmp):
                         continue
-                    suggestions.append(
-                        self._strip_windows_long_path(str(parent_dir / name))
-                    )
+                    suggestions.append(display_path_text(parent_dir / name))
         except OSError:
             return []
         return sorted(set(suggestions), key=str.casefold)
@@ -284,14 +268,14 @@ class PanelNavigationCoordinator:
     def resolve_address_completion_context(
         self, raw_text: str
     ) -> tuple[Path, str] | None:
-        text = str(raw_text or "").strip()
+        text = normalize_windows_path_text(str(raw_text or "").strip())
         if not text:
             return None
 
-        base_path = self.panel.current_path()
-        expanded = os.path.expanduser(text)
+        base_path = coerce_path(self.panel.current_path())
+        expanded = normalize_windows_path_text(os.path.expanduser(text))
         has_trailing_separator = expanded.endswith(("\\", "/"))
-        candidate = Path(expanded)
+        candidate = coerce_path(expanded)
         if has_trailing_separator:
             parent_dir = candidate if candidate.is_absolute() else (base_path / candidate)
             return parent_dir.expanduser(), ""
@@ -337,8 +321,8 @@ class PanelNavigationCoordinator:
         menu = QMenu(self.panel)
         for index in range(len(history_entries) - 1, -1, -1):
             entry = history_entries[index]
-            action = menu.addAction(self._strip_windows_long_path(str(entry)))
-            action.setToolTip(self._strip_windows_long_path(str(entry)))
+            action = menu.addAction(display_path_text(entry))
+            action.setToolTip(display_path_text(entry))
             action.setCheckable(True)
             action.setChecked(index == current_index)
             action.triggered.connect(

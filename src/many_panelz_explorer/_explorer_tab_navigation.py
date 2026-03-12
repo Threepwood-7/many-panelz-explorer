@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -8,6 +7,7 @@ from PySide6.QtCore import QDir, QItemSelectionModel, QObject, QTimer, Signal
 from PySide6.QtWidgets import QAbstractItemView, QTreeView, QWidget
 from shiboken6 import isValid
 
+from ._paths import coerce_path, is_drive_root, path_key
 from .fast_dir_model import FastDirModel
 
 if TYPE_CHECKING:
@@ -88,7 +88,7 @@ class ExplorerTabNavigation(QObject):
 
     def set_path(
         self,
-        path: Path,
+        path: Path | str,
         *,
         push_history: bool = True,
         selection_hint: Path | None = None,
@@ -97,7 +97,7 @@ class ExplorerTabNavigation(QObject):
         if previous_path is not None:
             self._remember_selection_for_path(previous_path)
 
-        target = Path(path).expanduser()
+        target = coerce_path(path)
         if not target.exists() or not target.is_dir():
             target = Path.home()
 
@@ -163,10 +163,8 @@ class ExplorerTabNavigation(QObject):
     def _should_show_parent_entry(self, path: Path) -> bool:
         if path.parent == path:
             return False
-        if path.drive:
-            drive_root = Path(f"{path.drive}{os.sep}")
-            if self._path_key(path) == self._path_key(drive_root):
-                return False
+        if is_drive_root(path):
+            return False
         return True
 
     def _selected_or_current_path(self) -> Path | None:
@@ -232,4 +230,4 @@ class ExplorerTabNavigation(QObject):
         )
 
     def _path_key(self, path: Path) -> str:
-        return os.path.normcase(os.path.normpath(str(path)))
+        return path_key(path)
