@@ -1,4 +1,4 @@
-"""Import-level smoke tests for the package."""
+"""Tests for many_panelz_explorer."""
 
 import importlib
 
