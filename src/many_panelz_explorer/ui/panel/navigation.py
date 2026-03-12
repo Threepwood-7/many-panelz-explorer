@@ -153,24 +153,24 @@ class PanelNavigationCoordinator:
     def go_back(self) -> None:
         tab = self.panel.current_tab()
         if tab is not None:
-            tab.go_back()
+            tab.navigation.go_back()
 
     def go_forward(self) -> None:
         tab = self.panel.current_tab()
         if tab is not None:
-            tab.go_forward()
+            tab.navigation.go_forward()
 
     def go_up(self) -> None:
         tab = self.panel.current_tab()
         if tab is not None:
-            tab.go_up()
+            tab.navigation.go_up()
 
     def go_root(self) -> None:
         tab = self.panel.current_tab()
         if tab is None:
             return
 
-        current_path = tab.current_path()
+        current_path = tab.navigation.path
         matches = [
             root
             for root in self.panel._root_paths
@@ -178,16 +178,16 @@ class PanelNavigationCoordinator:
         ]
         if matches:
             root_path = max(matches, key=lambda p: len(os.path.normpath(str(p))))
-            tab.set_path(root_path)
+            tab.navigation.set_path(root_path)
             return
 
         if current_path.anchor:
-            tab.set_path(Path(current_path.anchor))
+            tab.navigation.set_path(Path(current_path.anchor))
 
     def refresh_current_path(self) -> None:
         tab = self.panel.current_tab()
         if tab is not None:
-            tab.refresh()
+            tab.navigation.refresh()
 
     def refresh(self) -> None:
         self.refresh_current_path()
@@ -202,7 +202,7 @@ class PanelNavigationCoordinator:
             return
         self.panel._address_completion_timer.stop()
         self.hide_address_completion_popup()
-        tab.set_path(Path(text))
+        tab.navigation.set_path(Path(text))
 
     def set_address_text_programmatically(self, text: str) -> None:
         self.panel._address_completions_enabled = False
@@ -317,14 +317,15 @@ class PanelNavigationCoordinator:
         tab = self.panel.current_tab()
         if tab is None:
             return
-        tab.set_path(root_path)
+        tab.navigation.set_path(root_path)
 
     def show_history_menu(self) -> None:
         tab = self.panel.current_tab()
         if tab is None:
             return
 
-        history_entries, current_index = tab.history_snapshot()
+        history_entries = tab.navigation.history
+        current_index = tab.navigation.history_index
         if not history_entries:
             return
 
@@ -341,11 +342,10 @@ class PanelNavigationCoordinator:
             action.setCheckable(True)
             action.setChecked(index == current_index)
             action.triggered.connect(
-                lambda _checked=False, i=index: tab.go_to_history_index(i)
+                lambda _checked=False, i=index: tab.navigation.go_to_history_index(i)
             )
 
         self.panel._history_menu = menu
         menu.popup(
             self.panel.address_edit.mapToGlobal(self.panel.address_edit.rect().bottomLeft())
         )
-

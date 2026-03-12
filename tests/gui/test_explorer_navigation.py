@@ -33,19 +33,19 @@ def test_alt_history_shortcuts_and_alt_up(qtbot, tmp_path: Path) -> None:
     qtbot.addWidget(tab)
     tab.show()
 
-    tab.set_path(a)
-    tab.set_path(b)
-    assert tab.current_path() == b
+    tab.navigation.set_path(a)
+    tab.navigation.set_path(b)
+    assert tab.navigation.path == b
 
     tab.view.setFocus()
     QTest.keyClick(tab.view, Qt.Key_Left, Qt.AltModifier)
-    assert tab.current_path() == a
+    assert tab.navigation.path == a
 
     QTest.keyClick(tab.view, Qt.Key_Right, Qt.AltModifier)
-    assert tab.current_path() == b
+    assert tab.navigation.path == b
 
     QTest.keyClick(tab.view, Qt.Key_Up, Qt.AltModifier)
-    assert tab.current_path() == a
+    assert tab.navigation.path == a
 
 
 def test_lynx_arrow_navigation_uses_left_right(qtbot, tmp_path: Path) -> None:
@@ -57,7 +57,7 @@ def test_lynx_arrow_navigation_uses_left_right(qtbot, tmp_path: Path) -> None:
     qtbot.addWidget(tab)
     tab.show()
 
-    tab.set_path(root)
+    tab.navigation.set_path(root)
     qtbot.waitUntil(lambda: tab.model.index(str(c)).isValid())
 
     index = tab.model.index(str(c))
@@ -66,10 +66,10 @@ def test_lynx_arrow_navigation_uses_left_right(qtbot, tmp_path: Path) -> None:
     tab.view.setFocus()
 
     QTest.keyClick(tab.view, Qt.Key_Right)
-    assert tab.current_path() == c
+    assert tab.navigation.path == c
 
     QTest.keyClick(tab.view, Qt.Key_Left)
-    assert tab.current_path() == root
+    assert tab.navigation.path == root
 
 
 def test_left_and_backspace_go_up_one_level(qtbot, tmp_path: Path) -> None:
@@ -82,15 +82,15 @@ def test_left_and_backspace_go_up_one_level(qtbot, tmp_path: Path) -> None:
     tab = ExplorerTab(initial_path=root)
     qtbot.addWidget(tab)
     tab.show()
-    tab.set_path(d3)
-    assert tab.current_path() == d3
+    tab.navigation.set_path(d3)
+    assert tab.navigation.path == d3
 
     tab.view.setFocus()
     QTest.keyClick(tab.view, Qt.Key_Left)
-    assert tab.current_path() == d2
+    assert tab.navigation.path == d2
 
     QTest.keyClick(tab.view, Qt.Key_Backspace)
-    assert tab.current_path() == d1
+    assert tab.navigation.path == d1
 
 
 def test_back_and_up_restore_previous_selection(qtbot, tmp_path: Path) -> None:
@@ -112,10 +112,10 @@ def test_back_and_up_restore_previous_selection(qtbot, tmp_path: Path) -> None:
     tab.view.setFocus()
 
     QTest.keyClick(tab.view, Qt.Key_Right)
-    assert tab.current_path() == child
+    assert tab.navigation.path == child
 
     QTest.keyClick(tab.view, Qt.Key_Left)
-    assert tab.current_path() == a
+    assert tab.navigation.path == a
     qtbot.waitUntil(
         lambda: Path(tab.model.filePath(tab.view.currentIndex())) == child
     )
@@ -123,10 +123,10 @@ def test_back_and_up_restore_previous_selection(qtbot, tmp_path: Path) -> None:
     other_index = tab.model.index(str(other))
     tab.view.selectionModel().setCurrentIndex(other_index, flags)
     QTest.keyClick(tab.view, Qt.Key_Right)
-    assert tab.current_path() == other
+    assert tab.navigation.path == other
 
     QTest.keyClick(tab.view, Qt.Key_Left, Qt.AltModifier)
-    assert tab.current_path() == a
+    assert tab.navigation.path == a
     qtbot.waitUntil(
         lambda: Path(tab.model.filePath(tab.view.currentIndex())) == other
     )
@@ -189,7 +189,7 @@ def test_parent_entry_shown_except_at_drive_root(qtbot, tmp_path: Path) -> None:
     assert first_name == ".."
 
     drive_root = Path(child.anchor)
-    tab.set_path(drive_root)
+    tab.navigation.set_path(drive_root)
     qtbot.waitUntil(lambda: tab.model.rowCount(tab.view.rootIndex()) >= 0)
     if tab.model.rowCount(tab.view.rootIndex()) > 0:
         first_root_name = str(
@@ -233,7 +233,7 @@ def test_large_directory_loading_is_async_and_responsive(
     tab.show()
 
     started = time.perf_counter()
-    tab.set_path(root)
+    tab.navigation.set_path(root)
     elapsed = time.perf_counter() - started
     assert elapsed < 0.3
 

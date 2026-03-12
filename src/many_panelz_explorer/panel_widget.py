@@ -465,7 +465,7 @@ class PanelWidget(QWidget):
 
     def add_tab(self, path: Path) -> ExplorerTab:
         source_tab = self.current_tab()
-        source_widths = source_tab.column_widths() if source_tab is not None else []
+        source_widths = list(source_tab.columns.widths) if source_tab is not None else []
         tab = ExplorerTab(
             path,
             show_hidden=self._show_hidden,
@@ -475,24 +475,14 @@ class PanelWidget(QWidget):
         )
         self._assign_tab_identity(tab)
 
-        def _on_path_changed(_path: str, t: ExplorerTab = tab) -> None:
-            self._on_tab_path_changed(t)
+        def _on_navigation_changed(t: ExplorerTab = tab) -> None:
+            self._on_tab_navigation_changed(t)
 
-        def _on_path_retitle(_path: str, t: ExplorerTab = tab) -> None:
-            self._retitle_tab(t)
-
-        def _on_history_changed(
-            _back: bool, _forward: bool, t: ExplorerTab = tab
-        ) -> None:
-            self._on_tab_history_changed(t)
-
-        def _on_widths_changed(widths: list[object], t: ExplorerTab = tab) -> None:
+        def _on_widths_changed(widths: object, t: ExplorerTab = tab) -> None:
             self._on_tab_column_widths_changed(t, widths)
 
-        tab.path_changed.connect(_on_path_changed)
-        tab.path_changed.connect(_on_path_retitle)
-        tab.history_changed.connect(_on_history_changed)
-        tab.column_widths_changed.connect(_on_widths_changed)
+        tab.navigation.changed.connect(_on_navigation_changed)
+        tab.columns.changed.connect(_on_widths_changed)
         tab.view.setFont(self._file_list_font)
 
         tab.installEventFilter(self.focus_watcher)
@@ -513,9 +503,9 @@ class PanelWidget(QWidget):
             self._column_width_auto_align_mode != self.COLUMN_ALIGN_MODE_NONE
             and self._column_widths
         ):
-            tab.apply_column_widths(self._column_widths)
+            tab.columns.set_widths(self._column_widths)
         else:
-            self._column_widths = tab.column_widths()
+            self._column_widths = list(tab.columns.widths)
         self._sync_toolbar_for_current_tab()
         self.activated.emit()
         self._sync_widget_map_overlay()
@@ -560,7 +550,7 @@ class PanelWidget(QWidget):
 
     def current_path(self) -> Path:
         tab = self.current_tab()
-        return tab.current_path() if tab else self._default_path
+        return tab.navigation.path if tab else self._default_path
 
     def current_tab(self) -> ExplorerTab | None:
         widget = self.tabs.currentWidget()
@@ -574,7 +564,7 @@ class PanelWidget(QWidget):
         for i in range(self.tabs.count()):
             widget = self.tabs.widget(i)
             if isinstance(widget, ExplorerTab):
-                widget.set_show_hidden(self._show_hidden)
+                widget.navigation.set_show_hidden(self._show_hidden)
         if self.address_edit.hasFocus():
             self._schedule_address_completion_update(self.address_edit.text())
 
@@ -793,7 +783,7 @@ class PanelWidget(QWidget):
         index = self.tabs.indexOf(tab)
         if index == -1:
             return
-        self.tabs.setTabText(index, _tab_label(tab.current_path()))
+        self.tabs.setTabText(index, _tab_label(tab.navigation.path))
 
     def _on_current_changed(self, index: int) -> None:
         if index >= 0:
@@ -805,31 +795,28 @@ class PanelWidget(QWidget):
                 and self._column_width_auto_align_mode
                 != self.COLUMN_ALIGN_MODE_NONE
             ):
-                tab.apply_column_widths(self._column_widths)
+                tab.columns.set_widths(self._column_widths)
             if tab is not None and self.filter_edit.isVisible():
-                tab.set_inline_filter(self.filter_edit.text())
+                tab.navigation.set_inline_filter(self.filter_edit.text())
             self.current_context_changed.emit()
         self._sync_toolbar_for_current_tab()
         self._sync_widget_map_overlay()
 
-    def _on_tab_path_changed(self, tab: ExplorerTab) -> None:
+    def _on_tab_navigation_changed(self, tab: ExplorerTab) -> None:
+        self._retitle_tab(tab)
         if tab is self.current_tab():
             self._sync_toolbar_for_current_tab()
             self.current_context_changed.emit()
 
-    def _on_tab_history_changed(self, tab: ExplorerTab) -> None:
-        if tab is self.current_tab():
-            self._sync_toolbar_for_current_tab()
-
     def _on_tab_column_widths_changed(
-        self, tab: ExplorerTab, widths: list[object]
+        self, tab: ExplorerTab, widths: object
     ) -> None:
         if self._syncing_column_widths or self._restoring_state:
             return
-        if not widths:
+        if not isinstance(widths, tuple) or not widths:
             return
 
-        normalized = self._coerce_column_widths(widths)
+        normalized = self._coerce_column_widths(list(widths))
         if not normalized:
             return
         if normalized == self._column_widths:
@@ -870,7 +857,7 @@ class PanelWidget(QWidget):
                     continue
                 if source_tab is not None and widget is source_tab:
                     continue
-                widget.apply_column_widths(widths)
+                widget.columns.set_widths(widths)
         finally:
             self._syncing_column_widths = False
 
@@ -917,17 +904,17 @@ class PanelWidget(QWidget):
             self._sync_widget_map_overlay()
             return
 
-        self.back_btn.setEnabled(tab.can_go_back())
-        self.forward_btn.setEnabled(tab.can_go_forward())
+        self.back_btn.setEnabled(tab.navigation.can_go_back)
+        self.forward_btn.setEnabled(tab.navigation.can_go_forward)
         self.up_btn.setEnabled(True)
         self.root_btn.setEnabled(True)
         self.refresh_btn.setEnabled(True)
         self._set_address_text_programmatically(
-            _strip_windows_long_path(str(tab.current_path()))
+            _strip_windows_long_path(str(tab.navigation.path))
         )
-        self._rebuild_root_controls(tab.current_path())
+        self._rebuild_root_controls(tab.navigation.path)
         if self.filter_edit.isVisible():
-            tab.set_inline_filter(self.filter_edit.text())
+            tab.navigation.set_inline_filter(self.filter_edit.text())
         self._sync_widget_map_overlay()
 
     def _sync_toolbar_visibility(self) -> None:
@@ -1058,7 +1045,7 @@ class PanelWidget(QWidget):
         self.filter_edit.blockSignals(False)
         tab = self.current_tab()
         if tab is not None:
-            tab.clear_inline_filter()
+            tab.navigation.clear_inline_filter()
 
     def _position_filter_overlay(self) -> None:
         margin = 8
@@ -1108,7 +1095,7 @@ class PanelWidget(QWidget):
     def _on_filter_text_changed(self, text: str) -> None:
         tab = self.current_tab()
         if tab is not None:
-            tab.set_inline_filter(text)
+            tab.navigation.set_inline_filter(text)
 
     def _should_start_inline_filter(self, key_event: QKeyEvent) -> bool:
         if key_event.modifiers() not in {

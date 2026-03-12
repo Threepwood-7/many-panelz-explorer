@@ -918,7 +918,7 @@ def test_settings_byte_format_preview_and_persistence(
     assert panel is not None
     tab = panel.current_tab()
     assert tab is not None
-    tab.set_path(root)
+    tab.navigation.set_path(root)
     qtbot.waitUntil(lambda: tab.model.index(str(sample)).isValid())
     sample_index = tab.model.index(str(sample)).siblingAtColumn(2)
     assert str(tab.model.data(sample_index, Qt.DisplayRole)) == "3,500"

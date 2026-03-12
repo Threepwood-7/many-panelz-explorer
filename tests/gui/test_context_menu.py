@@ -72,7 +72,7 @@ def test_context_menu_hidden_without_modes(qtbot, tmp_path: Path) -> None:
     empty_dir.mkdir()
     panel = window.active_panel()
     assert panel is not None
-    panel.current_tab().set_path(empty_dir)
+    panel.current_tab().navigation.set_path(empty_dir)
     qtbot.waitUntil(lambda: window._menu_context_action.isVisible() is False)
 
 
@@ -92,7 +92,7 @@ def test_context_menu_shows_python_mode(qtbot, tmp_path: Path) -> None:
     (py_root / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
     panel = window.active_panel()
     assert panel is not None
-    panel.current_tab().set_path(py_root)
+    panel.current_tab().navigation.set_path(py_root)
     qtbot.waitUntil(lambda: window._menu_context_action.isVisible() is True)
 
     texts = [action.text() for action in window._context_menu.actions()]
@@ -124,7 +124,7 @@ def test_context_menu_tracks_current_and_child_roots(qtbot, tmp_path: Path) -> N
     )
     panel = window.active_panel()
     assert panel is not None
-    panel.current_tab().set_path(root)
+    panel.current_tab().navigation.set_path(root)
     qtbot.waitUntil(lambda: window._menu_context_action.isVisible() is True)
 
     controller = window._context_menu_controller
@@ -161,7 +161,7 @@ def test_context_scripts_load_lazily(qtbot, tmp_path: Path, monkeypatch) -> None
     )
     panel = window.active_panel()
     assert panel is not None
-    panel.current_tab().set_path(root)
+    panel.current_tab().navigation.set_path(root)
     qtbot.waitUntil(lambda: window._menu_context_action.isVisible() is True)
 
     controller = window._context_menu_controller
@@ -204,7 +204,7 @@ def test_context_menu_rebuilds_on_tab_switch(qtbot, tmp_path: Path) -> None:
     assert panel is not None
     first_tab = panel.current_tab()
     assert first_tab is not None
-    first_tab.set_path(plain)
+    first_tab.navigation.set_path(plain)
     second_tab = panel.add_tab(py_root)
     assert second_tab is not None
     panel.tabs.setCurrentWidget(first_tab)
@@ -233,7 +233,7 @@ def test_context_menu_disables_missing_tools_with_hints(
 
     panel = window.active_panel()
     assert panel is not None
-    panel.current_tab().set_path(root)
+    panel.current_tab().navigation.set_path(root)
     qtbot.waitUntil(lambda: window._menu_context_action.isVisible() is True)
     controller = window._context_menu_controller
     assert controller is not None
@@ -279,7 +279,7 @@ def test_context_menu_rebuilds_on_window_activation(
     (py_root / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
     panel = window.active_panel()
     assert panel is not None
-    panel.current_tab().set_path(py_root)
+    panel.current_tab().navigation.set_path(py_root)
     qtbot.waitUntil(lambda: window._menu_context_action.isVisible() is True)
 
     controller = window._context_menu_controller

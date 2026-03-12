@@ -426,7 +426,7 @@ class ExplorerWindow(QMainWindow):
         tab = panel.current_tab()
         if tab is None:
             return
-        widths = tab.column_widths()
+        widths = list(tab.columns.widths)
         panel.apply_column_widths_to_panel_tabs(widths, source_tab=tab)
         self.statusBar().showMessage("Aligned columns in current panel tabs.", 2000)
 
@@ -437,7 +437,7 @@ class ExplorerWindow(QMainWindow):
         tab = panel.current_tab()
         if tab is None:
             return
-        widths = tab.column_widths()
+        widths = list(tab.columns.widths)
         self.controller.broadcast_column_widths(
             widths,
             source_window=self,

@@ -57,21 +57,21 @@ def test_panel_toolbar_controls_active_tab_navigation(qtbot, tmp_path: Path) -> 
     assert panel.forward_btn.text() == ">"
     assert panel.up_btn.text() == ".."
     assert panel.root_btn.text() == "\\"
-    tab.set_path(a)
-    tab.set_path(b)
-    assert tab.current_path() == b
+    tab.navigation.set_path(a)
+    tab.navigation.set_path(b)
+    assert tab.navigation.path == b
 
     panel.back_btn.click()
-    assert tab.current_path() == a
+    assert tab.navigation.path == a
 
     panel.forward_btn.click()
-    assert tab.current_path() == b
+    assert tab.navigation.path == b
 
     panel.up_btn.click()
-    assert tab.current_path() == a
+    assert tab.navigation.path == a
 
     panel.refresh_btn.click()
-    assert tab.current_path() == a
+    assert tab.navigation.path == a
 
 
 def test_panel_toolbar_address_updates_on_tab_switch(qtbot, tmp_path: Path) -> None:
@@ -103,7 +103,7 @@ def test_panel_toolbar_address_updates_on_tab_switch(qtbot, tmp_path: Path) -> N
     panel.address_edit.setText(str(root))
     panel.address_edit.returnPressed.emit()
     assert panel.current_tab() is not None
-    assert panel.current_tab().current_path() == root
+    assert panel.current_tab().navigation.path == root
 
 
 def test_address_autocomplete_shows_live_directory_suggestions(
@@ -207,7 +207,7 @@ def test_address_autocomplete_activation_fills_and_navigates_on_enter(
     assert _norm(panel.address_edit.text()) == _norm(alpha)
 
     panel.address_edit.returnPressed.emit()
-    assert tab.current_path() == alpha
+    assert tab.navigation.path == alpha
 
 
 def test_root_picker_navigates_active_tab_only(qtbot, tmp_path: Path) -> None:
@@ -232,8 +232,8 @@ def test_root_picker_navigates_active_tab_only(qtbot, tmp_path: Path) -> None:
     panel.tabs.setCurrentWidget(tab_a)
     _button_for_root(panel, root).click()
 
-    assert tab_a.current_path() == root
-    assert tab_c.current_path() == c
+    assert tab_a.navigation.path == root
+    assert tab_c.navigation.path == c
 
 
 def test_toolbar_back_forward_enablement_tracks_history(qtbot, tmp_path: Path) -> None:
@@ -255,8 +255,8 @@ def test_toolbar_back_forward_enablement_tracks_history(qtbot, tmp_path: Path) -
     assert panel.back_btn.isEnabled() is False
     assert panel.forward_btn.isEnabled() is False
 
-    tab.set_path(a)
-    tab.set_path(b)
+    tab.navigation.set_path(a)
+    tab.navigation.set_path(b)
     assert panel.back_btn.isEnabled() is True
     assert panel.forward_btn.isEnabled() is False
 
@@ -298,7 +298,7 @@ def test_root_dropdown_is_optional(qtbot, tmp_path: Path) -> None:
     index = _index_for_root(panel_with_dropdown, a)
     panel_with_dropdown._on_root_selected(index)
     assert panel_with_dropdown.current_tab() is not None
-    assert panel_with_dropdown.current_tab().current_path() == a
+    assert panel_with_dropdown.current_tab().navigation.path == a
 
 
 def test_root_controls_sorted_alphabetically(qtbot, tmp_path: Path) -> None:
@@ -437,8 +437,8 @@ def test_alt_down_shows_current_tab_history_menu(qtbot, tmp_path: Path) -> None:
     qtbot.addWidget(panel)
     panel.show()
     tab = panel.add_tab(root)
-    tab.set_path(a)
-    tab.set_path(b)
+    tab.navigation.set_path(a)
+    tab.navigation.set_path(b)
 
     panel.address_edit.setFocus()
     QTest.keyClick(panel.address_edit, Qt.Key_Down, Qt.AltModifier)
@@ -500,8 +500,8 @@ def test_column_widths_persist_when_navigating_directories_in_same_tab(
     tab.view.setColumnWidth(0, 377)
     qtbot.waitUntil(lambda: tab.view.columnWidth(0) == 377)
 
-    tab.set_path(child)
-    qtbot.waitUntil(lambda: tab.current_path() == child)
+    tab.navigation.set_path(child)
+    qtbot.waitUntil(lambda: tab.navigation.path == child)
     qtbot.waitUntil(lambda: tab.view.columnWidth(0) == 377)
 
 

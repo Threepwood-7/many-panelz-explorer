@@ -49,7 +49,7 @@ def test_explorer_tab_passes_properties_formatter_to_dialog(
             return 0
 
     monkeypatch.setattr(
-        "many_panelz_explorer.explorer_tab.PropertiesDialog",
+        "many_panelz_explorer._explorer_tab_actions.PropertiesDialog",
         _FakePropertiesDialog,
     )
 
@@ -60,7 +60,7 @@ def test_explorer_tab_passes_properties_formatter_to_dialog(
     qtbot.addWidget(tab)
     tab.show()
     monkeypatch.setattr(tab, "selected_paths", lambda: [sample])
-    tab._show_properties()
+    tab._actions._show_properties()
 
     assert captured["path"] == sample
     formatter = captured["formatter"]

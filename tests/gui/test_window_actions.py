@@ -521,8 +521,8 @@ def test_copy_to_target_uses_last_active_non_source_panel(
     dst_dir = tmp_path / "dst"
     dst_dir.mkdir()
 
-    source_panel.current_tab().set_path(src_dir)
-    target_panel.current_tab().set_path(dst_dir)
+    source_panel.current_tab().navigation.set_path(src_dir)
+    target_panel.current_tab().navigation.set_path(dst_dir)
 
     monkeypatch.setattr(source_panel.current_tab(), "selected_paths", lambda: [src_file])
     captured: list[Path] = []
@@ -575,8 +575,8 @@ def test_status_bar_persistent_source_target_paths_update_with_context_changes(
     source_dir.mkdir()
     target_dir.mkdir()
 
-    source_panel.current_tab().set_path(source_dir)
-    target_panel.current_tab().set_path(target_dir)
+    source_panel.current_tab().navigation.set_path(source_dir)
+    target_panel.current_tab().navigation.set_path(target_dir)
 
     window._set_active_panel(target_id)
     window._set_active_panel(source_id)
@@ -597,7 +597,7 @@ def test_status_bar_persistent_source_target_paths_update_with_context_changes(
 
     nested_source = source_dir / "nested"
     nested_source.mkdir()
-    source_panel.current_tab().set_path(nested_source)
+    source_panel.current_tab().navigation.set_path(nested_source)
     qtbot.waitUntil(
         lambda: window._source_path_label.text() == f"Source path: {nested_source}"
     )
