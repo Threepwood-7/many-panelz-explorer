@@ -100,7 +100,6 @@ class OperationExecutionPreferences:
     use_extended_paths_powershell_delete: bool = False
     use_extended_paths_rimraf: bool = False
     use_extended_paths_external_delete: bool = False
-    script_editor_executable: str = ""
     teracopy_executable: str = DEFAULT_TERA_COPY_EXE
     teracopy_args_template: str = DEFAULT_TERA_COPY_ARGS
     unstoppable_executable: str = DEFAULT_UNSTOPPABLE_EXE

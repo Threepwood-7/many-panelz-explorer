@@ -89,7 +89,6 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
     )
     use_extended_paths_rimraf = delegate_domain_property("ops", "use_extended_paths_rimraf")
     use_extended_paths_external_delete = delegate_domain_property("ops", "use_extended_paths_external_delete")
-    script_editor_executable = delegate_domain_property("ops", "script_editor_executable")
     teracopy_executable = delegate_domain_property("ops", "teracopy_executable")
     unstoppable_executable = delegate_domain_property("ops", "unstoppable_executable")
     generic_copymove_executable = delegate_domain_property("ops", "generic_copymove_executable")
@@ -169,7 +168,6 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
             use_extended_paths_powershell_delete=self.use_extended_paths_powershell_delete,
             use_extended_paths_rimraf=self.use_extended_paths_rimraf,
             use_extended_paths_external_delete=self.use_extended_paths_external_delete,
-            script_editor_executable=self.script_editor_executable,
             teracopy_executable=self.teracopy_executable,
             unstoppable_executable=self.unstoppable_executable,
             generic_copymove_executable=self.generic_copymove_executable,
@@ -246,7 +244,6 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
         self.use_extended_paths_powershell_delete = preferences.use_extended_paths_powershell_delete
         self.use_extended_paths_rimraf = preferences.use_extended_paths_rimraf
         self.use_extended_paths_external_delete = preferences.use_extended_paths_external_delete
-        self.script_editor_executable = preferences.script_editor_executable
         self.teracopy_executable = preferences.teracopy_executable
         self.unstoppable_executable = preferences.unstoppable_executable
         self.generic_copymove_executable = preferences.generic_copymove_executable

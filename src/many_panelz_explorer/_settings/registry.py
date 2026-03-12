@@ -83,7 +83,6 @@ class SettingsRegistry:
     USE_EXTENDED_PATHS_POWERSHELL_DELETE_KEY = "ops/backends/powershell_delete/use_extended_paths"
     USE_EXTENDED_PATHS_RIMRAF_KEY = "ops/backends/rimraf/use_extended_paths"
     USE_EXTENDED_PATHS_EXTERNAL_DELETE_KEY = "ops/backends/external_delete/use_extended_paths"
-    SCRIPT_EDITOR_EXECUTABLE_KEY = "ops/script_editor/executable"
     TERACOPY_EXECUTABLE_KEY = "ops/backends/teracopy/executable"
     UNSTOPPABLE_EXECUTABLE_KEY = "ops/backends/unstoppable/executable"
     GENERIC_COPYMOVE_EXECUTABLE_KEY = "ops/backends/generic_copymove/executable"
@@ -152,7 +151,6 @@ class SettingsRegistry:
     DEFAULT_USE_EXTENDED_PATHS_POWERSHELL_DELETE = False
     DEFAULT_USE_EXTENDED_PATHS_RIMRAF = False
     DEFAULT_USE_EXTENDED_PATHS_EXTERNAL_DELETE = False
-    DEFAULT_SCRIPT_EDITOR_EXECUTABLE = ""
     DEFAULT_TERACOPY_EXECUTABLE = DEFAULT_TERA_COPY_EXE
     DEFAULT_UNSTOPPABLE_EXECUTABLE = DEFAULT_UNSTOPPABLE_EXE
     DEFAULT_GENERIC_COPYMOVE_EXECUTABLE = DEFAULT_GENERIC_COPYMOVE_EXE

@@ -283,7 +283,6 @@ class AppController:
             use_extended_paths_powershell_delete=preferences.use_extended_paths_powershell_delete,
             use_extended_paths_rimraf=preferences.use_extended_paths_rimraf,
             use_extended_paths_external_delete=preferences.use_extended_paths_external_delete,
-            script_editor_executable=preferences.default_editor_executable,
             teracopy_executable=preferences.teracopy_executable,
             teracopy_args_template=resolved_copy_move.teracopy_args_template,
             unstoppable_executable=preferences.unstoppable_executable,

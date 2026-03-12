@@ -891,25 +891,6 @@ class OpsSettingsDomain(SettingsDomainBase, SettingsRegistry):
         self._storage.set_value(self.USE_EXTENDED_PATHS_EXTERNAL_DELETE_KEY, bool(enabled))
 
     @property
-    def script_editor_executable(self) -> str:
-        return normalize.normalize_windows_path_text(
-            self._storage.value(
-                self.SCRIPT_EDITOR_EXECUTABLE_KEY,
-                self.DEFAULT_SCRIPT_EDITOR_EXECUTABLE,
-            ),
-            fallback=self.DEFAULT_SCRIPT_EDITOR_EXECUTABLE,
-        )
-
-    @script_editor_executable.setter
-    def script_editor_executable(self, value: str) -> None:
-        self._storage.set_value(
-            self.SCRIPT_EDITOR_EXECUTABLE_KEY,
-            normalize.normalize_windows_path_text(
-                value, fallback=self.DEFAULT_SCRIPT_EDITOR_EXECUTABLE
-            ),
-        )
-
-    @property
     def teracopy_executable(self) -> str:
         return normalize.normalize_windows_path_text(
             self._storage.value(

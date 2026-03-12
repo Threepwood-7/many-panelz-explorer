@@ -66,7 +66,6 @@ def _tracked_keys() -> list[str]:
         SettingsManager.USE_EXTENDED_PATHS_POWERSHELL_DELETE_KEY,
         SettingsManager.USE_EXTENDED_PATHS_RIMRAF_KEY,
         SettingsManager.USE_EXTENDED_PATHS_EXTERNAL_DELETE_KEY,
-        SettingsManager.SCRIPT_EDITOR_EXECUTABLE_KEY,
         SettingsManager.TERACOPY_EXECUTABLE_KEY,
         SettingsManager.UNSTOPPABLE_EXECUTABLE_KEY,
         SettingsManager.GENERIC_COPYMOVE_EXECUTABLE_KEY,
@@ -158,7 +157,6 @@ def test_ui_preferences_round_trip() -> None:
             use_extended_paths_powershell_delete=True,
             use_extended_paths_rimraf=True,
             use_extended_paths_external_delete=True,
-            script_editor_executable=r"C:\tools\my-editor.exe",
             teracopy_executable="TeraCopy.exe",
             unstoppable_executable="UnstoppableCopier.exe",
             generic_copymove_executable="my-copy.exe",
@@ -315,7 +313,6 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.set_value(SettingsManager.USE_EXTENDED_PATHS_POWERSHELL_DELETE_KEY, "")
         settings.set_value(SettingsManager.USE_EXTENDED_PATHS_RIMRAF_KEY, "")
         settings.set_value(SettingsManager.USE_EXTENDED_PATHS_EXTERNAL_DELETE_KEY, "")
-        settings.remove(SettingsManager.SCRIPT_EDITOR_EXECUTABLE_KEY)
         settings.remove(SettingsManager.TERACOPY_EXECUTABLE_KEY)
         settings.remove(SettingsManager.UNSTOPPABLE_EXECUTABLE_KEY)
         settings.remove(SettingsManager.GENERIC_COPYMOVE_EXECUTABLE_KEY)
@@ -480,10 +477,6 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         assert loaded.use_extended_paths_powershell_delete is False
         assert loaded.use_extended_paths_rimraf is False
         assert loaded.use_extended_paths_external_delete is False
-        assert (
-            loaded.script_editor_executable
-            == SettingsManager.DEFAULT_SCRIPT_EDITOR_EXECUTABLE
-        )
         assert loaded.robocopy_structured_options == RobocopyBackendOptions()
         assert loaded.teracopy_structured_options == TeraCopyBackendOptions()
         assert loaded.unstoppable_structured_options == UnstoppableBackendOptions()
@@ -508,28 +501,6 @@ def test_ui_preferences_font_size_clamps_to_range() -> None:
         assert loaded.navigation_font_size_pt == 32
     finally:
         _restore(settings, before)
-
-
-def test_default_editor_executable_ignores_old_script_editor_key() -> None:
-    settings = SettingsManager()
-    before = _snapshot(settings)
-    try:
-        settings.remove(SettingsManager.DEFAULT_EDITOR_EXECUTABLE_KEY)
-        settings.set_value(
-            SettingsManager.SCRIPT_EDITOR_EXECUTABLE_KEY,
-            r"C:\tools\legacy-script-editor.exe",
-        )
-
-        loaded = settings.ui_preferences()
-
-        assert (
-            loaded.default_editor_executable
-            == SettingsManager.DEFAULT_DEFAULT_EDITOR_EXECUTABLE
-        )
-    finally:
-        _restore(settings, before)
-
-
 def test_ui_preferences_intensity_clamps_to_range() -> None:
     settings = SettingsManager()
     before = _snapshot(settings)
