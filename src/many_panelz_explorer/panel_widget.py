@@ -272,7 +272,7 @@ class PanelWidget(QWidget):
             QCompleter.CompletionMode.PopupCompletion
         )
         self._address_completer.setMaxVisibleItems(14)
-        self._address_completer.activated[str].connect(
+        self._address_completer.activated.connect(
             self._on_address_completion_activated
         )
         self.address_edit.setCompleter(self._address_completer)
@@ -773,7 +773,9 @@ class PanelWidget(QWidget):
         if not isinstance(widths, tuple) or not widths:
             return
 
-        normalized = self._coerce_column_widths(list(widths))
+        normalized = self._coerce_column_widths(
+            list(cast("tuple[object, ...]", widths))
+        )
         if not normalized:
             return
         if normalized == self._column_widths:
@@ -961,8 +963,8 @@ class PanelWidget(QWidget):
     def _refresh_address_completions(self) -> None:
         self._navigation_coordinator.refresh_address_completions()
 
-    def _on_address_completion_activated(self, path_text: str) -> None:
-        self._navigation_coordinator.on_address_completion_activated(path_text)
+    def _on_address_completion_activated(self, path_text: object) -> None:
+        self._navigation_coordinator.on_address_completion_activated(str(path_text))
 
     def _hide_address_completion_popup(self) -> None:
         self._navigation_coordinator.hide_address_completion_popup()

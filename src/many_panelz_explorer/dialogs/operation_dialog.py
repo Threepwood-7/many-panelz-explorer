@@ -23,7 +23,7 @@ from .._operations.backend_options import (
     UnstoppableBackendOptions,
     generate_unstoppable_switch_args,
 )
-from .._operations.types import OperationRequest
+from .._operations.types import OperationKind, OperationRequest
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -48,7 +48,7 @@ class OperationDialog(QDialog):
     def __init__(
         self,
         *,
-        kind: str,
+        kind: OperationKind,
         sources: list[Path],
         target_dir: Path | None,
         preferences: UiPreferences,
@@ -566,7 +566,7 @@ class OperationDialog(QDialog):
     def build_request(
         self,
         *,
-        kind: str,
+        kind: OperationKind,
         sources: list[Path],
         target_dir: Path | None,
         created_by: str,

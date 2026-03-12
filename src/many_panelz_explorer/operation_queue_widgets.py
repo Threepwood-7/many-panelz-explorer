@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING, cast
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPersistentModelIndex, Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
@@ -57,16 +57,24 @@ class OperationQueueTableModel(QAbstractTableModel):
         manager.job_updated.connect(self._on_job_updated)
         manager.jobs_reset.connect(self._on_jobs_reset)
 
-    def rowCount(self, parent: QModelIndex = _DEFAULT_MODEL_INDEX) -> int:
+    def rowCount(
+        self,
+        parent: QModelIndex | QPersistentModelIndex = _DEFAULT_MODEL_INDEX,
+    ) -> int:
         _ = parent
         return len(self._jobs)
 
-    def columnCount(self, parent: QModelIndex = _DEFAULT_MODEL_INDEX) -> int:
+    def columnCount(
+        self,
+        parent: QModelIndex | QPersistentModelIndex = _DEFAULT_MODEL_INDEX,
+    ) -> int:
         _ = parent
         return len(_HEADERS)
 
     def data(
-        self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole
+        self,
+        index: QModelIndex | QPersistentModelIndex,
+        role: int = Qt.ItemDataRole.DisplayRole,
     ) -> str | None:
         if not index.isValid():
             return None
@@ -196,10 +204,10 @@ class OperationQueuePanel(QWidget):
         self.open_log_btn.clicked.connect(self._open_log)
         self.open_metadata_btn.clicked.connect(self._open_metadata)
         self.table.selectionModel().selectionChanged.connect(
-            lambda *_args: self._sync_artifact_buttons()
+            self._on_selection_changed
         )
-        self.manager.job_updated.connect(lambda _job: self._sync_artifact_buttons())
-        self.manager.job_added.connect(lambda _job: self._sync_artifact_buttons())
+        self.manager.job_updated.connect(self._on_job_signal)
+        self.manager.job_added.connect(self._on_job_signal)
         self._sync_artifact_buttons()
 
     def selected_job_id(self) -> str | None:
@@ -230,6 +238,12 @@ class OperationQueuePanel(QWidget):
         if not indexes:
             return None
         return self.model.job_at(indexes[0].row())
+
+    def _on_selection_changed(self, *_args: object) -> None:
+        self._sync_artifact_buttons()
+
+    def _on_job_signal(self, _job: object) -> None:
+        self._sync_artifact_buttons()
 
     def _artifact_path(self, artifact: str) -> Path | None:
         job = self._selected_job()

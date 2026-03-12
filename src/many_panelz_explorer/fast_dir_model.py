@@ -9,7 +9,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
-from PySide6.QtCore import QAbstractTableModel, QDir, QModelIndex, QObject, Qt, Signal
+from PySide6.QtCore import (
+    QAbstractTableModel,
+    QDir,
+    QModelIndex,
+    QObject,
+    QPersistentModelIndex,
+    Qt,
+    Signal,
+)
 from threep_commons.fs_paths import path_key
 
 if TYPE_CHECKING:
@@ -107,14 +115,20 @@ class FastDirModel(QAbstractTableModel):
         self._signals.listing_ready.connect(self._on_listing_ready)
         self._refresh_filter_flags()
 
-    def rowCount(self, parent: QModelIndex | None = None) -> int:
+    def rowCount(
+        self,
+        parent: QModelIndex | QPersistentModelIndex | None = None,
+    ) -> int:
         if parent is None:
             parent = QModelIndex()
         if parent.isValid():
             return 0
         return len(self._visible_entries) + (1 if self._show_parent_entry else 0)
 
-    def columnCount(self, parent: QModelIndex | None = None) -> int:
+    def columnCount(
+        self,
+        parent: QModelIndex | QPersistentModelIndex | None = None,
+    ) -> int:
         if parent is None:
             parent = QModelIndex()
         if parent.isValid():
@@ -125,7 +139,7 @@ class FastDirModel(QAbstractTableModel):
         self,
         row: int | str,
         column: int = 0,
-        parent: QModelIndex | None = None,
+        parent: QModelIndex | QPersistentModelIndex | None = None,
     ) -> QModelIndex:
         if parent is None:
             parent = QModelIndex()
@@ -137,11 +151,10 @@ class FastDirModel(QAbstractTableModel):
             return QModelIndex()
         return self.createIndex(int(row), int(column), None)
 
-    def parent(self, _index: QModelIndex) -> QModelIndex:
-        return QModelIndex()
-
     def data(
-        self, index: QModelIndex, role: int = int(Qt.ItemDataRole.DisplayRole)
+        self,
+        index: QModelIndex | QPersistentModelIndex,
+        role: int = int(Qt.ItemDataRole.DisplayRole),
     ) -> object:
         if not index.isValid():
             return None
@@ -189,7 +202,7 @@ class FastDirModel(QAbstractTableModel):
             return self._HEADERS[section]
         return super().headerData(section, orientation, role)
 
-    def flags(self, index: QModelIndex) -> Qt.ItemFlag:
+    def flags(self, index: QModelIndex | QPersistentModelIndex) -> Qt.ItemFlag:
         if not index.isValid():
             return Qt.ItemFlag.NoItemFlags
         return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
@@ -232,7 +245,7 @@ class FastDirModel(QAbstractTableModel):
         future.add_done_callback(_done_callback)
         return QModelIndex()
 
-    def filePath(self, index: QModelIndex) -> str:
+    def filePath(self, index: QModelIndex | QPersistentModelIndex) -> str:
         if not index.isValid():
             return ""
         row = index.row()
@@ -257,8 +270,8 @@ class FastDirModel(QAbstractTableModel):
     def is_parent_index(self, index: QModelIndex) -> bool:
         return index.isValid() and self._is_parent_row(index.row())
 
-    def setFilter(self, flags: QDir.Filters | QDir.Filter) -> None:
-        self._filter_flags = cast("QDir.Filter", flags)
+    def setFilter(self, flags: object) -> None:
+        self._filter_flags = self._coerce_filter_flags(flags)
         self._refresh_filter_flags()
         self._rebuild_visible(reset=True)
 
@@ -364,31 +377,13 @@ class FastDirModel(QAbstractTableModel):
 
         # Compatibility fallback for non-name sort columns.
         if self._sort_column == 1:
-
-            def key_fn(item: _DirEntry) -> tuple[int, str, str]:
-                return (
-                    0 if item.is_dir else 1,
-                    item.extension.casefold(),
-                    item.name.casefold(),
-                )
+            sort_key = self._extension_sort_key
         elif self._sort_column == 2:
-
-            def key_fn(item: _DirEntry) -> tuple[int, int, str]:
-                return (
-                    0 if item.is_dir else 1,
-                    item.size,
-                    item.name.casefold(),
-                )
+            sort_key = self._size_sort_key
         else:
+            sort_key = self._modified_sort_key
 
-            def key_fn(item: _DirEntry) -> tuple[int, float, str]:
-                return (
-                    0 if item.is_dir else 1,
-                    item.modified_ts,
-                    item.name.casefold(),
-                )
-
-        sorted_entries = sorted(sorted_entries, key=key_fn, reverse=reverse)
+        sorted_entries = sorted(sorted_entries, key=sort_key, reverse=reverse)
         return sorted_entries
 
     def _rebuild_visible(self, *, reset: bool) -> None:
@@ -415,6 +410,32 @@ class FastDirModel(QAbstractTableModel):
             return str(self._size_formatter(int(value)))
         except Exception:  # pragma: no cover - defensive
             return self._default_size_formatter(int(value))
+
+    def _coerce_filter_flags(self, flags: object) -> QDir.Filter:
+        if isinstance(flags, QDir.Filter):
+            return flags
+        return cast("QDir.Filter", flags)
+
+    def _extension_sort_key(self, item: _DirEntry) -> tuple[int, str, str]:
+        return (
+            0 if item.is_dir else 1,
+            item.extension.casefold(),
+            item.name.casefold(),
+        )
+
+    def _size_sort_key(self, item: _DirEntry) -> tuple[int, int, str]:
+        return (
+            0 if item.is_dir else 1,
+            item.size,
+            item.name.casefold(),
+        )
+
+    def _modified_sort_key(self, item: _DirEntry) -> tuple[int, float, str]:
+        return (
+            0 if item.is_dir else 1,
+            item.modified_ts,
+            item.name.casefold(),
+        )
 
     def _default_size_formatter(self, value: int) -> str:
         return f"{int(value):,}"

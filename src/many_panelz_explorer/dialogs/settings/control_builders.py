@@ -33,8 +33,8 @@ def build_command_controls(
     test_button: QPushButton | None = None,
     on_test: Callable[[], None] | None = None,
 ) -> QWidget:
-    executable_edit.textChanged.connect(dialog._on_controls_changed)
-    args_edit.textChanged.connect(dialog._on_controls_changed)
+    executable_edit.textChanged.connect(dialog.on_controls_changed)
+    args_edit.textChanged.connect(dialog.on_controls_changed)
     executable_edit.setSizePolicy(
         QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
     )
@@ -52,15 +52,15 @@ def build_command_controls(
     reset_btn = QPushButton("Reset", host)
     find_btn.setEnabled(bool(enable_find and discover_default_executable))
 
-    browse_btn.clicked.connect(lambda: dialog._browse_executable(executable_edit))
+    browse_btn.clicked.connect(lambda: dialog.browse_executable(executable_edit))
     find_btn.clicked.connect(
-        lambda: dialog._find_executable(
+        lambda: dialog.find_executable(
             executable_edit,
             default_executable=discover_default_executable,
         )
     )
     reset_btn.clicked.connect(
-        lambda: dialog._reset_command_controls(
+        lambda: dialog.reset_command_controls(
             executable_edit,
             args_edit,
             default_executable=default_executable,
@@ -101,7 +101,7 @@ def build_path_controls(
     executable_edit: QLineEdit,
     default_executable: str,
 ) -> QWidget:
-    executable_edit.textChanged.connect(dialog._on_controls_changed)
+    executable_edit.textChanged.connect(dialog.on_controls_changed)
     executable_edit.setSizePolicy(
         QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
     )
@@ -114,7 +114,7 @@ def build_path_controls(
     exe_label = QLabel("Executable", host)
     browse_btn = QPushButton("Browse...", host)
     reset_btn = QPushButton("Reset", host)
-    browse_btn.clicked.connect(lambda: dialog._browse_executable(executable_edit))
+    browse_btn.clicked.connect(lambda: dialog.browse_executable(executable_edit))
     reset_btn.clicked.connect(lambda: executable_edit.setText(default_executable))
     actions = QWidget(host)
     actions_layout = QHBoxLayout(actions)
@@ -186,7 +186,7 @@ def build_robocopy_controls(
     actions_layout.setSpacing(8)
     actions_layout.addStretch(1)
     actions_layout.addWidget(test_button)
-    test_button.clicked.connect(lambda: dialog._test_backend("copy", "robocopy"))
+    test_button.clicked.connect(lambda: dialog.test_backend("copy", "robocopy"))
     layout.addWidget(actions)
     return host
 
@@ -222,10 +222,10 @@ def build_delete_shell_controls(
     actions_layout.addWidget(cmd_test_button)
     actions_layout.addWidget(powershell_test_button)
     cmd_test_button.clicked.connect(
-        lambda: dialog._test_backend("delete", "cmd_delete")
+        lambda: dialog.test_backend("delete", "cmd_delete")
     )
     powershell_test_button.clicked.connect(
-        lambda: dialog._test_backend("delete", "powershell_delete")
+        lambda: dialog.test_backend("delete", "powershell_delete")
     )
     layout.addWidget(actions, 4, 1)
     layout.setColumnStretch(1, 1)

@@ -3,9 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from html import escape
 from string import Formatter
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, TypedDict, cast
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from . import mounts
 
 DEFAULT_STORAGE_STATUS_LABEL_TEMPLATE: Final[str] = (
@@ -41,10 +43,28 @@ class StorageStatusRenderResult:
     tooltip_html: str
 
 
+class _StorageRenderContext(TypedDict):
+    disk_label: str
+    disk_root: str
+    root_path: str
+    used_space: str
+    free_space: str
+    total_space: str
+    used_bytes: int
+    free_bytes: int
+    total_bytes: int
+    usage_percentage: float
+    free_percentage: float
+    usage_ratio: float
+    free_ratio: float
+    usage_indicator: str
+    free_indicator: str
+
+
 def format_storage_usage_entry(
     entry: mounts.StorageUsageEntry,
     *,
-    bytes_formatter,
+    bytes_formatter: Callable[[int], str],
     label_template: str,
 ) -> StorageStatusRenderResult:
     context = _build_context(entry, bytes_formatter)
@@ -55,8 +75,8 @@ def format_storage_usage_entry(
 
 def _build_context(
     entry: mounts.StorageUsageEntry,
-    bytes_formatter,
-) -> dict[str, object]:
+    bytes_formatter: Callable[[int], str],
+) -> _StorageRenderContext:
     total_bytes = max(0, int(entry.bytes_total))
     used_bytes = max(0, int(entry.bytes_used))
     if total_bytes > 0:
@@ -90,7 +110,7 @@ def _build_context(
     }
 
 
-def _render_label_template(template: str, context: dict[str, object]) -> str:
+def _render_label_template(template: str, context: _StorageRenderContext) -> str:
     rendered = _safe_template_format(str(template or ""), context)
     if rendered is None:
         rendered = _safe_template_format(DEFAULT_STORAGE_STATUS_LABEL_TEMPLATE, context)
@@ -104,7 +124,7 @@ def _render_label_template(template: str, context: dict[str, object]) -> str:
 
 def _safe_template_format(
     template: str,
-    context: dict[str, object],
+    context: _StorageRenderContext,
 ) -> str | None:
     if not template:
         return None
@@ -125,7 +145,7 @@ def _safe_template_format(
             return None
         if conversion is not None:
             return None
-        value = context[key]
+        value = cast("object", context[key])
         try:
             rendered_parts.append(
                 format(value, format_spec) if format_spec else str(value)
@@ -137,7 +157,7 @@ def _safe_template_format(
     return "".join(rendered_parts)
 
 
-def _render_tooltip_html(context: dict[str, object]) -> str:
+def _render_tooltip_html(context: _StorageRenderContext) -> str:
     disk_identity = (
         f"{escape(str(context['disk_root']))} {escape(str(context['disk_label']))}"
     )
@@ -175,7 +195,7 @@ def _render_tooltip_html(context: dict[str, object]) -> str:
     )
 
 
-def _format_bytes_value(value: int, bytes_formatter) -> str:
+def _format_bytes_value(value: int, bytes_formatter: Callable[[int], str]) -> str:
     try:
         return str(bytes_formatter(int(value)))
     except Exception:  # pragma: no cover - defensive fallback

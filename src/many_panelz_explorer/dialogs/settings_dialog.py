@@ -5,7 +5,7 @@ import tempfile
 import uuid
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from PySide6.QtCore import QSignalBlocker, Qt, QTimer
 from PySide6.QtGui import QColor, QFontDatabase
@@ -60,6 +60,7 @@ from .._operations.types import (
     DEFAULT_UNSTOPPABLE_EXE,
     OperationArtifacts,
     OperationExecutionPreferences,
+    OperationKind,
     OperationRequest,
 )
 from .._settings import normalize as settings_normalize
@@ -80,6 +81,16 @@ def _mode_label(mode: str) -> str:
     if mode == "cwd":
         return "Current Working Directory"
     return "Clone Active Path"
+
+
+def _string_object_mapping(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    normalized: dict[str, object] = {}
+    mapping = cast("dict[object, object]", value)
+    for key, item in mapping.items():
+        normalized[str(key)] = item
+    return normalized
 
 
 @dataclass
@@ -389,11 +400,9 @@ class SettingsDialog(QDialog):
         )
         self._button_box.accepted.connect(self._accept_with_apply)
         apply_button = self._button_box.button(QDialogButtonBox.StandardButton.Apply)
-        if apply_button is not None:
-            apply_button.clicked.connect(self._apply_and_commit)
+        apply_button.clicked.connect(self._apply_and_commit)
         cancel_button = self._button_box.button(QDialogButtonBox.StandardButton.Cancel)
-        if cancel_button is not None:
-            cancel_button.clicked.connect(self.reject)
+        cancel_button.clicked.connect(self.reject)
         root.addWidget(self._button_box)
 
     def _build_sections(self) -> None:
@@ -1437,7 +1446,10 @@ class SettingsDialog(QDialog):
         )
         row_layout.addWidget(controls_host)
 
-        section.group.layout().addWidget(row)
+        group_layout = section.group.layout()
+        if group_layout is None:
+            raise RuntimeError("Settings section group is missing its layout.")
+        group_layout.addWidget(row)
 
         entry = _RowEntry(
             key=key,
@@ -2339,17 +2351,14 @@ class SettingsDialog(QDialog):
                 raw = json.loads(str(json_text or "{}"))
             except json.JSONDecodeError:
                 raw = {}
-            if not isinstance(raw, dict):
-                return
-            for ext in sorted(raw.keys(), key=str.casefold):
-                value = raw.get(ext, {})
-                if not isinstance(value, dict):
-                    continue
+            raw_mapping = _string_object_mapping(cast("object", raw))
+            for ext in sorted(raw_mapping.keys(), key=str.casefold):
+                value_mapping = _string_object_mapping(raw_mapping.get(ext, {}))
                 row = self.file_open_overrides_table.rowCount()
                 self.file_open_overrides_table.insertRow(row)
-                ext_item = QTableWidgetItem(self._normalize_extension(str(ext)))
-                editor_item = QTableWidgetItem(str(value.get("editor", "")))
-                viewer_item = QTableWidgetItem(str(value.get("viewer", "")))
+                ext_item = QTableWidgetItem(self._normalize_extension(ext))
+                editor_item = QTableWidgetItem(str(value_mapping.get("editor", "")))
+                viewer_item = QTableWidgetItem(str(value_mapping.get("viewer", "")))
                 self.file_open_overrides_table.setItem(row, 0, ext_item)
                 self.file_open_overrides_table.setItem(row, 1, editor_item)
                 self.file_open_overrides_table.setItem(row, 2, viewer_item)
@@ -2361,6 +2370,33 @@ class SettingsDialog(QDialog):
                     ext_item.setToolTip("Extension must look like .txt")
         finally:
             self.file_open_overrides_table.blockSignals(False)
+
+    def on_controls_changed(self) -> None:
+        self._on_controls_changed()
+
+    def browse_executable(self, edit: QLineEdit) -> None:
+        self._browse_executable(edit)
+
+    def find_executable(self, edit: QLineEdit, *, default_executable: str) -> None:
+        self._find_executable(edit, default_executable=default_executable)
+
+    def reset_command_controls(
+        self,
+        executable_edit: QLineEdit,
+        args_edit: QLineEdit,
+        *,
+        default_executable: str,
+        default_args: str,
+    ) -> None:
+        self._reset_command_controls(
+            executable_edit,
+            args_edit,
+            default_executable=default_executable,
+            default_args=default_args,
+        )
+
+    def test_backend(self, kind: OperationKind, backend_id: str) -> None:
+        self._test_backend(kind, backend_id)
 
     def _browse_executable(self, edit: QLineEdit) -> None:
         selected, _ = QFileDialog.getOpenFileName(
@@ -2401,7 +2437,7 @@ class SettingsDialog(QDialog):
         args_edit.setText(default_args)
         self._on_controls_changed()
 
-    def _test_backend(self, kind: str, backend_id: str) -> None:
+    def _test_backend(self, kind: OperationKind, backend_id: str) -> None:
         self._on_controls_changed()
         root = (
             Path(tempfile.gettempdir())
@@ -2410,7 +2446,7 @@ class SettingsDialog(QDialog):
         )
         root.mkdir(parents=True, exist_ok=True)
         sources, target_dir = self._create_test_paths(root, kind=kind)
-        request_kind = "delete" if kind == "delete" else "copy"
+        request_kind: OperationKind = "delete" if kind == "delete" else "copy"
         request = OperationRequest(
             kind=request_kind,
             sources=tuple(sources),
@@ -2448,7 +2484,7 @@ class SettingsDialog(QDialog):
             QMessageBox.warning(self, "Backend Test Failed", details)
 
     def _create_test_paths(
-        self, root: Path, *, kind: str
+        self, root: Path, *, kind: OperationKind
     ) -> tuple[list[Path], Path | None]:
         if kind in {"copy", "move"}:
             source_root = root / "source"
@@ -3044,7 +3080,10 @@ class SettingsDialog(QDialog):
         self._ensure_visible_tree_selection(persist=False)
 
     def _ensure_visible_tree_selection(self, *, persist: bool) -> None:
-        current = self._section_tree.currentItem()
+        current = cast(
+            "QTreeWidgetItem | None",
+            self._section_tree.currentItem(),
+        )
         if current is not None and self._activate_tree_item(current, persist=persist):
             return
         item = self._first_visible_subsection_item()
@@ -3060,10 +3099,13 @@ class SettingsDialog(QDialog):
 
     def _tree_item_payload(self, item: QTreeWidgetItem) -> tuple[str, str] | None:
         payload = item.data(0, Qt.ItemDataRole.UserRole)
-        if not isinstance(payload, (list, tuple)) or len(payload) != 2:
+        if not isinstance(payload, (list, tuple)):
             return None
-        kind = str(payload[0]).strip().lower()
-        key = str(payload[1] or "").strip()
+        payload_parts = tuple(cast("tuple[object, ...]", payload))
+        if len(payload_parts) != 2:
+            return None
+        kind = str(payload_parts[0]).strip().lower()
+        key = str(payload_parts[1] or "").strip()
         if kind not in {"section", "subsection"} or not key:
             return None
         return kind, key
@@ -3084,7 +3126,10 @@ class SettingsDialog(QDialog):
     def _set_current_tree_item(self, item: QTreeWidgetItem, *, persist: bool) -> bool:
         if item.isHidden():
             return False
-        current = self._section_tree.currentItem()
+        current = cast(
+            "QTreeWidgetItem | None",
+            self._section_tree.currentItem(),
+        )
         if current is not item:
             self._tree_sync_in_progress = True
             try:
@@ -3100,7 +3145,7 @@ class SettingsDialog(QDialog):
                 continue
             for index in range(section_item.childCount()):
                 child = section_item.child(index)
-                if child is not None and not child.isHidden():
+                if not child.isHidden():
                     return child
         return None
 
@@ -3115,7 +3160,7 @@ class SettingsDialog(QDialog):
             return False
         for index in range(section_item.childCount()):
             child = section_item.child(index)
-            if child is None or child.isHidden():
+            if child.isHidden():
                 continue
             return self._set_current_tree_item(child, persist=persist)
         return False
@@ -3144,7 +3189,10 @@ class SettingsDialog(QDialog):
             self._scroll.verticalScrollBar().setValue(0)
 
     def _selected_subsection_key(self) -> str:
-        current = self._section_tree.currentItem()
+        current = cast(
+            "QTreeWidgetItem | None",
+            self._section_tree.currentItem(),
+        )
         if current is None:
             return ""
         payload = self._tree_item_payload(current)

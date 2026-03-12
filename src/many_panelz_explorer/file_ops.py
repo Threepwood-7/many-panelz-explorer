@@ -7,7 +7,7 @@ import subprocess
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 from send2trash import send2trash
 from threep_commons.desktop import open_path_in_default_app
@@ -28,6 +28,16 @@ _clipboard_payload: ClipboardPayload | None = None
 _default_editor_executable = ""
 _default_viewer_executable = ""
 _file_open_overrides: dict[str, dict[str, str]] = {}
+
+
+def _string_mapping(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    normalized: dict[str, object] = {}
+    mapping = cast("dict[object, object]", value)
+    for key, item in mapping.items():
+        normalized[str(key)] = item
+    return normalized
 
 
 def set_clipboard(paths: Iterable[Path], cut: bool) -> None:
@@ -70,19 +80,14 @@ def _normalize_extension(value: str) -> str:
 
 
 def _normalize_overrides_payload(raw: object) -> dict[str, dict[str, str]]:
-    if not isinstance(raw, dict):
-        return {}
     normalized: dict[str, dict[str, str]] = {}
-    for ext, value in raw.items():
-        ext_key = _normalize_extension(str(ext))
+    for ext, value in _string_mapping(raw).items():
+        ext_key = _normalize_extension(ext)
         if not ext_key:
             continue
-        if isinstance(value, dict):
-            editor = str(value.get("editor", "")).strip()
-            viewer = str(value.get("viewer", "")).strip()
-        else:
-            editor = ""
-            viewer = ""
+        value_mapping = _string_mapping(value)
+        editor = str(value_mapping.get("editor", "")).strip()
+        viewer = str(value_mapping.get("viewer", "")).strip()
         normalized[ext_key] = {"editor": editor, "viewer": viewer}
     return normalized
 
@@ -102,7 +107,7 @@ def configure_open_routing(
         parsed = json.loads(str(overrides_json or "{}"))
     except json.JSONDecodeError:
         parsed = {}
-    _file_open_overrides = _normalize_overrides_payload(parsed)
+    _file_open_overrides = _normalize_overrides_payload(cast("object", parsed))
 
 
 def _resolve_launch_executable(executable: str) -> str:
@@ -119,7 +124,7 @@ def _resolve_launch_executable(executable: str) -> str:
 
 def resolve_open_executable(path: Path, mode: Literal["edit", "view"]) -> str | None:
     extension = _normalize_extension(Path(path).suffix)
-    override = _file_open_overrides.get(extension, {})
+    override = _file_open_overrides.get(extension) or {}
     if mode == "edit":
         candidate = str(
             override.get("editor", "") or _default_editor_executable
