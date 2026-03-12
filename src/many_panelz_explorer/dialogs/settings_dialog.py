@@ -141,7 +141,7 @@ class _FontSizeSpinBox(QSpinBox):
             return self._max_size
         return size
 
-    def stepBy(self, steps: int) -> None:  # noqa: N802
+    def stepBy(self, steps: int) -> None:
         if not self._allow_system_value:
             super().stepBy(steps)
             return

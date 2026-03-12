@@ -41,7 +41,7 @@ class _ElidedStatusLabel(QLabel):
     def full_text(self) -> str:
         return self._full_text
 
-    def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802
+    def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
         self._apply_elided_text()
 

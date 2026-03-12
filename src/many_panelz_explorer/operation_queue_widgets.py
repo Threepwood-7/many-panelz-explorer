@@ -57,11 +57,11 @@ class OperationQueueTableModel(QAbstractTableModel):
         manager.job_updated.connect(self._on_job_updated)
         manager.jobs_reset.connect(self._on_jobs_reset)
 
-    def rowCount(self, parent: QModelIndex = _DEFAULT_MODEL_INDEX) -> int:  # noqa: N802
+    def rowCount(self, parent: QModelIndex = _DEFAULT_MODEL_INDEX) -> int:
         _ = parent
         return len(self._jobs)
 
-    def columnCount(self, parent: QModelIndex = _DEFAULT_MODEL_INDEX) -> int:  # noqa: N802
+    def columnCount(self, parent: QModelIndex = _DEFAULT_MODEL_INDEX) -> int:
         _ = parent
         return len(_HEADERS)
 

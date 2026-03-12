@@ -28,7 +28,7 @@ class ExplorerTabColumns(QObject):
         self._syncing = False
         self._pending_widths: list[int] = []
         self._view.header().sectionResized.connect(self._on_column_resized)
-        self._model.directoryLoaded.connect(self._on_directory_loaded)
+        self._model.directory_loaded.connect(self._on_directory_loaded)
 
     @property
     def widths(self) -> tuple[int, ...]:

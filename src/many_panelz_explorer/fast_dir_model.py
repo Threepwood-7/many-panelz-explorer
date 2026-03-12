@@ -77,7 +77,7 @@ class _ModelSignals(QObject):
 
 
 class FastDirModel(QAbstractTableModel):
-    directoryLoaded = Signal(str)  # noqa: N815
+    directory_loaded = Signal(str)
 
     _HEADERS = ("Name", "Ext", "Size", "Date")
     _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="mpe-dir-scan")
@@ -107,14 +107,14 @@ class FastDirModel(QAbstractTableModel):
         self._signals.listing_ready.connect(self._on_listing_ready)
         self._refresh_filter_flags()
 
-    def rowCount(self, parent: QModelIndex | None = None) -> int:  # noqa: N802
+    def rowCount(self, parent: QModelIndex | None = None) -> int:
         if parent is None:
             parent = QModelIndex()
         if parent.isValid():
             return 0
         return len(self._visible_entries) + (1 if self._show_parent_entry else 0)
 
-    def columnCount(self, parent: QModelIndex | None = None) -> int:  # noqa: N802
+    def columnCount(self, parent: QModelIndex | None = None) -> int:
         if parent is None:
             parent = QModelIndex()
         if parent.isValid():
@@ -194,11 +194,11 @@ class FastDirModel(QAbstractTableModel):
             return Qt.ItemFlag.NoItemFlags
         return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
-    def setReadOnly(self, _read_only: bool) -> None:  # noqa: N802
+    def setReadOnly(self, _read_only: bool) -> None:
         # Compatibility no-op: ExplorerTab expects QFileSystemModel-style API.
         return
 
-    def setRootPath(self, path: str) -> QModelIndex:  # noqa: N802
+    def setRootPath(self, path: str) -> QModelIndex:
         target = Path(path).expanduser()
         if not target.exists() or not target.is_dir():
             target = Path.home()
@@ -232,7 +232,7 @@ class FastDirModel(QAbstractTableModel):
         future.add_done_callback(_done_callback)
         return QModelIndex()
 
-    def filePath(self, index: QModelIndex) -> str:  # noqa: N802
+    def filePath(self, index: QModelIndex) -> str:
         if not index.isValid():
             return ""
         row = index.row()
@@ -257,7 +257,7 @@ class FastDirModel(QAbstractTableModel):
     def is_parent_index(self, index: QModelIndex) -> bool:
         return index.isValid() and self._is_parent_row(index.row())
 
-    def setFilter(self, flags: QDir.Filters | QDir.Filter) -> None:  # noqa: N802
+    def setFilter(self, flags: QDir.Filters | QDir.Filter) -> None:
         self._filter_flags = cast("QDir.Filter", flags)
         self._refresh_filter_flags()
         self._rebuild_visible(reset=True)
@@ -265,18 +265,18 @@ class FastDirModel(QAbstractTableModel):
     def filter(self) -> QDir.Filter:
         return self._filter_flags
 
-    def setNameFilters(self, filters: list[str]) -> None:  # noqa: N802
+    def setNameFilters(self, filters: list[str]) -> None:
         self._name_filters = [str(pattern) for pattern in filters]
         self._rebuild_visible(reset=True)
 
-    def nameFilters(self) -> list[str]:  # noqa: N802
+    def nameFilters(self) -> list[str]:
         return list(self._name_filters)
 
-    def setNameFilterDisables(self, disables: bool) -> None:  # noqa: N802
+    def setNameFilterDisables(self, disables: bool) -> None:
         self._name_filter_disables = bool(disables)
         self._rebuild_visible(reset=True)
 
-    def nameFilterDisables(self) -> bool:  # noqa: N802
+    def nameFilterDisables(self) -> bool:
         return self._name_filter_disables
 
     def sort(
@@ -324,7 +324,7 @@ class FastDirModel(QAbstractTableModel):
             self._apply_entry_filters(parsed_entries)
         )
         self.endResetModel()
-        self.directoryLoaded.emit(str(self._current_path))
+        self.directory_loaded.emit(str(self._current_path))
 
     def _refresh_filter_flags(self) -> None:
         self._show_hidden = bool(
