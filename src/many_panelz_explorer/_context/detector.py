@@ -7,6 +7,7 @@ import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 from urllib.parse import urlparse
 
 _PYTHON_MARKER_FILES = {
@@ -23,6 +24,17 @@ _NODE_MARKER_FILES = {"package.json", "bun.lockb", "pnpm-lock.yaml", "yarn.lock"
 _NODE_MARKER_DIRS = {"node_modules"}
 _GIT_ALLOWED_REMOTE_HOSTS = {"github.com", "gitlab.com", "bitbucket.org"}
 _GIT_SSH_URL_RE = re.compile(r"^[^@]+@(?P<host>[^:]+):(?P<path>.+)$")
+
+
+def _string_object_mapping(value: object) -> dict[str, object] | None:
+    """Normalize decoded config payloads into string-key object mappings."""
+
+    if not isinstance(value, dict):
+        return None
+    return {
+        str(key): item
+        for key, item in cast("dict[object, object]", value).items()
+    }
 
 
 @dataclass(frozen=True)
@@ -146,8 +158,11 @@ class ContextDetector:
             payload = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
         except (OSError, tomllib.TOMLDecodeError):
             return None
-        project = payload.get("project")
-        if not isinstance(project, dict):
+        payload_map = _string_object_mapping(payload)
+        if payload_map is None:
+            return None
+        project = _string_object_mapping(payload_map.get("project"))
+        if project is None:
             return None
         requires = str(project.get("requires-python", "")).strip()
         return requires or None
@@ -260,8 +275,11 @@ class ContextDetector:
                 payload = json.loads(package_json_path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
                 payload = {}
-            if isinstance(payload, dict):
-                package_manager = str(payload.get("packageManager", "")).strip().lower()
+            payload_map = _string_object_mapping(cast("object", payload))
+            if payload_map is not None:
+                package_manager = str(
+                    payload_map.get("packageManager", "")
+                ).strip().lower()
                 manager = package_manager.split("@", 1)[0]
                 if manager in {"npm", "pnpm", "yarn", "bun"}:
                     return manager

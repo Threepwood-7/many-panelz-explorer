@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import tomllib
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -13,6 +13,17 @@ if TYPE_CHECKING:
 class RunnableScript:
     label: str
     command: str
+
+
+def _string_object_mapping(value: object) -> dict[str, object] | None:
+    """Normalize decoded payloads into string-key object mappings."""
+
+    if not isinstance(value, dict):
+        return None
+    return {
+        str(key): item
+        for key, item in cast("dict[object, object]", value).items()
+    }
 
 
 def parse_python_runnable_scripts(root: Path) -> list[RunnableScript]:
@@ -33,10 +44,11 @@ def parse_node_runnable_scripts(root: Path, *, runner: str) -> list[RunnableScri
         payload = json.loads(package_json_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return []
-    if not isinstance(payload, dict):
+    payload_map = _string_object_mapping(payload)
+    if payload_map is None:
         return []
-    raw_scripts = payload.get("scripts")
-    if not isinstance(raw_scripts, dict):
+    raw_scripts = _string_object_mapping(payload_map.get("scripts"))
+    if raw_scripts is None:
         return []
     entries: list[RunnableScript] = []
     for name in sorted(raw_scripts.keys(), key=str.casefold):
@@ -53,11 +65,14 @@ def _parse_pyproject_scripts(pyproject_path: Path) -> dict[str, RunnableScript]:
         payload = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError):
         return {}
-    project = payload.get("project")
-    if not isinstance(project, dict):
+    payload_map = _string_object_mapping(payload)
+    if payload_map is None:
         return {}
-    raw_scripts = project.get("scripts")
-    if not isinstance(raw_scripts, dict):
+    project = _string_object_mapping(payload_map.get("project"))
+    if project is None:
+        return {}
+    raw_scripts = _string_object_mapping(project.get("scripts"))
+    if raw_scripts is None:
         return {}
     entries: dict[str, RunnableScript] = {}
     for key in sorted(raw_scripts.keys(), key=str.casefold):
@@ -73,22 +88,25 @@ def _parse_hatch_scripts(pyproject_path: Path) -> dict[str, RunnableScript]:
         payload = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError):
         return {}
-    tool = payload.get("tool")
-    if not isinstance(tool, dict):
+    payload_map = _string_object_mapping(payload)
+    if payload_map is None:
         return {}
-    hatch = tool.get("hatch")
-    if not isinstance(hatch, dict):
+    tool = _string_object_mapping(payload_map.get("tool"))
+    if tool is None:
         return {}
-    envs = hatch.get("envs")
-    if not isinstance(envs, dict):
+    hatch = _string_object_mapping(tool.get("hatch"))
+    if hatch is None:
+        return {}
+    envs = _string_object_mapping(hatch.get("envs"))
+    if envs is None:
         return {}
     entries: dict[str, RunnableScript] = {}
-    for env_name, env_payload in cast("dict[str, Any]", envs).items():
-        env_dict = env_payload if isinstance(env_payload, dict) else None
+    for env_name, env_payload in envs.items():
+        env_dict = _string_object_mapping(env_payload)
         if env_dict is None:
             continue
-        raw_scripts = env_dict.get("scripts")
-        if not isinstance(raw_scripts, dict):
+        raw_scripts = _string_object_mapping(env_dict.get("scripts"))
+        if raw_scripts is None:
             continue
         for script_name in sorted(raw_scripts.keys(), key=str.casefold):
             name = str(script_name).strip()

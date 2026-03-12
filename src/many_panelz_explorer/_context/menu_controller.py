@@ -27,6 +27,8 @@ from .scripts import (
 from .tool_registry import ContextTool, ContextToolRegistry, expand_tool_args
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from PySide6.QtGui import QAction
 
     from ..window import ExplorerWindow
@@ -202,9 +204,7 @@ class ContextMenuController(QObject):
                 root_path=root.root_path,
                 runner="",
             )
-            scripts_menu.aboutToShow.connect(
-                lambda state_key=key: self._on_scripts_menu_about_to_show(state_key)
-            )
+            scripts_menu.aboutToShow.connect(self._scripts_menu_callback(key))
 
     def _populate_git_mode(
         self,
@@ -292,9 +292,7 @@ class ContextMenuController(QObject):
                 root_path=root.root_path,
                 runner=root.runner,
             )
-            scripts_menu.aboutToShow.connect(
-                lambda state_key=key: self._on_scripts_menu_about_to_show(state_key)
-            )
+            scripts_menu.aboutToShow.connect(self._scripts_menu_callback(key))
 
     def _on_scripts_menu_about_to_show(self, key: tuple[str, str, str]) -> None:
         state = self._script_menu_states.get(key)
@@ -410,12 +408,17 @@ class ContextMenuController(QObject):
         return action
 
     def _copy_text(self, value: str) -> None:
-        app = QApplication.instance()
-        if app is None:
-            return
-        clipboard = app.clipboard()
+        clipboard = QApplication.clipboard()
         clipboard.setText(str(value or ""))
         self._window.statusBar().showMessage("Copied remote URL to clipboard.", 1800)
+
+    def _scripts_menu_callback(
+        self, key: tuple[str, str, str]
+    ) -> "Callable[[], None]":
+        def _show_scripts_menu() -> None:
+            self._on_scripts_menu_about_to_show(key)
+
+        return _show_scripts_menu
 
     def _open_terminal(
         self,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, replace
-from typing import Any
+from typing import Any, cast
 
 from .path_helpers import split_args
 from .types import (
@@ -22,6 +22,17 @@ _TERACOPY_CONFLICT_OPTIONS = {
     "/RENAMECOPIED",
     "/RENAMEDESTINATION",
 }
+
+
+def _string_object_mapping(value: Any) -> dict[str, Any] | None:
+    """Normalize backend-option payloads into string-key mappings."""
+
+    if not isinstance(value, dict):
+        return None
+    return {
+        str(key): item
+        for key, item in cast("dict[object, object]", value).items()
+    }
 
 
 @dataclass(frozen=True)
@@ -163,60 +174,61 @@ def external_copymove_options_payload(
 
 
 def normalize_robocopy_options(raw: Any) -> RobocopyBackendOptions:
-    if not isinstance(raw, dict):
+    raw_map = _string_object_mapping(raw)
+    if raw_map is None:
         return RobocopyBackendOptions()
     options = RobocopyBackendOptions(
         include_subdirectories=_normalize_bool(
-            raw.get("include_subdirectories"),
+            raw_map.get("include_subdirectories"),
             fallback=RobocopyBackendOptions.include_subdirectories,
         ),
         mirror_target=_normalize_bool(
-            raw.get("mirror_target"),
+            raw_map.get("mirror_target"),
             fallback=RobocopyBackendOptions.mirror_target,
         ),
         move_files_for_move=_normalize_bool(
-            raw.get("move_files_for_move"),
+            raw_map.get("move_files_for_move"),
             fallback=RobocopyBackendOptions.move_files_for_move,
         ),
         restartable_mode=_normalize_bool(
-            raw.get("restartable_mode"),
+            raw_map.get("restartable_mode"),
             fallback=RobocopyBackendOptions.restartable_mode,
         ),
         backup_mode=_normalize_bool(
-            raw.get("backup_mode"),
+            raw_map.get("backup_mode"),
             fallback=RobocopyBackendOptions.backup_mode,
         ),
         list_only=_normalize_bool(
-            raw.get("list_only"),
+            raw_map.get("list_only"),
             fallback=RobocopyBackendOptions.list_only,
         ),
         suppress_logs=_normalize_bool(
-            raw.get("suppress_logs"),
+            raw_map.get("suppress_logs"),
             fallback=RobocopyBackendOptions.suppress_logs,
         ),
         retry_count=_normalize_int(
-            raw.get("retry_count"),
+            raw_map.get("retry_count"),
             fallback=RobocopyBackendOptions.retry_count,
             minimum=0,
             maximum=1_000_000,
         ),
         wait_seconds=_normalize_int(
-            raw.get("wait_seconds"),
+            raw_map.get("wait_seconds"),
             fallback=RobocopyBackendOptions.wait_seconds,
             minimum=0,
             maximum=3_600,
         ),
         use_multithreading=_normalize_bool(
-            raw.get("use_multithreading"),
+            raw_map.get("use_multithreading"),
             fallback=RobocopyBackendOptions.use_multithreading,
         ),
         multithread_count=_normalize_int(
-            raw.get("multithread_count"),
+            raw_map.get("multithread_count"),
             fallback=RobocopyBackendOptions.multithread_count,
             minimum=1,
             maximum=128,
         ),
-        extra_args=_normalize_text(raw.get("extra_args"), fallback=""),
+        extra_args=_normalize_text(raw_map.get("extra_args"), fallback=""),
     )
     if options.use_multithreading:
         return options
@@ -224,27 +236,28 @@ def normalize_robocopy_options(raw: Any) -> RobocopyBackendOptions:
 
 
 def normalize_teracopy_options(raw: Any) -> TeraCopyBackendOptions:
-    if not isinstance(raw, dict):
+    raw_map = _string_object_mapping(raw)
+    if raw_map is None:
         return TeraCopyBackendOptions()
     options = TeraCopyBackendOptions(
         close_on_finish=_normalize_bool(
-            raw.get("close_on_finish"),
+            raw_map.get("close_on_finish"),
             fallback=TeraCopyBackendOptions.close_on_finish,
         ),
         keep_open=_normalize_bool(
-            raw.get("keep_open"),
+            raw_map.get("keep_open"),
             fallback=TeraCopyBackendOptions.keep_open,
         ),
         verify_after_copy=_normalize_bool(
-            raw.get("verify_after_copy"),
+            raw_map.get("verify_after_copy"),
             fallback=TeraCopyBackendOptions.verify_after_copy,
         ),
         no_sound=_normalize_bool(
-            raw.get("no_sound"),
+            raw_map.get("no_sound"),
             fallback=TeraCopyBackendOptions.no_sound,
         ),
-        conflict_mode=_normalize_conflict_mode(raw.get("conflict_mode")),
-        extra_args=_normalize_text(raw.get("extra_args"), fallback=""),
+        conflict_mode=_normalize_conflict_mode(raw_map.get("conflict_mode")),
+        extra_args=_normalize_text(raw_map.get("extra_args"), fallback=""),
     )
     if options.close_on_finish and options.keep_open:
         options = replace(options, keep_open=False)
@@ -252,86 +265,88 @@ def normalize_teracopy_options(raw: Any) -> TeraCopyBackendOptions:
 
 
 def normalize_unstoppable_options(raw: Any) -> UnstoppableBackendOptions:
-    if not isinstance(raw, dict):
+    raw_map = _string_object_mapping(raw)
+    if raw_map is None:
         return UnstoppableBackendOptions()
     return UnstoppableBackendOptions(
         use_defaults=_normalize_bool(
-            raw.get("use_defaults"),
+            raw_map.get("use_defaults"),
             fallback=UnstoppableBackendOptions.use_defaults,
         ),
         keep_attributes=_normalize_bool(
-            raw.get("keep_attributes"),
+            raw_map.get("keep_attributes"),
             fallback=UnstoppableBackendOptions.keep_attributes,
         ),
         keep_owner=_normalize_bool(
-            raw.get("keep_owner"),
+            raw_map.get("keep_owner"),
             fallback=UnstoppableBackendOptions.keep_owner,
         ),
         keep_time=_normalize_bool(
-            raw.get("keep_time"),
+            raw_map.get("keep_time"),
             fallback=UnstoppableBackendOptions.keep_time,
         ),
         overwrite_existing=_normalize_bool(
-            raw.get("overwrite_existing"),
+            raw_map.get("overwrite_existing"),
             fallback=UnstoppableBackendOptions.overwrite_existing,
         ),
         include_subfolders=_normalize_bool(
-            raw.get("include_subfolders"),
+            raw_map.get("include_subfolders"),
             fallback=UnstoppableBackendOptions.include_subfolders,
         ),
         recover_and_resume=_normalize_bool(
-            raw.get("recover_and_resume"),
+            raw_map.get("recover_and_resume"),
             fallback=UnstoppableBackendOptions.recover_and_resume,
         ),
         copy_newer_only=_normalize_bool(
-            raw.get("copy_newer_only"),
+            raw_map.get("copy_newer_only"),
             fallback=UnstoppableBackendOptions.copy_newer_only,
         ),
         skip_damaged=_normalize_bool(
-            raw.get("skip_damaged"),
+            raw_map.get("skip_damaged"),
             fallback=UnstoppableBackendOptions.skip_damaged,
         ),
         undamaged_first=_normalize_bool(
-            raw.get("undamaged_first"),
+            raw_map.get("undamaged_first"),
             fallback=UnstoppableBackendOptions.undamaged_first,
         ),
         overwrite_readonly=_normalize_bool(
-            raw.get("overwrite_readonly"),
+            raw_map.get("overwrite_readonly"),
             fallback=UnstoppableBackendOptions.overwrite_readonly,
         ),
         copy_empty_folders=_normalize_bool(
-            raw.get("copy_empty_folders"),
+            raw_map.get("copy_empty_folders"),
             fallback=UnstoppableBackendOptions.copy_empty_folders,
         ),
         show_eta=_normalize_bool(
-            raw.get("show_eta"),
+            raw_map.get("show_eta"),
             fallback=UnstoppableBackendOptions.show_eta,
         ),
         power_down_when_done=_normalize_bool(
-            raw.get("power_down_when_done"),
+            raw_map.get("power_down_when_done"),
             fallback=UnstoppableBackendOptions.power_down_when_done,
         ),
-        extra_args=_normalize_text(raw.get("extra_args"), fallback=""),
+        extra_args=_normalize_text(raw_map.get("extra_args"), fallback=""),
     )
 
 
 def normalize_external_copymove_options(raw: Any) -> ExternalCopyMoveBackendOptions:
-    if not isinstance(raw, dict):
+    raw_map = _string_object_mapping(raw)
+    if raw_map is None:
         return ExternalCopyMoveBackendOptions()
     options = ExternalCopyMoveBackendOptions(
         include_operation_token=_normalize_bool(
-            raw.get("include_operation_token"),
+            raw_map.get("include_operation_token"),
             fallback=ExternalCopyMoveBackendOptions.include_operation_token,
         ),
         include_sources=_normalize_bool(
-            raw.get("include_sources"),
+            raw_map.get("include_sources"),
             fallback=ExternalCopyMoveBackendOptions.include_sources,
         ),
         include_target=_normalize_bool(
-            raw.get("include_target"),
+            raw_map.get("include_target"),
             fallback=ExternalCopyMoveBackendOptions.include_target,
         ),
-        extra_args=_normalize_text(raw.get("extra_args"), fallback=""),
+        extra_args=_normalize_text(raw_map.get("extra_args"), fallback=""),
     )
     if (
         not options.include_operation_token
