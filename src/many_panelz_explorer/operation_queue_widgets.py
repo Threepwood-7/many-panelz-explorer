@@ -203,9 +203,7 @@ class OperationQueuePanel(QWidget):
         self.open_script_btn.clicked.connect(self._open_script)
         self.open_log_btn.clicked.connect(self._open_log)
         self.open_metadata_btn.clicked.connect(self._open_metadata)
-        self.table.selectionModel().selectionChanged.connect(
-            self._on_selection_changed
-        )
+        self.table.selectionModel().selectionChanged.connect(self._on_selection_changed)
         self.manager.job_updated.connect(self._on_job_signal)
         self.manager.job_added.connect(self._on_job_signal)
         self._sync_artifact_buttons()

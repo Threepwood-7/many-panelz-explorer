@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
@@ -61,7 +61,9 @@ class _ElidedStatusLabel(QLabel):
 class WindowStatusCoordinator:
     def __init__(self, window: ExplorerWindow) -> None:
         self.window = window
-        self._storage_bytes_formatter = lambda value: f"{int(value):,}"
+        self._storage_bytes_formatter: Callable[[int], str] = (
+            self._default_storage_bytes_formatter
+        )
         self._storage_label_template = DEFAULT_STORAGE_STATUS_LABEL_TEMPLATE
         self._storage_refresh_timer = QTimer(window)
         self._storage_refresh_timer.setInterval(
@@ -85,18 +87,18 @@ class WindowStatusCoordinator:
         paths_row_layout.setContentsMargins(0, 0, 0, 0)
         paths_row_layout.setSpacing(8)
 
-        self.window._source_path_label = QLabel("Source path: (none)", host)
-        self.window._target_path_label = QLabel("Target path: (none)", host)
-        self.window._source_path_label.setSizePolicy(
+        self.window.source_path_label = QLabel("Source path: (none)", host)
+        self.window.target_path_label = QLabel("Target path: (none)", host)
+        self.window.source_path_label.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Preferred,
         )
-        self.window._target_path_label.setSizePolicy(
+        self.window.target_path_label.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Preferred,
         )
-        paths_row_layout.addWidget(self.window._source_path_label, 1)
-        paths_row_layout.addWidget(self.window._target_path_label, 1)
+        paths_row_layout.addWidget(self.window.source_path_label, 1)
+        paths_row_layout.addWidget(self.window.target_path_label, 1)
 
         storage_row = QWidget(host)
         storage_row_layout = QHBoxLayout(storage_row)
@@ -110,7 +112,7 @@ class WindowStatusCoordinator:
         storage_entries_layout = QHBoxLayout(storage_entries_host)
         storage_entries_layout.setContentsMargins(0, 0, 0, 0)
         storage_entries_layout.setSpacing(6)
-        self.window._storage_overview_labels: list[_ElidedStatusLabel] = []
+        self.window.storage_overview_labels = []
         storage_row_layout.addWidget(storage_label_prefix)
         storage_row_layout.addWidget(storage_entries_host, 1)
 
@@ -119,21 +121,21 @@ class WindowStatusCoordinator:
         status_bar.addPermanentWidget(host, 1)
         status_bar.showMessage("")
 
-        self.window._status_rows_host = host
-        self.window._status_paths_row = paths_row
-        self.window._storage_overview_row = storage_row
-        self.window._storage_entries_host = storage_entries_host
-        self.window._storage_entries_layout = storage_entries_layout
+        self.window.status_rows_host = host
+        self.window.status_paths_row = paths_row
+        self.window.storage_overview_row = storage_row
+        self.window.storage_entries_host = storage_entries_host
+        self.window.storage_entries_layout = storage_entries_layout
 
         window_widget_id = widget_naming.window_widget_id(self.window.window_id)
         self._set_identity(host, f"{window_widget_id}:status_rows", "status.rows")
         self._set_identity(
-            self.window._source_path_label,
+            self.window.source_path_label,
             f"{window_widget_id}:status_source_path",
             "status.source_path",
         )
         self._set_identity(
-            self.window._target_path_label,
+            self.window.target_path_label,
             f"{window_widget_id}:status_target_path",
             "status.target_path",
         )
@@ -147,9 +149,9 @@ class WindowStatusCoordinator:
         assign_widget_identity(widget, widget_id=widget_id, widget_alias=alias)
 
     def update_pane_visuals(self) -> None:
-        source_id = self.window._active_panel_id
+        source_id = self.window.active_panel_id
         target_id = (
-            self.window._resolve_target_panel_id(source_id)
+            self.window.resolve_target_panel_id(source_id)
             if source_id is not None
             else None
         )
@@ -165,7 +167,7 @@ class WindowStatusCoordinator:
     def set_storage_overview_enabled(self, enabled: bool) -> None:
         if not enabled:
             self._storage_refresh_timer.stop()
-            self.window._storage_overview_row.setVisible(False)
+            self.window.storage_overview_row.setVisible(False)
             self._set_storage_overview_entries([])
             return
         if not self._storage_refresh_timer.isActive():
@@ -177,7 +179,7 @@ class WindowStatusCoordinator:
         formatter: Callable[[int], str] | None,
     ) -> None:
         if formatter is None:
-            self._storage_bytes_formatter = lambda value: f"{int(value):,}"
+            self._storage_bytes_formatter = self._default_storage_bytes_formatter
         else:
             self._storage_bytes_formatter = formatter
         self.refresh_storage_overview_status()
@@ -194,19 +196,19 @@ class WindowStatusCoordinator:
         source_path = self.panel_path_text(source_id)
         target_path = self.panel_path_text(target_id)
 
-        self.window._source_path_label.setText(f"Source path: {source_path}")
-        self.window._target_path_label.setText(f"Target path: {target_path}")
+        self.window.source_path_label.setText(f"Source path: {source_path}")
+        self.window.target_path_label.setText(f"Target path: {target_path}")
 
-        self.window._source_path_label.setToolTip(
+        self.window.source_path_label.setToolTip(
             "" if source_path == "(none)" else source_path
         )
-        self.window._target_path_label.setToolTip(
+        self.window.target_path_label.setToolTip(
             "" if target_path == "(none)" else target_path
         )
 
     def refresh_storage_overview_status(self) -> None:
-        if not self.window._show_storage_overview_status_row:
-            self.window._storage_overview_row.setVisible(False)
+        if not self.window.show_storage_overview_enabled:
+            self.window.storage_overview_row.setVisible(False)
             self._set_storage_overview_entries([])
             return
 
@@ -214,14 +216,14 @@ class WindowStatusCoordinator:
         current_path = active_panel.current_path() if active_panel is not None else None
         entries = mounts.list_storage_usage_entries(current_path=current_path)
         if not entries:
-            self.window._storage_overview_row.setVisible(False)
+            self.window.storage_overview_row.setVisible(False)
             self._set_storage_overview_entries([])
             return
 
         self._set_storage_overview_entries(
             [self._format_storage_entry(entry) for entry in entries]
         )
-        self.window._storage_overview_row.setVisible(True)
+        self.window.storage_overview_row.setVisible(True)
 
     def _format_storage_entry(
         self, entry: mounts.StorageUsageEntry
@@ -238,11 +240,15 @@ class WindowStatusCoordinator:
         except Exception:  # pragma: no cover - defensive
             return f"{int(value):,}"
 
+    def _default_storage_bytes_formatter(self, value: int) -> str:
+        return f"{int(value):,}"
+
     def _set_storage_overview_entries(
         self, entries: list[StorageStatusRenderResult]
     ) -> None:
         self._ensure_storage_overview_labels(len(entries))
-        for index, label in enumerate(self.window._storage_overview_labels):
+        labels = cast("list[_ElidedStatusLabel]", self.window.storage_overview_labels)
+        for index, label in enumerate(labels):
             if index < len(entries):
                 entry = entries[index]
                 label.set_full_text(entry.label_text)
@@ -253,12 +259,12 @@ class WindowStatusCoordinator:
                 label.setVisible(False)
 
     def _ensure_storage_overview_labels(self, count: int) -> None:
-        layout = self.window._storage_entries_layout
-        labels = self.window._storage_overview_labels
+        layout = self.window.storage_entries_layout
+        labels = cast("list[_ElidedStatusLabel]", self.window.storage_overview_labels)
         window_widget_id = widget_naming.window_widget_id(self.window.window_id)
         while len(labels) < count:
             index = len(labels)
-            label = _ElidedStatusLabel(self.window._storage_entries_host)
+            label = _ElidedStatusLabel(self.window.storage_entries_host)
             layout.addWidget(label, 1)
             labels.append(label)
             self._set_identity(

@@ -4,7 +4,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from PySide6.QtWidgets import QApplication
 
@@ -13,6 +13,9 @@ from ._operations.types import OperationExecutionPreferences
 from ._settings.manager import SettingsManager
 from .operation_queue_widgets import OperationQueueTableModel
 from .window import ExplorerWindow
+
+if TYPE_CHECKING:
+    from .app_controller import AppController
 
 
 class _ControllerStub:
@@ -27,10 +30,10 @@ class _ControllerStub:
     def close_window(self, _window: ExplorerWindow) -> None:
         return
 
-    def show_queue_floating_window(self):
+    def show_queue_floating_window(self) -> None:
         return None
 
-    def broadcast_column_widths(self, *_args, **_kwargs) -> None:
+    def broadcast_column_widths(self, *_args: object, **_kwargs: object) -> None:
         return
 
 
@@ -63,7 +66,7 @@ def generate_widget_map_image(
 
         settings = SettingsManager()
         window = ExplorerWindow(
-            controller=_ControllerStub(),
+            controller=cast("AppController", _ControllerStub()),
             settings=settings,
             window_id="widget-map-snapshot",
             initial_path=roots_dir,
@@ -80,8 +83,8 @@ def generate_widget_map_image(
         if tab is None:
             raise RuntimeError("No active tab available for snapshot generation.")
 
-        panel._show_filter_overlay(seed_text="map")
-        window._show_widget_map_action.setChecked(True)
+        panel.show_filter_overlay(seed_text="map")
+        window.toggle_show_widget_map(True)
         _pump_events(app, 0.2)
 
         output = Path(output_path)

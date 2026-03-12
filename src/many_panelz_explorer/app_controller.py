@@ -248,7 +248,7 @@ class AppController:
 
     def _queue_window_destroyed_callback(
         self, window: QMainWindow
-    ) -> "Callable[[object | None], None]":
+    ) -> Callable[[object | None], None]:
         def _handle_destroyed(_obj: object | None = None) -> None:
             self._on_queue_window_destroyed(window)
 

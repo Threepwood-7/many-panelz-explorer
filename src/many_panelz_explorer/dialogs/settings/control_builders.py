@@ -221,9 +221,7 @@ def build_delete_shell_controls(
     actions_layout.addStretch(1)
     actions_layout.addWidget(cmd_test_button)
     actions_layout.addWidget(powershell_test_button)
-    cmd_test_button.clicked.connect(
-        lambda: dialog.test_backend("delete", "cmd_delete")
-    )
+    cmd_test_button.clicked.connect(lambda: dialog.test_backend("delete", "cmd_delete"))
     powershell_test_button.clicked.connect(
         lambda: dialog.test_backend("delete", "powershell_delete")
     )

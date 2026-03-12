@@ -45,7 +45,7 @@ class PanelNavigationCoordinator:
 
     def rebuild_root_controls(self, current_path: Path | None) -> None:
         roots = self.safe_roots(current_path)
-        self.panel._root_paths = roots
+        self.panel.set_root_paths(roots)
         self.rebuild_root_buttons(current_path, roots)
         self.rebuild_root_combo(current_path, roots)
 
@@ -63,7 +63,7 @@ class PanelNavigationCoordinator:
         self.panel.root_buttons = []
         for root_path in roots:
             button = QPushButton(_navigation_root_text(root_path))
-            button.setFont(self.panel._navigation_font)
+            button.setFont(self.panel.navigation_font)
             button.setMinimumWidth(0)
             button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
             button.setToolTip(display_path_text(root_path))
@@ -81,8 +81,8 @@ class PanelNavigationCoordinator:
         self.panel.root_buttons_layout.addStretch(1)
 
     def rebuild_root_combo(self, current_path: Path | None, roots: list[Path]) -> None:
-        self.panel.root_combo.setVisible(self.panel._show_root_dropdown)
-        if not self.panel._show_root_dropdown:
+        self.panel.root_combo.setVisible(self.panel.show_root_dropdown_enabled)
+        if not self.panel.show_root_dropdown_enabled:
             return
 
         self.panel.root_combo.blockSignals(True)
@@ -116,7 +116,7 @@ class PanelNavigationCoordinator:
     def safe_roots(self, current_path: Path | None) -> list[Path]:
         try:
             provided_roots = [
-                coerce_path(p) for p in self.panel._roots_provider(current_path)
+                coerce_path(p) for p in self.panel.provided_roots(current_path)
             ]
         except Exception:
             provided_roots = []
@@ -178,7 +178,7 @@ class PanelNavigationCoordinator:
         current_path = tab.navigation.path
         matches = [
             root
-            for root in self.panel._root_paths
+            for root in self.panel.root_paths
             if is_path_under_root(current_path, root)
         ]
         if matches:
@@ -205,42 +205,41 @@ class PanelNavigationCoordinator:
         text = self.panel.address_edit.text().strip()
         if not text:
             return
-        self.panel._address_completion_timer.stop()
+        self.panel.stop_address_completion_timer()
         self.hide_address_completion_popup()
         tab.navigation.set_path(coerce_path(normalize_windows_path_text(text)))
 
     def set_address_text_programmatically(self, text: str) -> None:
-        self.panel._address_completions_enabled = False
+        self.panel.set_address_completions_enabled(False)
         try:
             self.panel.address_edit.setText(text)
         finally:
-            self.panel._address_completions_enabled = True
-        self.panel._address_completion_timer.stop()
-        self.panel._address_completion_model.setStringList([])
+            self.panel.set_address_completions_enabled(True)
+        self.panel.stop_address_completion_timer()
+        self.panel.set_address_completion_suggestions([])
         self.hide_address_completion_popup()
 
     def schedule_address_completion_update(self, _text: str) -> None:
-        if not self.panel._address_completions_enabled:
+        if not self.panel.address_completions_enabled:
             return
-        self.panel._address_completion_timer.start(
+        self.panel.start_address_completion_timer(
             self.panel.ADDRESS_COMPLETION_DEBOUNCE_MS
         )
 
     def refresh_address_completions(self) -> None:
         if (
-            not self.panel._address_completions_enabled
+            not self.panel.address_completions_enabled
             or not self.panel.address_edit.hasFocus()
         ):
             self.hide_address_completion_popup()
             return
         raw_text = self.panel.address_edit.text().strip()
         suggestions = self.collect_address_completion_paths(raw_text)
-        self.panel._address_completion_model.setStringList(suggestions)
+        self.panel.set_address_completion_suggestions(suggestions)
         if not suggestions:
             self.hide_address_completion_popup()
             return
-        self.panel._address_completer.setCompletionPrefix("")
-        self.panel._address_completer.complete(self.panel.address_edit.rect())
+        self.panel.show_address_completion_popup()
 
     def on_address_completion_activated(self, path_text: str) -> None:
         selected = str(path_text).strip()
@@ -251,8 +250,8 @@ class PanelNavigationCoordinator:
         self.panel.address_edit.setCursorPosition(len(selected))
 
     def hide_address_completion_popup(self) -> None:
-        popup = self.panel._address_completer.popup()
-        if popup.isVisible():
+        popup = self.panel.completion_popup()
+        if popup is not None and popup.isVisible():
             popup.hide()
 
     def collect_address_completion_paths(self, raw_text: str) -> list[str]:
@@ -274,8 +273,9 @@ class PanelNavigationCoordinator:
                         continue
                     if not is_dir:
                         continue
-                    if not self.panel._show_hidden and self._is_hidden_or_system_entry(
-                        entry
+                    if (
+                        not self.panel.show_hidden_enabled
+                        and self._is_hidden_or_system_entry(entry)
                     ):
                         continue
                     name = entry.name
@@ -316,9 +316,10 @@ class PanelNavigationCoordinator:
         return parent_dir.expanduser(), prefix
 
     def on_root_selected(self, index: int) -> None:
-        if index < 0 or index >= len(self.panel._root_paths):
+        root_paths = self.panel.root_paths
+        if index < 0 or index >= len(root_paths):
             return
-        self.navigate_to_root(self.panel._root_paths[index])
+        self.navigate_to_root(root_paths[index])
 
     def navigate_to_root(self, root_path: Path) -> None:
         tab = self.panel.current_tab()
@@ -336,10 +337,10 @@ class PanelNavigationCoordinator:
         if not history_entries:
             return
 
-        if self.panel._history_menu is not None:
-            self.panel._history_menu.close()
-            self.panel._history_menu.deleteLater()
-            self.panel._history_menu = None
+        existing_menu = self.panel.take_history_menu()
+        if existing_menu is not None:
+            existing_menu.close()
+            existing_menu.deleteLater()
 
         menu = QMenu(self.panel)
         for index in range(len(history_entries) - 1, -1, -1):
@@ -352,7 +353,7 @@ class PanelNavigationCoordinator:
                 lambda _checked=False, i=index: tab.navigation.go_to_history_index(i)
             )
 
-        self.panel._history_menu = menu
+        self.panel.set_history_menu(menu)
         menu.popup(
             self.panel.address_edit.mapToGlobal(
                 self.panel.address_edit.rect().bottomLeft()

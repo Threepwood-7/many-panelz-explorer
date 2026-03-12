@@ -20,10 +20,7 @@ def _string_object_mapping(value: object) -> dict[str, object] | None:
 
     if not isinstance(value, dict):
         return None
-    return {
-        str(key): item
-        for key, item in cast("dict[object, object]", value).items()
-    }
+    return {str(key): item for key, item in cast("dict[object, object]", value).items()}
 
 
 def parse_python_runnable_scripts(root: Path) -> list[RunnableScript]:

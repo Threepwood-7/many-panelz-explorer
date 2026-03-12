@@ -31,10 +31,7 @@ def _string_object_mapping(value: object) -> dict[str, object] | None:
 
     if not isinstance(value, dict):
         return None
-    return {
-        str(key): item
-        for key, item in cast("dict[object, object]", value).items()
-    }
+    return {str(key): item for key, item in cast("dict[object, object]", value).items()}
 
 
 @dataclass(frozen=True)
@@ -277,9 +274,9 @@ class ContextDetector:
                 payload = {}
             payload_map = _string_object_mapping(cast("object", payload))
             if payload_map is not None:
-                package_manager = str(
-                    payload_map.get("packageManager", "")
-                ).strip().lower()
+                package_manager = (
+                    str(payload_map.get("packageManager", "")).strip().lower()
+                )
                 manager = package_manager.split("@", 1)[0]
                 if manager in {"npm", "pnpm", "yarn", "bun"}:
                     return manager

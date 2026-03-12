@@ -29,10 +29,7 @@ def _string_object_mapping(value: Any) -> dict[str, Any] | None:
 
     if not isinstance(value, dict):
         return None
-    return {
-        str(key): item
-        for key, item in cast("dict[object, object]", value).items()
-    }
+    return {str(key): item for key, item in cast("dict[object, object]", value).items()}
 
 
 @dataclass(frozen=True)

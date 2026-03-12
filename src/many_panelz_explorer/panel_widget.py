@@ -25,6 +25,7 @@ from PySide6.QtGui import (
     QShortcut,
 )
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QComboBox,
     QCompleter,
     QHBoxLayout,
@@ -272,9 +273,7 @@ class PanelWidget(QWidget):
             QCompleter.CompletionMode.PopupCompletion
         )
         self._address_completer.setMaxVisibleItems(14)
-        self._address_completer.activated.connect(
-            self._on_address_completion_activated
-        )
+        self._address_completer.activated.connect(self._on_address_completion_activated)
         self.address_edit.setCompleter(self._address_completer)
         self.address_edit.textEdited.connect(self._schedule_address_completion_update)
 
@@ -517,6 +516,61 @@ class PanelWidget(QWidget):
     def current_tab(self) -> ExplorerTab | None:
         widget = self.tabs.currentWidget()
         return widget if isinstance(widget, ExplorerTab) else None
+
+    @property
+    def navigation_font(self) -> QFont:
+        return QFont(self._navigation_font)
+
+    @property
+    def show_root_dropdown_enabled(self) -> bool:
+        return self._show_root_dropdown
+
+    @property
+    def show_hidden_enabled(self) -> bool:
+        return self._show_hidden
+
+    @property
+    def root_paths(self) -> list[Path]:
+        return list(self._root_paths)
+
+    def set_root_paths(self, paths: list[Path]) -> None:
+        self._root_paths = [Path(path) for path in paths]
+
+    def provided_roots(self, current_path: Path | None) -> list[Path]:
+        return list(self._roots_provider(current_path))
+
+    @property
+    def address_completions_enabled(self) -> bool:
+        return self._address_completions_enabled
+
+    def set_address_completions_enabled(self, enabled: bool) -> None:
+        self._address_completions_enabled = bool(enabled)
+
+    def stop_address_completion_timer(self) -> None:
+        self._address_completion_timer.stop()
+
+    def start_address_completion_timer(self, interval_ms: int) -> None:
+        self._address_completion_timer.start(int(interval_ms))
+
+    def set_address_completion_suggestions(self, suggestions: list[str]) -> None:
+        self._address_completion_model.setStringList(
+            [str(item) for item in suggestions]
+        )
+
+    def show_address_completion_popup(self) -> None:
+        self._address_completer.setCompletionPrefix("")
+        self._address_completer.complete(self.address_edit.rect())
+
+    def completion_popup(self) -> QAbstractItemView | None:
+        return self._address_completer.popup()
+
+    def take_history_menu(self) -> QMenu | None:
+        menu = self._history_menu
+        self._history_menu = None
+        return menu
+
+    def set_history_menu(self, menu: QMenu | None) -> None:
+        self._history_menu = menu
 
     def tab_count(self) -> int:
         return self.tabs.count()
@@ -1003,6 +1057,9 @@ class PanelWidget(QWidget):
         tab = self.current_tab()
         if tab is not None:
             tab.navigation.clear_inline_filter()
+
+    def show_filter_overlay(self, *, seed_text: str) -> None:
+        self._show_filter_overlay(seed_text=seed_text)
 
     def _position_filter_overlay(self) -> None:
         margin = 8

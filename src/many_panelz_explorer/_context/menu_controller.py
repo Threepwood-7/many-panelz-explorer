@@ -412,9 +412,7 @@ class ContextMenuController(QObject):
         clipboard.setText(str(value or ""))
         self._window.statusBar().showMessage("Copied remote URL to clipboard.", 1800)
 
-    def _scripts_menu_callback(
-        self, key: tuple[str, str, str]
-    ) -> "Callable[[], None]":
+    def _scripts_menu_callback(self, key: tuple[str, str, str]) -> Callable[[], None]:
         def _show_scripts_menu() -> None:
             self._on_scripts_menu_about_to_show(key)
 

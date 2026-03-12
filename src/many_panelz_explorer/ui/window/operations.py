@@ -7,7 +7,11 @@ from typing import TYPE_CHECKING, Literal
 from PySide6.QtWidgets import QMessageBox
 
 from ..._operations.path_helpers import to_windows_long_path
-from ..._operations.types import SHORTCUT_BEHAVIOR_DIALOG, OperationRequest
+from ..._operations.types import (
+    SHORTCUT_BEHAVIOR_DIALOG,
+    OperationKind,
+    OperationRequest,
+)
 
 if TYPE_CHECKING:
     from ...window import ExplorerWindow
@@ -60,7 +64,7 @@ class WindowOperationsCoordinator:
         self, *, move: bool, configure: bool = False
     ) -> None:
         source_panel = self.window.active_panel()
-        source_id = self.window._active_panel_id
+        source_id = self.window.active_panel_id
         if source_panel is None or source_id is None:
             return
         source_tab = source_panel.current_tab()
@@ -74,7 +78,7 @@ class WindowOperationsCoordinator:
             )
             return
 
-        target_id = self.window._resolve_target_panel_id(source_id)
+        target_id = self.window.resolve_target_panel_id(source_id)
         if target_id is None:
             QMessageBox.information(
                 self.window,
@@ -109,14 +113,14 @@ class WindowOperationsCoordinator:
     def build_operation_request(
         self,
         *,
-        kind: str,
+        kind: OperationKind,
         sources: list[Path],
         target_dir: Path | None,
         configure: bool,
     ) -> OperationRequest | None:
         ui_preferences = self.window.settings.ui_preferences()
         use_dialog = bool(configure) or (
-            self.window._operation_shortcut_behavior == SHORTCUT_BEHAVIOR_DIALOG
+            self.window.operation_shortcut_behavior == SHORTCUT_BEHAVIOR_DIALOG
         )
         if use_dialog:
             from ...dialogs.operation_dialog import OperationDialog
@@ -138,17 +142,17 @@ class WindowOperationsCoordinator:
             )
 
         backend_id = (
-            self.window._default_delete_backend
+            self.window.default_delete_backend
             if kind == "delete"
-            else self.window._default_copy_move_backend
+            else self.window.default_copy_move_backend
         )
         return OperationRequest(
             kind=kind,
             sources=tuple(sources),
             target_dir=target_dir,
             backend_id=backend_id,
-            dispatch_mode=self.window._default_operation_dispatch_mode,
-            conflict_policy=self.window._default_operation_conflict_policy,
+            dispatch_mode=self.window.default_operation_dispatch_mode,
+            conflict_policy=self.window.default_operation_conflict_policy,
             created_by=f"window:{self.window.window_id}",
         )
 
@@ -159,19 +163,19 @@ class WindowOperationsCoordinator:
         destination = destination_dir / source.name
         if destination.exists():
             # Keep the window seam intact so tests can monkeypatch conflict behavior.
-            choice = self.window._prompt_conflict_resolution(source, destination)
+            choice = self.window.prompt_conflict_resolution(source, destination)
             if choice == "cancel":
                 return "cancel"
             if choice == "skip":
                 return "skip"
             if choice == "rename":
-                destination = self.window._next_available_path(
+                destination = self.window.next_available_path(
                     destination_dir, source.name
                 )
             elif choice == "overwrite":
                 if source.resolve() == destination.resolve():
                     return "skip"
-                self.window._remove_existing_path(destination)
+                self.window.remove_existing_path(destination)
         try:
             source_raw = to_windows_long_path(source)
             destination_raw = to_windows_long_path(destination)

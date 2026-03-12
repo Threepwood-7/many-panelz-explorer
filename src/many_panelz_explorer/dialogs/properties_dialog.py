@@ -18,6 +18,10 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+def _default_size_formatter(value: int) -> str:
+    return f"{int(value):,}"
+
+
 class PropertiesDialog(QDialog):
     def __init__(
         self,
@@ -33,7 +37,7 @@ class PropertiesDialog(QDialog):
         if size_formatter is not None:
             formatter = size_formatter
         else:
-            formatter = lambda value: f"{int(value):,}"
+            formatter = _default_size_formatter
         try:
             size_value = int(data["size_bytes"])
         except (KeyError, TypeError, ValueError):

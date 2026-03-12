@@ -114,8 +114,8 @@ class WindowLayoutCoordinator:
         return self.normalize_rows(rows)
 
     def sync_panel_tree_from_rows(self) -> None:
-        self.window._layout_rows = self.normalize_rows(self.window._layout_rows)
-        root = self.build_tree_root_from_rows(self.window._layout_rows)
+        self.window.layout_rows = self.normalize_rows(self.window.layout_rows)
+        root = self.build_tree_root_from_rows(self.window.layout_rows)
         self.window.panel_tree = PanelTreeModel(
             root=root if root is not None else LeafNode(1)
         )
@@ -136,9 +136,12 @@ class WindowLayoutCoordinator:
 
         if len(rows) == 1:
             return build_row(rows[0])
+        right = self.build_tree_root_from_rows(rows[1:])
+        if right is None:
+            return build_row(rows[0])
         return SplitNode(
             orientation=ORIENTATION_VERTICAL,
             ratio=1.0 / float(len(rows)),
             left=build_row(rows[0]),
-            right=self.build_tree_root_from_rows(rows[1:]),
+            right=right,
         )
