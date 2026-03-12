@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import re
-
 
 def window_widget_id(window_id: str) -> str:
     return f"window:{window_id}"
@@ -41,12 +39,3 @@ def panel_control_alias(panel_id: int, control: str) -> str:
 
 def file_list_alias(panel_id: int, tab_uuid: str) -> str:
     return f"{tab_alias(panel_id, tab_uuid)}.file_list"
-
-
-def object_name_for_id(widget_id: str) -> str:
-    normalized = re.sub(r"[^A-Za-z0-9_]+", "_", str(widget_id)).strip("_")
-    if not normalized:
-        return "widget"
-    if normalized[0].isdigit():
-        return f"w_{normalized}"
-    return normalized

@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from threep_commons.qt.widget_identity import assign_widget_identity
 
 from .. import widget_naming
 from .._operations.backend_options import (
@@ -3074,6 +3075,4 @@ class SettingsDialog(QDialog):
         return key
 
     def _assign_identity(self, widget: QWidget, widget_id: str, alias: str) -> None:
-        widget.setObjectName(widget_naming.object_name_for_id(widget_id))
-        widget.setProperty("widget_id", widget_id)
-        widget.setProperty("widget_alias", alias)
+        assign_widget_identity(widget, widget_id=widget_id, widget_alias=alias)

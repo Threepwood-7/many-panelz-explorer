@@ -37,6 +37,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from threep_commons.qt.widget_identity import assign_widget_identity
 
 from . import widget_naming
 from .explorer_tab import ExplorerTab
@@ -211,9 +212,11 @@ class PanelWidget(QWidget):
         )
 
         self._panel_widget_id = widget_naming.panel_widget_id(self.panel_id)
-        self.setObjectName(widget_naming.object_name_for_id(self._panel_widget_id))
-        self.setProperty("widget_id", self._panel_widget_id)
-        self.setProperty("widget_alias", widget_naming.panel_alias(self.panel_id))
+        assign_widget_identity(
+            self,
+            widget_id=self._panel_widget_id,
+            widget_alias=widget_naming.panel_alias(self.panel_id),
+        )
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setMinimumWidth(0)
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
@@ -644,9 +647,7 @@ class PanelWidget(QWidget):
         return entries
 
     def _assign_identity(self, widget: QWidget, widget_id: str, alias: str) -> None:
-        widget.setObjectName(widget_naming.object_name_for_id(widget_id))
-        widget.setProperty("widget_id", widget_id)
-        widget.setProperty("widget_alias", alias)
+        assign_widget_identity(widget, widget_id=widget_id, widget_alias=alias)
 
     def _assign_tab_identity(self, tab: ExplorerTab) -> None:
         tab_id = widget_naming.tab_widget_id(self.panel_id, tab.tab_uuid)

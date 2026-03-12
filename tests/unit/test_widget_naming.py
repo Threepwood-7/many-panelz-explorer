@@ -1,4 +1,5 @@
 from many_panelz_explorer import widget_naming
+from threep_commons.qt.widget_identity import object_name_for_id
 
 
 def test_widget_id_contracts() -> None:
@@ -26,7 +27,4 @@ def test_widget_alias_contracts() -> None:
 
 def test_object_name_for_id_sanitizes_non_identifier_chars() -> None:
     widget_id = "panel:1:tab:abc123:file_list"
-    assert (
-        widget_naming.object_name_for_id(widget_id)
-        == "panel_1_tab_abc123_file_list"
-    )
+    assert object_name_for_id(widget_id) == "panel_1_tab_abc123_file_list"

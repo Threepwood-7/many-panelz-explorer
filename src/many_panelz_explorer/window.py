@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from threep_commons.qt.widget_identity import assign_widget_identity
 
 from . import widget_naming
 from ._context import ContextMenuController
@@ -168,9 +169,11 @@ class ExplorerWindow(QMainWindow):
 
         self.setWindowTitle("Many Panelz Explorer")
         window_widget_id = widget_naming.window_widget_id(self.window_id)
-        self.setObjectName(widget_naming.object_name_for_id(window_widget_id))
-        self.setProperty("widget_id", window_widget_id)
-        self.setProperty("widget_alias", "window")
+        assign_widget_identity(
+            self,
+            widget_id=window_widget_id,
+            widget_alias="window",
+        )
         self.setWindowFlag(Qt.WindowType.Window, True)
 
         empty_state: TabsState = {}

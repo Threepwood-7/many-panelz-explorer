@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from many_panelz_explorer._operations.backend_options import (
     ExternalCopyMoveBackendOptions,
@@ -20,17 +20,13 @@ from many_panelz_explorer._operations.normalize import (
     normalize_queue_view_mode,
     normalize_shortcut_behavior,
 )
+from threep_commons.settings import SettingsDomainBase
 
 from . import normalize
 from .registry import SettingsRegistry
 
-if TYPE_CHECKING:
-    from .storage import SettingsStorage
 
-
-class UiSettingsDomain(SettingsRegistry):
-    def __init__(self, storage: SettingsStorage) -> None:
-        self._storage = storage
+class UiSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
     @property
     def new_context_mode(self) -> str:
@@ -634,9 +630,7 @@ class UiSettingsDomain(SettingsRegistry):
         )
 
 
-class OpsSettingsDomain(SettingsRegistry):
-    def __init__(self, storage: SettingsStorage) -> None:
-        self._storage = storage
+class OpsSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
     @property
     def default_copy_move_backend(self) -> str:
@@ -1171,9 +1165,7 @@ class OpsSettingsDomain(SettingsRegistry):
         self._storage.set_value(self.OPS_COMPANION_BOOTSTRAP_DONE_KEY, bool(done))
 
 
-class SessionSettingsDomain(SettingsRegistry):
-    def __init__(self, storage: SettingsStorage) -> None:
-        self._storage = storage
+class SessionSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
     def window_key(self, window_id: str, suffix: str) -> str:
         return f"ui/windows/{window_id}/{suffix}"

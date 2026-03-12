@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from send2trash import send2trash
+from threep_commons.desktop import open_path_in_default_app
 from threep_commons.executables import resolve_executable_path
 from threep_commons.fs_paths import is_explicit_path_text, normalize_windows_path_text
 
@@ -143,16 +144,7 @@ def open_with_default(path: Path) -> None:
         _launch_file_with_executable(configured, path)
         return
 
-    if os.name == "nt":
-        os.startfile(path)  # type: ignore[attr-defined]
-        return
-
-    if shutil.which("xdg-open"):
-        subprocess.Popen(["xdg-open", str(path)])
-        return
-
-    if shutil.which("open"):
-        subprocess.Popen(["open", str(path)])
+    if open_path_in_default_app(path):
         return
 
     raise RuntimeError("No default opener available on this platform")

@@ -10,6 +10,7 @@ pytest.importorskip("pytestqt")
 
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
+from threep_commons.qt.widget_identity import object_name_for_id
 
 from many_panelz_explorer.panel_widget import PanelWidget
 from many_panelz_explorer import widget_naming
@@ -688,7 +689,7 @@ def test_widget_identity_contract_for_panel_and_file_list(qtbot, tmp_path: Path)
     second_tab = panel.add_tab(root)
 
     assert first_tab.tab_uuid != second_tab.tab_uuid
-    assert panel.objectName() == widget_naming.object_name_for_id(
+    assert panel.objectName() == object_name_for_id(
         widget_naming.panel_widget_id(1)
     )
     assert str(panel.property("widget_id")) == widget_naming.panel_widget_id(1)

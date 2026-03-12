@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QDockWidget,
     QMenu,
 )
+from threep_commons.qt.widget_identity import object_name_for_id
 
 from ... import widget_naming
 from ...operation_queue_widgets import OperationQueuePanel
@@ -314,7 +315,7 @@ class WindowUiComposer:
     def build_operation_queue_widgets(self) -> None:
         self.window._queue_dock = QDockWidget("Operation Queue", self.window)
         self.window._queue_dock.setObjectName(
-            widget_naming.object_name_for_id(
+            object_name_for_id(
                 f"{widget_naming.window_widget_id(self.window.window_id)}:queue_dock"
             )
         )
