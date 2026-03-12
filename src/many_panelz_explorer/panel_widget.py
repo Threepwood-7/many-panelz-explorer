@@ -38,11 +38,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ._paths import display_path_text
 from . import widget_naming
 from .explorer_tab import ExplorerTab
 from .mounts import list_roots_for_navigation
 from .ui.panel import PanelNavigationCoordinator
+from threep_commons.fs_paths import display_path_text
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence

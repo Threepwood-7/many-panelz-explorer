@@ -5,12 +5,12 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from ._paths import coerce_path, dedup_paths, display_root, is_windows, path_key
 from threep_commons.platform.windows.storage import (
     WindowsStorageUsage,
     list_windows_storage_roots,
     list_windows_storage_usage,
 )
+from threep_commons.fs_paths import coerce_path, dedup_paths, display_root, path_key
 
 WINDOWS_ROOTS_CACHE_TTL_SECONDS = 2.0
 
@@ -65,7 +65,7 @@ def _list_non_windows_roots(current_path: Path | None) -> list[Path]:
 
 
 def list_roots_for_navigation(current_path: Path | None = None) -> list[Path]:
-    if is_windows():
+    if os.name == "nt":
         return _list_windows_roots_cached()
     return _list_non_windows_roots(current_path)
 
@@ -92,7 +92,7 @@ def list_storage_usage_entries(
     _ = current_path
     global _storage_usage_cache
 
-    if not is_windows():
+    if os.name != "nt":
         return []
 
     now = _monotonic_seconds()

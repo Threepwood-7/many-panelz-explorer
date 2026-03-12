@@ -7,8 +7,8 @@ from PySide6.QtCore import QDir, QItemSelectionModel, QObject, QTimer, Signal
 from PySide6.QtWidgets import QAbstractItemView, QTreeView, QWidget
 from shiboken6 import isValid
 
-from ._paths import coerce_path, is_drive_root, path_key
 from .fast_dir_model import FastDirModel
+from threep_commons.fs_paths import coerce_path, is_drive_root, path_key
 
 if TYPE_CHECKING:
     from ._explorer_tab_columns import ExplorerTabColumns

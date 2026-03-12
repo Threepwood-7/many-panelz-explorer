@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .._paths import is_explicit_path_text, normalize_windows_path_text, resolve_executable_path
+from threep_commons.executables import resolve_executable_path
+from threep_commons.fs_paths import is_explicit_path_text, normalize_windows_path_text
 
 if TYPE_CHECKING:
     from .._settings.models import UiPreferences

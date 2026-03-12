@@ -4,7 +4,11 @@ import os
 import shutil
 from pathlib import Path
 
-from .._paths import coerce_path, normalize_windows_path_text, strip_windows_long_path_text
+from threep_commons.fs_paths import (
+    coerce_path,
+    normalize_windows_path_text,
+    strip_windows_long_path_text,
+)
 from .types import OperationRequest
 
 

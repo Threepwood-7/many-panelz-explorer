@@ -12,7 +12,7 @@ from typing import cast
 
 from PySide6.QtCore import QAbstractTableModel, QDir, QModelIndex, QObject, Qt, Signal
 
-from ._paths import path_key
+from threep_commons.fs_paths import path_key
 
 _HIDDEN_ATTRIBUTE_MASK = 0x2
 _SYSTEM_ATTRIBUTE_MASK = 0x4

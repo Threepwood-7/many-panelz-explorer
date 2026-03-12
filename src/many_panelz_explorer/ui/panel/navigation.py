@@ -8,18 +8,29 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMenu, QPushButton, QSizePolicy
 
-from ..._paths import (
+from threep_commons.fs_paths import (
     coerce_path,
     dedup_paths,
     display_path_text,
+    is_drive_root,
     is_path_under_root,
-    navigation_root_text,
     normalize_windows_path_text,
     path_key,
 )
 
 if TYPE_CHECKING:
     from ...panel_widget import PanelWidget
+
+
+def _navigation_root_text(path: Path | str) -> str:
+    candidate = coerce_path(path)
+    if is_drive_root(candidate):
+        return candidate.drive
+    if os.name == "nt":
+        name = candidate.name.strip()
+        if name:
+            return name
+    return display_path_text(candidate)
 
 
 class PanelNavigationCoordinator:
@@ -49,7 +60,7 @@ class PanelNavigationCoordinator:
 
         self.panel.root_buttons = []
         for root_path in roots:
-            button = QPushButton(navigation_root_text(root_path))
+            button = QPushButton(_navigation_root_text(root_path))
             button.setFont(self.panel._navigation_font)
             button.setMinimumWidth(0)
             button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
@@ -74,7 +85,7 @@ class PanelNavigationCoordinator:
         try:
             self.panel.root_combo.clear()
             for root_path in roots:
-                self.panel.root_combo.addItem(navigation_root_text(root_path), str(root_path))
+                self.panel.root_combo.addItem(_navigation_root_text(root_path), str(root_path))
                 combo_idx = self.panel.root_combo.count() - 1
                 self.panel.root_combo.setItemData(
                     combo_idx,
@@ -107,7 +118,7 @@ class PanelNavigationCoordinator:
         return sorted(
             roots,
             key=lambda p: (
-                navigation_root_text(p).lower(),
+                _navigation_root_text(p).lower(),
                 display_path_text(p).lower(),
             ),
         )
