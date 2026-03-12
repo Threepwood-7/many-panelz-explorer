@@ -3,16 +3,17 @@ from __future__ import annotations
 import fnmatch
 import os
 import weakref
-from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from PySide6.QtCore import QAbstractTableModel, QDir, QModelIndex, QObject, Qt, Signal
-
 from threep_commons.fs_paths import path_key
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _HIDDEN_ATTRIBUTE_MASK = 0x2
 _SYSTEM_ATTRIBUTE_MASK = 0x4
@@ -139,7 +140,9 @@ class FastDirModel(QAbstractTableModel):
     def parent(self, _index: QModelIndex) -> QModelIndex:
         return QModelIndex()
 
-    def data(self, index: QModelIndex, role: int = int(Qt.ItemDataRole.DisplayRole)) -> object:
+    def data(
+        self, index: QModelIndex, role: int = int(Qt.ItemDataRole.DisplayRole)
+    ) -> object:
         if not index.isValid():
             return None
 
@@ -240,7 +243,10 @@ class FastDirModel(QAbstractTableModel):
 
     def index_for_path(self, path: Path) -> QModelIndex:
         target = self._path_key(path)
-        if self._show_parent_entry and self._path_key(self._current_path.parent) == target:
+        if (
+            self._show_parent_entry
+            and self._path_key(self._current_path.parent) == target
+        ):
             return self.index(0, 0)
         offset = 1 if self._show_parent_entry else 0
         for idx, entry in enumerate(self._visible_entries):
@@ -314,7 +320,9 @@ class FastDirModel(QAbstractTableModel):
 
         self.beginResetModel()
         self._all_entries = parsed_entries
-        self._visible_entries = self._sort_entries(self._apply_entry_filters(parsed_entries))
+        self._visible_entries = self._sort_entries(
+            self._apply_entry_filters(parsed_entries)
+        )
         self.endResetModel()
         self.directoryLoaded.emit(str(self._current_path))
 
@@ -356,6 +364,7 @@ class FastDirModel(QAbstractTableModel):
 
         # Compatibility fallback for non-name sort columns.
         if self._sort_column == 1:
+
             def key_fn(item: _DirEntry) -> tuple[int, str, str]:
                 return (
                     0 if item.is_dir else 1,
@@ -363,6 +372,7 @@ class FastDirModel(QAbstractTableModel):
                     item.name.casefold(),
                 )
         elif self._sort_column == 2:
+
             def key_fn(item: _DirEntry) -> tuple[int, int, str]:
                 return (
                     0 if item.is_dir else 1,
@@ -370,6 +380,7 @@ class FastDirModel(QAbstractTableModel):
                     item.name.casefold(),
                 )
         else:
+
             def key_fn(item: _DirEntry) -> tuple[int, float, str]:
                 return (
                     0 if item.is_dir else 1,

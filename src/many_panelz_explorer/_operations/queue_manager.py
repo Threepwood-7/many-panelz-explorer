@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import subprocess
 import threading
 import uuid
 from dataclasses import replace
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Signal
 
@@ -17,6 +17,9 @@ from .types import (
     OperationRequest,
     utcnow,
 )
+
+if TYPE_CHECKING:
+    import subprocess
 
 
 class OperationQueueManager(QObject):
@@ -72,7 +75,9 @@ class OperationQueueManager(QObject):
                 return dispatched
             if mode == DISPATCH_MODE_RUN_WAIT:
                 running = self._replace_job(
-                    replace(job, status="running", started_at=utcnow(), message="Running")
+                    replace(
+                        job, status="running", started_at=utcnow(), message="Running"
+                    )
                 )
                 self.job_updated.emit(running)
                 completed = self._execute_one(running, wait=True)
@@ -90,7 +95,12 @@ class OperationQueueManager(QObject):
                 return
             if job.status == "queued":
                 self._queue = [jid for jid in self._queue if jid != job_id]
-                cancelled = replace(job, status="cancelled", message="Cancelled while queued.", completed_at=utcnow())
+                cancelled = replace(
+                    job,
+                    status="cancelled",
+                    message="Cancelled while queued.",
+                    completed_at=utcnow(),
+                )
                 self._replace_job(cancelled)
                 self.job_updated.emit(cancelled)
                 return
@@ -166,7 +176,9 @@ class OperationQueueManager(QObject):
 
     def _execute_one(self, job: OperationJob, *, wait: bool) -> OperationJob:
         artifacts = prepare_artifacts(job.job_id)
-        running = replace(job, artifacts=artifacts, started_at=job.started_at or utcnow())
+        running = replace(
+            job, artifacts=artifacts, started_at=job.started_at or utcnow()
+        )
         write_metadata(running, artifacts)
         try:
             result = execute_operation_request(

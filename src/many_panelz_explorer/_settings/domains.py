@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+from threep_commons.settings import SettingsDomainBase
+
 from many_panelz_explorer._operations.backend_options import (
     ExternalCopyMoveBackendOptions,
     RobocopyBackendOptions,
@@ -20,14 +22,12 @@ from many_panelz_explorer._operations.normalize import (
     normalize_queue_view_mode,
     normalize_shortcut_behavior,
 )
-from threep_commons.settings import SettingsDomainBase
 
 from . import normalize
 from .registry import SettingsRegistry
 
 
 class UiSettingsDomain(SettingsDomainBase, SettingsRegistry):
-
     @property
     def new_context_mode(self) -> str:
         value = str(self._storage.value(self.NEW_CONTEXT_MODE_KEY, "clone_active_path"))
@@ -45,7 +45,9 @@ class UiSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
     @property
     def show_hidden_default(self) -> bool:
-        return normalize.normalize_bool(self._storage.value(self.SHOW_HIDDEN_DEFAULT_KEY, True))
+        return normalize.normalize_bool(
+            self._storage.value(self.SHOW_HIDDEN_DEFAULT_KEY, True)
+        )
 
     @show_hidden_default.setter
     def show_hidden_default(self, enabled: bool) -> None:
@@ -53,7 +55,9 @@ class UiSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
     @property
     def show_root_dropdown(self) -> bool:
-        return normalize.normalize_bool(self._storage.value(self.SHOW_ROOT_DROPDOWN_KEY, False))
+        return normalize.normalize_bool(
+            self._storage.value(self.SHOW_ROOT_DROPDOWN_KEY, False)
+        )
 
     @show_root_dropdown.setter
     def show_root_dropdown(self, enabled: bool) -> None:
@@ -96,7 +100,9 @@ class UiSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
     @property
     def show_refresh_button(self) -> bool:
-        return normalize.normalize_bool(self._storage.value(self.SHOW_REFRESH_BUTTON_KEY, True))
+        return normalize.normalize_bool(
+            self._storage.value(self.SHOW_REFRESH_BUTTON_KEY, True)
+        )
 
     @show_refresh_button.setter
     def show_refresh_button(self, enabled: bool) -> None:
@@ -104,7 +110,9 @@ class UiSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
     @property
     def show_root_buttons(self) -> bool:
-        return normalize.normalize_bool(self._storage.value(self.SHOW_ROOT_BUTTONS_KEY, True))
+        return normalize.normalize_bool(
+            self._storage.value(self.SHOW_ROOT_BUTTONS_KEY, True)
+        )
 
     @show_root_buttons.setter
     def show_root_buttons(self, enabled: bool) -> None:
@@ -112,7 +120,9 @@ class UiSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
     @property
     def show_address_bar(self) -> bool:
-        return normalize.normalize_bool(self._storage.value(self.SHOW_ADDRESS_BAR_KEY, True))
+        return normalize.normalize_bool(
+            self._storage.value(self.SHOW_ADDRESS_BAR_KEY, True)
+        )
 
     @show_address_bar.setter
     def show_address_bar(self, enabled: bool) -> None:
@@ -334,12 +344,16 @@ class UiSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
     @app_font_family.setter
     def app_font_family(self, family: str) -> None:
-        self._storage.set_value(self.APP_FONT_FAMILY_KEY, normalize.normalize_font_family(family))
+        self._storage.set_value(
+            self.APP_FONT_FAMILY_KEY, normalize.normalize_font_family(family)
+        )
 
     @property
     def app_font_size_pt(self) -> int:
         return normalize.normalize_font_size(
-            self._storage.value(self.APP_FONT_SIZE_PT_KEY, self.DEFAULT_APP_FONT_SIZE_PT),
+            self._storage.value(
+                self.APP_FONT_SIZE_PT_KEY, self.DEFAULT_APP_FONT_SIZE_PT
+            ),
             fallback=self.DEFAULT_APP_FONT_SIZE_PT,
             allow_zero=True,
         )
@@ -631,7 +645,6 @@ class UiSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
 
 class OpsSettingsDomain(SettingsDomainBase, SettingsRegistry):
-
     @property
     def default_copy_move_backend(self) -> str:
         return normalize_copy_move_backend(
@@ -836,7 +849,9 @@ class OpsSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
     @use_extended_paths_external_copymove.setter
     def use_extended_paths_external_copymove(self, enabled: bool) -> None:
-        self._storage.set_value(self.USE_EXTENDED_PATHS_EXTERNAL_COPYMOVE_KEY, bool(enabled))
+        self._storage.set_value(
+            self.USE_EXTENDED_PATHS_EXTERNAL_COPYMOVE_KEY, bool(enabled)
+        )
 
     @property
     def use_extended_paths_cmd_delete(self) -> bool:
@@ -862,7 +877,9 @@ class OpsSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
     @use_extended_paths_powershell_delete.setter
     def use_extended_paths_powershell_delete(self, enabled: bool) -> None:
-        self._storage.set_value(self.USE_EXTENDED_PATHS_POWERSHELL_DELETE_KEY, bool(enabled))
+        self._storage.set_value(
+            self.USE_EXTENDED_PATHS_POWERSHELL_DELETE_KEY, bool(enabled)
+        )
 
     @property
     def use_extended_paths_rimraf(self) -> bool:
@@ -888,7 +905,9 @@ class OpsSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
     @use_extended_paths_external_delete.setter
     def use_extended_paths_external_delete(self, enabled: bool) -> None:
-        self._storage.set_value(self.USE_EXTENDED_PATHS_EXTERNAL_DELETE_KEY, bool(enabled))
+        self._storage.set_value(
+            self.USE_EXTENDED_PATHS_EXTERNAL_DELETE_KEY, bool(enabled)
+        )
 
     @property
     def teracopy_executable(self) -> str:
@@ -980,7 +999,9 @@ class OpsSettingsDomain(SettingsDomainBase, SettingsRegistry):
     def generic_delete_args_template(self, value: str) -> None:
         self._storage.set_value(
             self.GENERIC_DELETE_ARGS_TEMPLATE_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_GENERIC_DELETE_ARGS_TEMPLATE),
+            normalize.normalize_text(
+                value, fallback=self.DEFAULT_GENERIC_DELETE_ARGS_TEMPLATE
+            ),
         )
 
     @property
@@ -1092,7 +1113,9 @@ class OpsSettingsDomain(SettingsDomainBase, SettingsRegistry):
     def powershell_delete_args(self, value: str) -> None:
         self._storage.set_value(
             self.POWERSHELL_DELETE_ARGS_KEY,
-            normalize.normalize_text(value, fallback=self.DEFAULT_POWERSHELL_DELETE_ARGS),
+            normalize.normalize_text(
+                value, fallback=self.DEFAULT_POWERSHELL_DELETE_ARGS
+            ),
         )
 
     @property
@@ -1143,7 +1166,6 @@ class OpsSettingsDomain(SettingsDomainBase, SettingsRegistry):
 
 
 class SessionSettingsDomain(SettingsDomainBase, SettingsRegistry):
-
     def window_key(self, window_id: str, suffix: str) -> str:
         return f"ui/windows/{window_id}/{suffix}"
 

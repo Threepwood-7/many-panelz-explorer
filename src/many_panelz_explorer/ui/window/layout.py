@@ -73,10 +73,14 @@ class WindowLayoutCoordinator:
             return [[1]]
         return normalized
 
-    def append_missing_panel_ids(self, rows: PanelRows, panel_ids: list[int]) -> PanelRows:
+    def append_missing_panel_ids(
+        self, rows: PanelRows, panel_ids: list[int]
+    ) -> PanelRows:
         normalized_rows = self.normalize_rows(rows)
         present = set(self.ordered_panel_ids(normalized_rows))
-        missing = [int(panel_id) for panel_id in panel_ids if int(panel_id) not in present]
+        missing = [
+            int(panel_id) for panel_id in panel_ids if int(panel_id) not in present
+        ]
         if missing:
             normalized_rows.append(missing)
         return self.normalize_rows(normalized_rows)
@@ -85,11 +89,15 @@ class WindowLayoutCoordinator:
         if node is None:
             return [[1]]
 
-        def split_into_rows(tree_node: LeafNode | SplitNode) -> list[LeafNode | SplitNode]:
+        def split_into_rows(
+            tree_node: LeafNode | SplitNode,
+        ) -> list[LeafNode | SplitNode]:
             if isinstance(tree_node, LeafNode):
                 return [tree_node]
             if tree_node.orientation == ORIENTATION_VERTICAL:
-                return split_into_rows(tree_node.left) + split_into_rows(tree_node.right)
+                return split_into_rows(tree_node.left) + split_into_rows(
+                    tree_node.right
+                )
             return [tree_node]
 
         def flatten_row(tree_node: LeafNode | SplitNode) -> list[int]:
@@ -108,7 +116,9 @@ class WindowLayoutCoordinator:
     def sync_panel_tree_from_rows(self) -> None:
         self.window._layout_rows = self.normalize_rows(self.window._layout_rows)
         root = self.build_tree_root_from_rows(self.window._layout_rows)
-        self.window.panel_tree = PanelTreeModel(root=root if root is not None else LeafNode(1))
+        self.window.panel_tree = PanelTreeModel(
+            root=root if root is not None else LeafNode(1)
+        )
 
     def build_tree_root_from_rows(self, rows: PanelRows) -> LeafNode | SplitNode | None:
         if not rows:
@@ -132,4 +142,3 @@ class WindowLayoutCoordinator:
             left=build_row(rows[0]),
             right=self.build_tree_root_from_rows(rows[1:]),
         )
-

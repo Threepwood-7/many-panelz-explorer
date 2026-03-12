@@ -9,22 +9,22 @@ from many_panelz_explorer._operations.discovery import (
 )
 from many_panelz_explorer._operations.types import (
     COMPANION_TOOL_NOT_FOUND,
+    DEFAULT_RIMRAF_EXE,
     DEFAULT_SYSTEM_CMD_FALLBACK,
     DEFAULT_SYSTEM_ROBOCOPY_FALLBACK,
-    DEFAULT_RIMRAF_EXE,
     DEFAULT_TERA_COPY_EXE,
     DEFAULT_UNSTOPPABLE_EXE,
     OperationExecutionPreferences,
 )
 
 
-def test_companion_resolution_uses_common_locations(monkeypatch, tmp_path: Path) -> None:
+def test_companion_resolution_uses_common_locations(
+    monkeypatch, tmp_path: Path
+) -> None:
     program_files = tmp_path / "ProgramFiles"
     teracopy_path = program_files / "TeraCopy" / DEFAULT_TERA_COPY_EXE
     unstoppable_path = (
-        program_files
-        / "Roadkil's Unstoppable Copier"
-        / DEFAULT_UNSTOPPABLE_EXE
+        program_files / "Roadkil's Unstoppable Copier" / DEFAULT_UNSTOPPABLE_EXE
     )
     rimraf_path = program_files / "nodejs" / f"{DEFAULT_RIMRAF_EXE}.cmd"
     teracopy_path.parent.mkdir(parents=True, exist_ok=True)

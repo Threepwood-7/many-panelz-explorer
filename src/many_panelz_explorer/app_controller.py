@@ -53,9 +53,7 @@ class AppController:
         self._apply_application_font(initial_preferences)
         self._apply_file_open_routing(initial_preferences)
         self.operation_queue_manager = OperationQueueManager(
-            preferences=self._preferences_to_operation_execution(
-                initial_preferences
-            ),
+            preferences=self._preferences_to_operation_execution(initial_preferences),
             parent=self.app,
         )
         self.operation_queue_model = OperationQueueTableModel(

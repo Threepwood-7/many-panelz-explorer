@@ -24,7 +24,9 @@ class WindowUiComposer:
     def build_actions(self) -> None:
         self.window._new_tab_action = QAction("&New Tab", self.window)
         self.window._new_tab_action.setShortcut(QKeySequence("Ctrl+T"))
-        self.window._new_tab_action.triggered.connect(self.window.new_tab_in_active_panel)
+        self.window._new_tab_action.triggered.connect(
+            self.window.new_tab_in_active_panel
+        )
 
         self.window._new_vertical_panel_action = QAction(
             "New &Vertical Panel", self.window
@@ -86,9 +88,7 @@ class WindowUiComposer:
             lambda: self.window._move_selected_to_target(configure=True)
         )
 
-        self.window._delete_selection_action = QAction(
-            "&Delete Selection", self.window
-        )
+        self.window._delete_selection_action = QAction("&Delete Selection", self.window)
         self.window._delete_selection_action.setShortcut(QKeySequence("F8"))
         self.window._delete_selection_action.triggered.connect(
             self.window._delete_selected_items
@@ -107,9 +107,7 @@ class WindowUiComposer:
             self.window.request_new_window.emit
         )
 
-        self.window._clone_window_action = QAction(
-            "Clone Current W&indow", self.window
-        )
+        self.window._clone_window_action = QAction("Clone Current W&indow", self.window)
         self.window._clone_window_action.triggered.connect(
             self.window.clone_current_window
         )
@@ -156,9 +154,7 @@ class WindowUiComposer:
         self.window._show_hidden_action.setChecked(self.window._show_hidden)
         self.window._show_hidden_action.toggled.connect(self.window._toggle_show_hidden)
 
-        self.window._show_widget_map_action = QAction(
-            "Show &Widget Map", self.window
-        )
+        self.window._show_widget_map_action = QAction("Show &Widget Map", self.window)
         self.window._show_widget_map_action.setCheckable(True)
         self.window._show_widget_map_action.setChecked(self.window._show_widget_map)
         self.window._show_widget_map_action.toggled.connect(
@@ -181,7 +177,9 @@ class WindowUiComposer:
 
         self.window._show_queue_dock_action = QAction("Show Queue Dock", self.window)
         self.window._show_queue_dock_action.setCheckable(True)
-        self.window._show_queue_dock_action.toggled.connect(self.window._toggle_queue_dock)
+        self.window._show_queue_dock_action.toggled.connect(
+            self.window._toggle_queue_dock
+        )
 
         self.window._show_queue_window_action = QAction(
             "Show Queue Window", self.window
@@ -192,7 +190,9 @@ class WindowUiComposer:
 
         self.window._settings_action = QAction("&Settings...", self.window)
         self.window._settings_action.setShortcut(QKeySequence("Ctrl+,"))
-        self.window._settings_action.triggered.connect(self.window._open_settings_dialog)
+        self.window._settings_action.triggered.connect(
+            self.window._open_settings_dialog
+        )
 
         self.window._help_action = QAction("&Help", self.window)
         self.window._help_action.setShortcut(QKeySequence("F1"))
@@ -326,8 +326,7 @@ class WindowUiComposer:
         )
         self.window._queue_dock.setWidget(self.window._queue_panel)
         self.window._queue_dock.setAllowedAreas(
-            Qt.DockWidgetArea.BottomDockWidgetArea
-            | Qt.DockWidgetArea.TopDockWidgetArea
+            Qt.DockWidgetArea.BottomDockWidgetArea | Qt.DockWidgetArea.TopDockWidgetArea
         )
         self.window.addDockWidget(
             Qt.DockWidgetArea.BottomDockWidgetArea, self.window._queue_dock

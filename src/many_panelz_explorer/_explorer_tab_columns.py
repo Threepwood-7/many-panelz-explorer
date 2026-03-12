@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QTreeView
 
-from .fast_dir_model import FastDirModel
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from PySide6.QtWidgets import QTreeView
+
+    from .fast_dir_model import FastDirModel
 
 
 class ExplorerTabColumns(QObject):

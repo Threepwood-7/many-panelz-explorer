@@ -12,10 +12,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6")
 pytest.importorskip("pytestqt")
 
+from many_panelz_explorer._context.scripts import RunnableScript
 from many_panelz_explorer._operations.queue_manager import OperationQueueManager
 from many_panelz_explorer._operations.types import OperationExecutionPreferences
 from many_panelz_explorer._settings.manager import SettingsManager
-from many_panelz_explorer._context.scripts import RunnableScript
 from many_panelz_explorer.operation_queue_widgets import OperationQueueTableModel
 from many_panelz_explorer.window import ExplorerWindow
 
@@ -29,7 +29,9 @@ class _ControllerStub:
         self.operation_queue_manager = OperationQueueManager(
             preferences=OperationExecutionPreferences()
         )
-        self.operation_queue_model = OperationQueueTableModel(self.operation_queue_manager)
+        self.operation_queue_model = OperationQueueTableModel(
+            self.operation_queue_manager
+        )
 
     def close_window(self, _window: ExplorerWindow) -> None:
         return
@@ -89,7 +91,9 @@ def test_context_menu_shows_python_mode(qtbot, tmp_path: Path) -> None:
 
     py_root = tmp_path / "py-root"
     py_root.mkdir()
-    (py_root / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
+    (py_root / "pyproject.toml").write_text(
+        "[project]\nname='demo'\n", encoding="utf-8"
+    )
     panel = window.active_panel()
     assert panel is not None
     panel.current_tab().navigation.set_path(py_root)
@@ -166,7 +170,9 @@ def test_context_scripts_load_lazily(qtbot, tmp_path: Path, monkeypatch) -> None
 
     controller = window._context_menu_controller
     assert controller is not None
-    node_state_keys = [key for key in controller._script_menu_states if key[0] == "node"]
+    node_state_keys = [
+        key for key in controller._script_menu_states if key[0] == "node"
+    ]
     assert node_state_keys
     key = node_state_keys[0]
     controller._on_scripts_menu_about_to_show(key)
@@ -243,7 +249,10 @@ def test_context_menu_disables_missing_tools_with_hints(
     python_root = next(
         menu
         for menu in controller._owned_menus
-        if any(action.text() == "Open project root in Code Editor" for action in menu.actions())
+        if any(
+            action.text() == "Open project root in Code Editor"
+            for action in menu.actions()
+        )
     )
     py_actions = {action.text(): action for action in python_root.actions()}
     py_editor = py_actions["Open project root in Code Editor"]
@@ -276,7 +285,9 @@ def test_context_menu_rebuilds_on_window_activation(
 
     py_root = tmp_path / "py-root-activation"
     py_root.mkdir()
-    (py_root / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
+    (py_root / "pyproject.toml").write_text(
+        "[project]\nname='demo'\n", encoding="utf-8"
+    )
     panel = window.active_panel()
     assert panel is not None
     panel.current_tab().navigation.set_path(py_root)

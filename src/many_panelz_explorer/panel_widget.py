@@ -37,13 +37,13 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from threep_commons.fs_paths import display_path_text
 from threep_commons.qt.widget_identity import assign_widget_identity
 
 from . import widget_naming
 from .explorer_tab import ExplorerTab
 from .mounts import list_roots_for_navigation
 from .ui.panel import PanelNavigationCoordinator
-from threep_commons.fs_paths import display_path_text
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -300,9 +300,7 @@ class PanelWidget(QWidget):
 
         self.root_btn = QPushButton("\\")
         self.root_btn.setMinimumWidth(28)
-        self.root_btn.setSizePolicy(
-            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
-        )
+        self.root_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.root_btn.clicked.connect(self._go_root)
         toolbar.addWidget(self.root_btn)
         self._navigation_buttons = [
@@ -316,7 +314,9 @@ class PanelWidget(QWidget):
 
         self.tabs = QTabWidget()
         self.tabs.setMinimumWidth(0)
-        self.tabs.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
+        self.tabs.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding
+        )
         self.tabs.setTabsClosable(True)
         self.tabs.currentChanged.connect(self._on_current_changed)
         self.tabs.tabCloseRequested.connect(self._close_tab_at)
@@ -413,7 +413,9 @@ class PanelWidget(QWidget):
         self._column_sync_timer.timeout.connect(self._flush_pending_column_width_sync)
         self._address_completion_timer = QTimer(self)
         self._address_completion_timer.setSingleShot(True)
-        self._address_completion_timer.timeout.connect(self._refresh_address_completions)
+        self._address_completion_timer.timeout.connect(
+            self._refresh_address_completions
+        )
 
         self._sync_toolbar_for_current_tab()
         self._sync_toolbar_visibility()
@@ -423,7 +425,9 @@ class PanelWidget(QWidget):
 
     def add_tab(self, path: Path) -> ExplorerTab:
         source_tab = self.current_tab()
-        source_widths = list(source_tab.columns.widths) if source_tab is not None else []
+        source_widths = (
+            list(source_tab.columns.widths) if source_tab is not None else []
+        )
         tab = ExplorerTab(
             path,
             show_hidden=self._show_hidden,
@@ -748,8 +752,7 @@ class PanelWidget(QWidget):
             if (
                 tab is not None
                 and self._column_widths
-                and self._column_width_auto_align_mode
-                != self.COLUMN_ALIGN_MODE_NONE
+                and self._column_width_auto_align_mode != self.COLUMN_ALIGN_MODE_NONE
             ):
                 tab.columns.set_widths(self._column_widths)
             if tab is not None and self.filter_edit.isVisible():
@@ -764,9 +767,7 @@ class PanelWidget(QWidget):
             self._sync_toolbar_for_current_tab()
             self.current_context_changed.emit()
 
-    def _on_tab_column_widths_changed(
-        self, tab: ExplorerTab, widths: object
-    ) -> None:
+    def _on_tab_column_widths_changed(self, tab: ExplorerTab, widths: object) -> None:
         if self._syncing_column_widths or self._restoring_state:
             return
         if not isinstance(widths, tuple) or not widths:
@@ -865,9 +866,7 @@ class PanelWidget(QWidget):
         self.up_btn.setEnabled(True)
         self.root_btn.setEnabled(True)
         self.refresh_btn.setEnabled(True)
-        self._set_address_text_programmatically(
-            display_path_text(tab.navigation.path)
-        )
+        self._set_address_text_programmatically(display_path_text(tab.navigation.path))
         self._rebuild_root_controls(tab.navigation.path)
         if self.filter_edit.isVisible():
             tab.navigation.set_inline_filter(self.filter_edit.text())
@@ -1081,11 +1080,15 @@ class PanelWidget(QWidget):
         if self._pane_role == "active":
             color = self._active_role_color
             alpha = self._alpha_from_percent(self._active_role_intensity_percent)
-            background_color = f"rgba({color.red()}, {color.green()}, {color.blue()}, {alpha})"
+            background_color = (
+                f"rgba({color.red()}, {color.green()}, {color.blue()}, {alpha})"
+            )
         elif self._pane_role == "target":
             color = self._target_role_color
             alpha = self._alpha_from_percent(self._target_role_intensity_percent)
-            background_color = f"rgba({color.red()}, {color.green()}, {color.blue()}, {alpha})"
+            background_color = (
+                f"rgba({color.red()}, {color.green()}, {color.blue()}, {alpha})"
+            )
         else:
             background_color = "rgba(0, 0, 0, 0)"
         panel_object_name = self.objectName()

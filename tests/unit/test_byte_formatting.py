@@ -18,14 +18,20 @@ def test_format_bytes_human_readable_binary_units() -> None:
 
 
 def test_format_bytes_always_mb_and_always_mib() -> None:
-    assert format_bytes(
-        3_000_000,
-        ByteFormatScopeConfig(mode=BYTE_FORMAT_MODE_ALWAYS_MB),
-    ) == "3.00 MB"
-    assert format_bytes(
-        3_145_728,
-        ByteFormatScopeConfig(mode=BYTE_FORMAT_MODE_ALWAYS_MIB),
-    ) == "3.00 MiB"
+    assert (
+        format_bytes(
+            3_000_000,
+            ByteFormatScopeConfig(mode=BYTE_FORMAT_MODE_ALWAYS_MB),
+        )
+        == "3.00 MB"
+    )
+    assert (
+        format_bytes(
+            3_145_728,
+            ByteFormatScopeConfig(mode=BYTE_FORMAT_MODE_ALWAYS_MIB),
+        )
+        == "3.00 MiB"
+    )
 
 
 def test_format_bytes_bytes_mode_respects_grouping_separator() -> None:
@@ -50,16 +56,24 @@ def test_format_bytes_custom_template_localizes_output() -> None:
 
 
 def test_format_bytes_custom_template_requires_fields_and_known_tokens() -> None:
-    assert format_bytes(
-        1234,
-        ByteFormatScopeConfig(mode=BYTE_FORMAT_MODE_CUSTOM, custom_template="plain text"),
-    ) == "1,234"
-    assert format_bytes(
-        1234,
-        ByteFormatScopeConfig(
-            mode=BYTE_FORMAT_MODE_CUSTOM, custom_template="{M:.2f} M"
-        ),
-    ) == "1,234"
+    assert (
+        format_bytes(
+            1234,
+            ByteFormatScopeConfig(
+                mode=BYTE_FORMAT_MODE_CUSTOM, custom_template="plain text"
+            ),
+        )
+        == "1,234"
+    )
+    assert (
+        format_bytes(
+            1234,
+            ByteFormatScopeConfig(
+                mode=BYTE_FORMAT_MODE_CUSTOM, custom_template="{M:.2f} M"
+            ),
+        )
+        == "1,234"
+    )
 
 
 def test_format_bytes_custom_template_never_evaluates_expressions() -> None:
@@ -74,7 +88,10 @@ def test_format_bytes_custom_template_never_evaluates_expressions() -> None:
 
 
 def test_format_bytes_clamps_negative_values_to_zero() -> None:
-    assert format_bytes(
-        -999,
-        ByteFormatScopeConfig(mode=BYTE_FORMAT_MODE_BYTES),
-    ) == "0"
+    assert (
+        format_bytes(
+            -999,
+            ByteFormatScopeConfig(mode=BYTE_FORMAT_MODE_BYTES),
+        )
+        == "0"
+    )

@@ -35,7 +35,9 @@ def build_command_controls(
 ) -> QWidget:
     executable_edit.textChanged.connect(dialog._on_controls_changed)
     args_edit.textChanged.connect(dialog._on_controls_changed)
-    executable_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+    executable_edit.setSizePolicy(
+        QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+    )
     args_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
     host = QWidget(dialog)
     layout = QGridLayout(host)
@@ -100,7 +102,9 @@ def build_path_controls(
     default_executable: str,
 ) -> QWidget:
     executable_edit.textChanged.connect(dialog._on_controls_changed)
-    executable_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+    executable_edit.setSizePolicy(
+        QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+    )
     host = QWidget(dialog)
     layout = QGridLayout(host)
     layout.setContentsMargins(0, 0, 0, 0)
@@ -217,7 +221,9 @@ def build_delete_shell_controls(
     actions_layout.addStretch(1)
     actions_layout.addWidget(cmd_test_button)
     actions_layout.addWidget(powershell_test_button)
-    cmd_test_button.clicked.connect(lambda: dialog._test_backend("delete", "cmd_delete"))
+    cmd_test_button.clicked.connect(
+        lambda: dialog._test_backend("delete", "cmd_delete")
+    )
     powershell_test_button.clicked.connect(
         lambda: dialog._test_backend("delete", "powershell_delete")
     )

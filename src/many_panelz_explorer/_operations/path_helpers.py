@@ -3,13 +3,16 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from threep_commons.fs_paths import (
     coerce_path,
     normalize_windows_path_text,
     strip_windows_long_path_text,
 )
-from .types import OperationRequest
+
+if TYPE_CHECKING:
+    from .types import OperationRequest
 
 
 def normalize_path(path: Path | str) -> Path:

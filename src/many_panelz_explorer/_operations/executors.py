@@ -63,7 +63,11 @@ def execute_python_builtin(request: OperationRequest) -> OperationResult:
         if destination.exists():
             policy = request.conflict_policy
             if policy == "cancel":
-                return OperationResult(status="cancelled", message="Cancelled by conflict policy.", processed_count=processed)
+                return OperationResult(
+                    status="cancelled",
+                    message="Cancelled by conflict policy.",
+                    processed_count=processed,
+                )
             if policy == "skip":
                 continue
             if policy == "rename":
@@ -97,7 +101,9 @@ def execute_python_builtin(request: OperationRequest) -> OperationResult:
             )
         processed += 1
 
-    return OperationResult(status="succeeded", message="Operation completed.", processed_count=processed)
+    return OperationResult(
+        status="succeeded", message="Operation completed.", processed_count=processed
+    )
 
 
 def execute_permanent_delete(request: OperationRequest) -> OperationResult:
@@ -109,7 +115,11 @@ def execute_permanent_delete(request: OperationRequest) -> OperationResult:
         else:
             Path(to_windows_long_path(path)).unlink(missing_ok=False)
         processed += 1
-    return OperationResult(status="succeeded", message="Permanent delete completed.", processed_count=processed)
+    return OperationResult(
+        status="succeeded",
+        message="Permanent delete completed.",
+        processed_count=processed,
+    )
 
 
 def execute_windows_explorer(
@@ -120,10 +130,12 @@ def execute_windows_explorer(
     wait: bool,
 ) -> OperationResult:
     if request.kind not in {"copy", "move"} or request.target_dir is None:
-        return OperationResult(status="failed", message="Windows Explorer backend supports copy/move only.")
+        return OperationResult(
+            status="failed", message="Windows Explorer backend supports copy/move only."
+        )
     verb = "MoveHere" if request.kind == "move" else "CopyHere"
     source_items = ", ".join(
-        f'@{{Parent={quoted(display_path(source.parent))};Name={quoted(source.name)}}}'
+        f"@{{Parent={quoted(display_path(source.parent))};Name={quoted(source.name)}}}"
         for source in request.sources
     )
     command = (
@@ -160,7 +172,9 @@ def execute_robocopy(
     preferences: OperationExecutionPreferences,
 ) -> OperationResult:
     if request.kind not in {"copy", "move"} or request.target_dir is None:
-        return OperationResult(status="failed", message="Robocopy backend supports copy/move only.")
+        return OperationResult(
+            status="failed", message="Robocopy backend supports copy/move only."
+        )
     robocopy_exe = str(preferences.resolved_robocopy_path or "").strip()
     if not robocopy_exe or not Path(robocopy_exe).exists():
         return OperationResult(
@@ -193,7 +207,7 @@ def execute_robocopy(
                 target / source.name, use_extended_paths=use_extended_paths
             )
             script_lines.append(
-                f'{quoted(robocopy_exe)} {quoted(src)} {quoted(dst)} {arg_tail}'
+                f"{quoted(robocopy_exe)} {quoted(src)} {quoted(dst)} {arg_tail}"
             )
         else:
             src_parent = to_windows_arg_path(
@@ -203,7 +217,7 @@ def execute_robocopy(
                 target, use_extended_paths=use_extended_paths
             )
             script_lines.append(
-                f'{quoted(robocopy_exe)} {quoted(src_parent)} {quoted(dst_parent)} {quoted(source.name)} {arg_tail}'
+                f"{quoted(robocopy_exe)} {quoted(src_parent)} {quoted(dst_parent)} {quoted(source.name)} {arg_tail}"
             )
         script_lines.append("if %ERRORLEVEL% GTR 7 exit /b %ERRORLEVEL%")
     # Robocopy uses 0-7 as success/info codes; normalize success to 0 for queue status.
@@ -367,7 +381,9 @@ def execute_cmd_delete(
     preferences: OperationExecutionPreferences,
 ) -> OperationResult:
     if request.kind != "delete":
-        return OperationResult(status="failed", message="cmd delete backend supports delete only.")
+        return OperationResult(
+            status="failed", message="cmd delete backend supports delete only."
+        )
     tail = " ".join(split_args(preferences.cmd_delete_args))
     use_extended_paths = resolve_use_extended_paths(
         request,
@@ -379,7 +395,9 @@ def execute_cmd_delete(
         literal = quoted(
             to_windows_arg_path(source, use_extended_paths=use_extended_paths)
         )
-        script_lines.append(f"if exist {literal}\\* (rmdir /S {tail} {literal}) else (del {tail} {literal})")
+        script_lines.append(
+            f"if exist {literal}\\* (rmdir /S {tail} {literal}) else (del {tail} {literal})"
+        )
     script_path = write_script(artifacts, script_lines)
     return run_script(
         script_path,
@@ -397,7 +415,9 @@ def execute_powershell_delete(
     preferences: OperationExecutionPreferences,
 ) -> OperationResult:
     if request.kind != "delete":
-        return OperationResult(status="failed", message="PowerShell delete backend supports delete only.")
+        return OperationResult(
+            status="failed", message="PowerShell delete backend supports delete only."
+        )
     options = " ".join(split_args(preferences.powershell_delete_args))
     use_extended_paths = resolve_use_extended_paths(
         request,
@@ -411,7 +431,9 @@ def execute_powershell_delete(
         )
         for source in request.sources
     )
-    command = f"Remove-Item -LiteralPath @({literals}) -Recurse {options} -ErrorAction Stop"
+    command = (
+        f"Remove-Item -LiteralPath @({literals}) -Recurse {options} -ErrorAction Stop"
+    )
     script_path = write_script(
         artifacts,
         [f"powershell -NoProfile -ExecutionPolicy Bypass -Command {quoted(command)}"],
@@ -432,7 +454,9 @@ def execute_rimraf_delete(
     preferences: OperationExecutionPreferences,
 ) -> OperationResult:
     if request.kind != "delete":
-        return OperationResult(status="failed", message="rimraf backend supports delete only.")
+        return OperationResult(
+            status="failed", message="rimraf backend supports delete only."
+        )
     return execute_external_command(
         request,
         artifacts,
@@ -456,7 +480,9 @@ def execute_operation_request(
         return execute_python_builtin(request)
     if backend == BACKEND_RECYCLE_BIN:
         if request.kind != "delete":
-            return OperationResult(status="failed", message="Recycle Bin backend supports delete only.")
+            return OperationResult(
+                status="failed", message="Recycle Bin backend supports delete only."
+            )
         for source in request.sources:
             send2trash(to_windows_long_path(source))
         return OperationResult(
@@ -503,11 +529,17 @@ def execute_operation_request(
             use_extended_paths_default=preferences.use_extended_paths_external_copymove,
         )
     if backend == BACKEND_CMD_DELETE:
-        return execute_cmd_delete(request, artifacts, wait=wait, preferences=preferences)
+        return execute_cmd_delete(
+            request, artifacts, wait=wait, preferences=preferences
+        )
     if backend == BACKEND_POWERSHELL_DELETE:
-        return execute_powershell_delete(request, artifacts, wait=wait, preferences=preferences)
+        return execute_powershell_delete(
+            request, artifacts, wait=wait, preferences=preferences
+        )
     if backend == BACKEND_RIMRAF:
-        return execute_rimraf_delete(request, artifacts, wait=wait, preferences=preferences)
+        return execute_rimraf_delete(
+            request, artifacts, wait=wait, preferences=preferences
+        )
     if backend == BACKEND_EXTERNAL_DELETE:
         return execute_external_command(
             request,

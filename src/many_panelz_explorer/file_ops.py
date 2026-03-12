@@ -121,7 +121,9 @@ def resolve_open_executable(path: Path, mode: Literal["edit", "view"]) -> str | 
     extension = _normalize_extension(Path(path).suffix)
     override = _file_open_overrides.get(extension, {})
     if mode == "edit":
-        candidate = str(override.get("editor", "") or _default_editor_executable).strip()
+        candidate = str(
+            override.get("editor", "") or _default_editor_executable
+        ).strip()
     else:
         candidate = str(
             override.get("viewer", "")

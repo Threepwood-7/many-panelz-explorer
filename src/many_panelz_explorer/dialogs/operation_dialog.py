@@ -91,7 +91,9 @@ class OperationDialog(QDialog):
         for label, value in self._backend_options():
             self.backend_combo.addItem(label, value)
         self._set_combo_data(self.backend_combo, self._result.backend_id)
-        self.backend_combo.currentIndexChanged.connect(self._sync_backend_options_visibility)
+        self.backend_combo.currentIndexChanged.connect(
+            self._sync_backend_options_visibility
+        )
         form.addRow("Backend", self.backend_combo)
 
         self.dispatch_combo = QComboBox(self)
@@ -122,7 +124,9 @@ class OperationDialog(QDialog):
         robocopy_layout.setContentsMargins(0, 0, 0, 0)
         robocopy_layout.setHorizontalSpacing(8)
         robocopy_layout.setVerticalSpacing(6)
-        self.robocopy_include_subdirs_checkbox = QCheckBox("Copy subdirectories (/E)", self)
+        self.robocopy_include_subdirs_checkbox = QCheckBox(
+            "Copy subdirectories (/E)", self
+        )
         self.robocopy_include_subdirs_checkbox.setChecked(True)
         self.robocopy_mirror_checkbox = QCheckBox("Mirror target (/MIR)", self)
         self.robocopy_mirror_checkbox.setChecked(False)
@@ -148,7 +152,9 @@ class OperationDialog(QDialog):
         self.robocopy_wait_spin = QSpinBox(self)
         self.robocopy_wait_spin.setRange(0, 3600)
         self.robocopy_wait_spin.setValue(0)
-        self.robocopy_multithread_checkbox = QCheckBox("Multi-threaded copy (/MT)", self)
+        self.robocopy_multithread_checkbox = QCheckBox(
+            "Multi-threaded copy (/MT)", self
+        )
         self.robocopy_multithread_checkbox.setChecked(False)
         self.robocopy_multithread_spin = QSpinBox(self)
         self.robocopy_multithread_spin.setRange(1, 128)
@@ -194,7 +200,9 @@ class OperationDialog(QDialog):
         self.teracopy_conflict_combo.addItem("Skip All", "/SkipAll")
         self.teracopy_conflict_combo.addItem("Rename All", "/RenameAll")
         self.teracopy_conflict_combo.addItem("Overwrite Older", "/OverwriteOlder")
-        self.teracopy_conflict_combo.addItem("Overwrite Different Size", "/OverwriteDiffSize")
+        self.teracopy_conflict_combo.addItem(
+            "Overwrite Different Size", "/OverwriteDiffSize"
+        )
         self.teracopy_conflict_combo.addItem("Rename Copied", "/RenameCopied")
         self.teracopy_conflict_combo.addItem(
             "Rename Destination",
@@ -215,9 +223,13 @@ class OperationDialog(QDialog):
         unstoppable_layout.setContentsMargins(0, 0, 0, 0)
         unstoppable_layout.setHorizontalSpacing(8)
         unstoppable_layout.setVerticalSpacing(6)
-        self.unstoppable_defaults_checkbox = QCheckBox("Use program defaults (+d)", self)
+        self.unstoppable_defaults_checkbox = QCheckBox(
+            "Use program defaults (+d)", self
+        )
         self.unstoppable_defaults_checkbox.setChecked(True)
-        self.unstoppable_keep_attributes_checkbox = QCheckBox("Copy attributes (+a)", self)
+        self.unstoppable_keep_attributes_checkbox = QCheckBox(
+            "Copy attributes (+a)", self
+        )
         self.unstoppable_keep_attributes_checkbox.setChecked(True)
         self.unstoppable_keep_owner_checkbox = QCheckBox("Copy ownership (+o)", self)
         self.unstoppable_keep_owner_checkbox.setChecked(True)
@@ -225,23 +237,39 @@ class OperationDialog(QDialog):
         self.unstoppable_keep_time_checkbox.setChecked(True)
         self.unstoppable_overwrite_checkbox = QCheckBox("Overwrite existing (+e)", self)
         self.unstoppable_overwrite_checkbox.setChecked(True)
-        self.unstoppable_include_subdirs_checkbox = QCheckBox("Include subfolders (+i)", self)
+        self.unstoppable_include_subdirs_checkbox = QCheckBox(
+            "Include subfolders (+i)", self
+        )
         self.unstoppable_include_subdirs_checkbox.setChecked(True)
-        self.unstoppable_resume_checkbox = QCheckBox("Recover damaged and resume (+r)", self)
+        self.unstoppable_resume_checkbox = QCheckBox(
+            "Recover damaged and resume (+r)", self
+        )
         self.unstoppable_resume_checkbox.setChecked(False)
-        self.unstoppable_copy_newer_checkbox = QCheckBox("Copy only if source newer (+c)", self)
+        self.unstoppable_copy_newer_checkbox = QCheckBox(
+            "Copy only if source newer (+c)", self
+        )
         self.unstoppable_copy_newer_checkbox.setChecked(False)
-        self.unstoppable_skip_damaged_checkbox = QCheckBox("Auto-skip damaged files (+s)", self)
+        self.unstoppable_skip_damaged_checkbox = QCheckBox(
+            "Auto-skip damaged files (+s)", self
+        )
         self.unstoppable_skip_damaged_checkbox.setChecked(False)
-        self.unstoppable_undamaged_first_checkbox = QCheckBox("Undamaged files first (+u)", self)
+        self.unstoppable_undamaged_first_checkbox = QCheckBox(
+            "Undamaged files first (+u)", self
+        )
         self.unstoppable_undamaged_first_checkbox.setChecked(False)
-        self.unstoppable_overwrite_readonly_checkbox = QCheckBox("Overwrite read-only files (+w)", self)
+        self.unstoppable_overwrite_readonly_checkbox = QCheckBox(
+            "Overwrite read-only files (+w)", self
+        )
         self.unstoppable_overwrite_readonly_checkbox.setChecked(False)
-        self.unstoppable_copy_empty_folders_checkbox = QCheckBox("Copy empty folders (+f)", self)
+        self.unstoppable_copy_empty_folders_checkbox = QCheckBox(
+            "Copy empty folders (+f)", self
+        )
         self.unstoppable_copy_empty_folders_checkbox.setChecked(False)
         self.unstoppable_eta_checkbox = QCheckBox("Show remaining time (+z)", self)
         self.unstoppable_eta_checkbox.setChecked(False)
-        self.unstoppable_power_down_checkbox = QCheckBox("Power down after completion (+p)", self)
+        self.unstoppable_power_down_checkbox = QCheckBox(
+            "Power down after completion (+p)", self
+        )
         self.unstoppable_power_down_checkbox.setChecked(False)
         self.unstoppable_extra_args_edit = QLineEdit(self)
         self.unstoppable_extra_args_edit.setPlaceholderText(
@@ -249,17 +277,27 @@ class OperationDialog(QDialog):
         )
 
         unstoppable_layout.addWidget(self.unstoppable_defaults_checkbox, 0, 0, 1, 2)
-        unstoppable_layout.addWidget(self.unstoppable_keep_attributes_checkbox, 1, 0, 1, 2)
+        unstoppable_layout.addWidget(
+            self.unstoppable_keep_attributes_checkbox, 1, 0, 1, 2
+        )
         unstoppable_layout.addWidget(self.unstoppable_keep_owner_checkbox, 2, 0, 1, 2)
         unstoppable_layout.addWidget(self.unstoppable_keep_time_checkbox, 3, 0, 1, 2)
         unstoppable_layout.addWidget(self.unstoppable_overwrite_checkbox, 4, 0, 1, 2)
-        unstoppable_layout.addWidget(self.unstoppable_include_subdirs_checkbox, 5, 0, 1, 2)
+        unstoppable_layout.addWidget(
+            self.unstoppable_include_subdirs_checkbox, 5, 0, 1, 2
+        )
         unstoppable_layout.addWidget(self.unstoppable_resume_checkbox, 6, 0, 1, 2)
         unstoppable_layout.addWidget(self.unstoppable_copy_newer_checkbox, 7, 0, 1, 2)
         unstoppable_layout.addWidget(self.unstoppable_skip_damaged_checkbox, 8, 0, 1, 2)
-        unstoppable_layout.addWidget(self.unstoppable_undamaged_first_checkbox, 9, 0, 1, 2)
-        unstoppable_layout.addWidget(self.unstoppable_overwrite_readonly_checkbox, 10, 0, 1, 2)
-        unstoppable_layout.addWidget(self.unstoppable_copy_empty_folders_checkbox, 11, 0, 1, 2)
+        unstoppable_layout.addWidget(
+            self.unstoppable_undamaged_first_checkbox, 9, 0, 1, 2
+        )
+        unstoppable_layout.addWidget(
+            self.unstoppable_overwrite_readonly_checkbox, 10, 0, 1, 2
+        )
+        unstoppable_layout.addWidget(
+            self.unstoppable_copy_empty_folders_checkbox, 11, 0, 1, 2
+        )
         unstoppable_layout.addWidget(self.unstoppable_eta_checkbox, 12, 0, 1, 2)
         unstoppable_layout.addWidget(self.unstoppable_power_down_checkbox, 13, 0, 1, 2)
         unstoppable_layout.addWidget(QLabel("Extra args", self), 14, 0)
@@ -356,7 +394,9 @@ class OperationDialog(QDialog):
     def _apply_robocopy_structured_options_to_controls(
         self, options: RobocopyBackendOptions
     ) -> None:
-        self.robocopy_include_subdirs_checkbox.setChecked(options.include_subdirectories)
+        self.robocopy_include_subdirs_checkbox.setChecked(
+            options.include_subdirectories
+        )
         self.robocopy_mirror_checkbox.setChecked(options.mirror_target)
         if self._kind == "move":
             self.robocopy_move_checkbox.setChecked(options.move_files_for_move)
@@ -419,7 +459,10 @@ class OperationDialog(QDialog):
         show_robocopy = backend == "robocopy" and self._kind in {"copy", "move"}
         show_teracopy = backend == "teracopy" and self._kind in {"copy", "move"}
         show_unstoppable = backend == "unstoppable" and self._kind in {"copy", "move"}
-        show_external = backend == "external_copymove" and self._kind in {"copy", "move"}
+        show_external = backend == "external_copymove" and self._kind in {
+            "copy",
+            "move",
+        }
         self.robocopy_options_group.setVisible(show_robocopy)
         self.teracopy_options_group.setVisible(show_teracopy)
         self.unstoppable_options_group.setVisible(show_unstoppable)
@@ -459,7 +502,9 @@ class OperationDialog(QDialog):
             parts.append("/Close")
         if self.teracopy_no_close_checkbox.isChecked():
             parts.append("/NoClose")
-        conflict_override = str(self.teracopy_conflict_combo.currentData() or "").strip()
+        conflict_override = str(
+            self.teracopy_conflict_combo.currentData() or ""
+        ).strip()
         if conflict_override:
             parts.append(conflict_override)
         extra = self.teracopy_extra_args_edit.text().strip()
@@ -518,7 +563,14 @@ class OperationDialog(QDialog):
             backend_options=self._collect_backend_options(),
         )
 
-    def build_request(self, *, kind: str, sources: list[Path], target_dir: Path | None, created_by: str) -> OperationRequest:
+    def build_request(
+        self,
+        *,
+        kind: str,
+        sources: list[Path],
+        target_dir: Path | None,
+        created_by: str,
+    ) -> OperationRequest:
         selection = self.selected_result()
         return OperationRequest(
             kind=kind,

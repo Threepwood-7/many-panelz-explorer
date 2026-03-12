@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from string import Formatter
 from typing import Final
 
-
 BYTE_FORMAT_MODE_HUMAN_READABLE: Final[str] = "human_readable"
 BYTE_FORMAT_MODE_ALWAYS_MB: Final[str] = "always_mb"
 BYTE_FORMAT_MODE_ALWAYS_MIB: Final[str] = "always_mib"
@@ -231,7 +230,7 @@ def _format_decimal(
     decimal_sep: str,
 ) -> str:
     if precision <= 0:
-        rounded = int(round(value))
+        rounded = round(value)
         return _grouped_int(rounded, thousands_sep)
     text = f"{value:,.{precision}f}"
     return _localize_number_text(text, thousands_sep, decimal_sep)

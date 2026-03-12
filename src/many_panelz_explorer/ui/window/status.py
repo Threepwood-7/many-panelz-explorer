@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QResizeEvent
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -23,6 +22,8 @@ from ...storage_status_formatting import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from PySide6.QtGui import QResizeEvent
+
     from ...window import ExplorerWindow
 
 
@@ -40,7 +41,7 @@ class _ElidedStatusLabel(QLabel):
     def full_text(self) -> str:
         return self._full_text
 
-    def resizeEvent(self, event: QResizeEvent) -> None:
+    def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802
         super().resizeEvent(event)
         self._apply_elided_text()
 
@@ -66,7 +67,9 @@ class WindowStatusCoordinator:
         self._storage_refresh_timer.setInterval(
             int(mounts.WINDOWS_ROOTS_CACHE_TTL_SECONDS * 1000)
         )
-        self._storage_refresh_timer.timeout.connect(self.refresh_storage_overview_status)
+        self._storage_refresh_timer.timeout.connect(
+            self.refresh_storage_overview_status
+        )
         self._build_status_rows()
 
     def _build_status_rows(self) -> None:
@@ -146,7 +149,9 @@ class WindowStatusCoordinator:
     def update_pane_visuals(self) -> None:
         source_id = self.window._active_panel_id
         target_id = (
-            self.window._resolve_target_panel_id(source_id) if source_id is not None else None
+            self.window._resolve_target_panel_id(source_id)
+            if source_id is not None
+            else None
         )
 
         for panel_id, panel in self.window.panel_widgets.items():

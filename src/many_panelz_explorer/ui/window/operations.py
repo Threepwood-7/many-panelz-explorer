@@ -35,7 +35,9 @@ class WindowOperationsCoordinator:
             return
         selected = tab.selected_paths()
         if not selected:
-            self.window.statusBar().showMessage("No items selected in source pane.", 3000)
+            self.window.statusBar().showMessage(
+                "No items selected in source pane.", 3000
+            )
             return
 
         request = self.build_operation_request(
@@ -54,7 +56,9 @@ class WindowOperationsCoordinator:
         if job.status in {"succeeded", "failed", "cancelled"}:
             panel.refresh_current_path()
 
-    def transfer_selected_to_target(self, *, move: bool, configure: bool = False) -> None:
+    def transfer_selected_to_target(
+        self, *, move: bool, configure: bool = False
+    ) -> None:
         source_panel = self.window.active_panel()
         source_id = self.window._active_panel_id
         if source_panel is None or source_id is None:
@@ -65,7 +69,9 @@ class WindowOperationsCoordinator:
 
         selected = source_tab.selected_paths()
         if not selected:
-            self.window.statusBar().showMessage("No items selected in source pane.", 3000)
+            self.window.statusBar().showMessage(
+                "No items selected in source pane.", 3000
+            )
             return
 
         target_id = self.window._resolve_target_panel_id(source_id)
@@ -159,7 +165,9 @@ class WindowOperationsCoordinator:
             if choice == "skip":
                 return "skip"
             if choice == "rename":
-                destination = self.window._next_available_path(destination_dir, source.name)
+                destination = self.window._next_available_path(
+                    destination_dir, source.name
+                )
             elif choice == "overwrite":
                 if source.resolve() == destination.resolve():
                     return "skip"

@@ -38,10 +38,10 @@ from .ui.window import (
 )
 
 if TYPE_CHECKING:
-    from .app_controller import AppController
     from ._operations.types import OperationRequest
     from ._settings.manager import SettingsManager
     from ._settings.models import UiPreferences
+    from .app_controller import AppController
 
 
 type PanelState = dict[str, Any]
@@ -213,7 +213,9 @@ class ExplorerWindow(QMainWindow):
             for _source_panel_id in source_row:
                 new_panel_id = self._allocate_panel_id(rows, tabs_state)
                 new_row.append(new_panel_id)
-                tabs_state[new_panel_id] = self._new_panel_state(new_panel_id, seed_path)
+                tabs_state[new_panel_id] = self._new_panel_state(
+                    new_panel_id, seed_path
+                )
             rows.insert(row_index + 1, new_row)
             preferred_active_panel = new_row[0] if new_row else None
 
@@ -240,9 +242,9 @@ class ExplorerWindow(QMainWindow):
         if row_index is None or column_index is None:
             return
 
-        source_state = tabs_state.get(self._active_panel_id) or self._default_panel_state(
+        source_state = tabs_state.get(
             self._active_panel_id
-        )
+        ) or self._default_panel_state(self._active_panel_id)
         preferred_active_panel: int | None = None
 
         is_horizontal_split = (
@@ -406,7 +408,11 @@ class ExplorerWindow(QMainWindow):
         panel = self.active_panel()
         if panel is not None:
             panel.refresh_current_path()
-        target_id = self._resolve_target_panel_id(self._active_panel_id) if self._active_panel_id is not None else None
+        target_id = (
+            self._resolve_target_panel_id(self._active_panel_id)
+            if self._active_panel_id is not None
+            else None
+        )
         if target_id is not None:
             target_panel = self.panel_widgets.get(target_id)
             if target_panel is not None:
@@ -529,8 +535,8 @@ class ExplorerWindow(QMainWindow):
             panel.activated.connect(lambda pid=panel_id: self._set_active_panel(pid))
             panel.current_context_changed.connect(self._update_pane_visuals)
             panel.column_widths_sync_requested.connect(
-                lambda widths, source_tab, pid=panel_id: self._on_panel_column_widths_sync_requested(
-                    pid, widths, source_tab
+                lambda widths, source_tab, pid=panel_id: (
+                    self._on_panel_column_widths_sync_requested(pid, widths, source_tab)
                 )
             )
             panel.became_empty.connect(
@@ -613,7 +619,11 @@ class ExplorerWindow(QMainWindow):
         if panel_id not in self.panel_widgets:
             return
         previous = self._active_panel_id
-        if previous is not None and previous != panel_id and previous in self.panel_widgets:
+        if (
+            previous is not None
+            and previous != panel_id
+            and previous in self.panel_widgets
+        ):
             self._last_non_source_panel_id = previous
         self._active_panel_id = panel_id
         self._update_pane_visuals()
@@ -675,9 +685,7 @@ class ExplorerWindow(QMainWindow):
         self._show_root_buttons = bool(preferences.show_root_buttons)
         self._show_address_bar = bool(preferences.show_address_bar)
         self._show_navigation_buttons = bool(preferences.show_navigation_buttons)
-        self._byte_format_preferences = self._build_byte_format_preferences(
-            preferences
-        )
+        self._byte_format_preferences = self._build_byte_format_preferences(preferences)
         self._status_bar_storage_label_template = (
             preferences.status_bar_storage_label_template
         )
@@ -816,13 +824,19 @@ class ExplorerWindow(QMainWindow):
         )
 
     def _format_file_list_bytes(self, value: int) -> str:
-        return self._format_bytes_for_scope(value, self._byte_format_preferences.file_list)
+        return self._format_bytes_for_scope(
+            value, self._byte_format_preferences.file_list
+        )
 
     def _format_status_bar_bytes(self, value: int) -> str:
-        return self._format_bytes_for_scope(value, self._byte_format_preferences.status_bar)
+        return self._format_bytes_for_scope(
+            value, self._byte_format_preferences.status_bar
+        )
 
     def _format_properties_bytes(self, value: int) -> str:
-        return self._format_bytes_for_scope(value, self._byte_format_preferences.properties)
+        return self._format_bytes_for_scope(
+            value, self._byte_format_preferences.properties
+        )
 
     def _resolve_new_context_path(self, active_path: Path | None) -> Path:
         mode = self._new_context_mode.strip().lower()
@@ -904,7 +918,9 @@ class ExplorerWindow(QMainWindow):
     def _delete_selected_items(self, configure: bool = False) -> None:
         self._operations_coordinator.delete_selected_items(configure=configure)
 
-    def _transfer_selected_to_target(self, *, move: bool, configure: bool = False) -> None:
+    def _transfer_selected_to_target(
+        self, *, move: bool, configure: bool = False
+    ) -> None:
         self._operations_coordinator.transfer_selected_to_target(
             move=move,
             configure=configure,
@@ -934,7 +950,9 @@ class ExplorerWindow(QMainWindow):
             move=move,
         )
 
-    def _prompt_conflict_resolution(self, source: Path, destination: Path) -> ConflictChoice:
+    def _prompt_conflict_resolution(
+        self, source: Path, destination: Path
+    ) -> ConflictChoice:
         return self._operations_coordinator.prompt_conflict_resolution(
             source,
             destination,

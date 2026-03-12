@@ -59,7 +59,9 @@ class SettingsRegistry:
     NAVIGATION_FONT_SIZE_PT_KEY = "ui/font/navigation/size_pt"
     CONTEXT_IMMEDIATE_CHILD_SCAN_CAP_KEY = "context/detection/immediate_child_scan_cap"
     CONTEXT_TOOL_CODE_EDITOR_EXE_PATH_KEY = "context/tools/code_editor/exe_path"
-    CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE_KEY = "context/tools/code_editor/args_template"
+    CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE_KEY = (
+        "context/tools/code_editor/args_template"
+    )
     CONTEXT_TOOL_GIT_GUI_EXE_PATH_KEY = "context/tools/git_gui/exe_path"
     CONTEXT_TOOL_GIT_GUI_ARGS_TEMPLATE_KEY = "context/tools/git_gui/args_template"
     ACTIVE_PANEL_TINT_COLOR_KEY = "ui/panel_tint/active_color_hex"
@@ -78,11 +80,17 @@ class SettingsRegistry:
     USE_EXTENDED_PATHS_ROBOCOPY_KEY = "ops/backends/robocopy/use_extended_paths"
     USE_EXTENDED_PATHS_TERACOPY_KEY = "ops/backends/teracopy/use_extended_paths"
     USE_EXTENDED_PATHS_UNSTOPPABLE_KEY = "ops/backends/unstoppable/use_extended_paths"
-    USE_EXTENDED_PATHS_EXTERNAL_COPYMOVE_KEY = "ops/backends/external_copymove/use_extended_paths"
+    USE_EXTENDED_PATHS_EXTERNAL_COPYMOVE_KEY = (
+        "ops/backends/external_copymove/use_extended_paths"
+    )
     USE_EXTENDED_PATHS_CMD_DELETE_KEY = "ops/backends/cmd_delete/use_extended_paths"
-    USE_EXTENDED_PATHS_POWERSHELL_DELETE_KEY = "ops/backends/powershell_delete/use_extended_paths"
+    USE_EXTENDED_PATHS_POWERSHELL_DELETE_KEY = (
+        "ops/backends/powershell_delete/use_extended_paths"
+    )
     USE_EXTENDED_PATHS_RIMRAF_KEY = "ops/backends/rimraf/use_extended_paths"
-    USE_EXTENDED_PATHS_EXTERNAL_DELETE_KEY = "ops/backends/external_delete/use_extended_paths"
+    USE_EXTENDED_PATHS_EXTERNAL_DELETE_KEY = (
+        "ops/backends/external_delete/use_extended_paths"
+    )
     TERACOPY_EXECUTABLE_KEY = "ops/backends/teracopy/executable"
     UNSTOPPABLE_EXECUTABLE_KEY = "ops/backends/unstoppable/executable"
     GENERIC_COPYMOVE_EXECUTABLE_KEY = "ops/backends/generic_copymove/executable"

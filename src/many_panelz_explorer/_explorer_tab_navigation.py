@@ -6,12 +6,11 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QDir, QItemSelectionModel, QObject, QTimer, Signal
 from PySide6.QtWidgets import QAbstractItemView, QTreeView, QWidget
 from shiboken6 import isValid
-
-from .fast_dir_model import FastDirModel
 from threep_commons.fs_paths import coerce_path, is_drive_root, path_key
 
 if TYPE_CHECKING:
     from ._explorer_tab_columns import ExplorerTabColumns
+    from .fast_dir_model import FastDirModel
 
 
 class ExplorerTabNavigation(QObject):
@@ -163,9 +162,7 @@ class ExplorerTabNavigation(QObject):
     def _should_show_parent_entry(self, path: Path) -> bool:
         if path.parent == path:
             return False
-        if is_drive_root(path):
-            return False
-        return True
+        return not is_drive_root(path)
 
     def _selected_or_current_path(self) -> Path | None:
         selection_model = self._view.selectionModel()
@@ -204,7 +201,11 @@ class ExplorerTabNavigation(QObject):
     ) -> None:
         if token != self._selection_restore_token:
             return
-        if not isValid(self._owner) or not isValid(self._model) or not isValid(self._view):
+        if (
+            not isValid(self._owner)
+            or not isValid(self._model)
+            or not isValid(self._view)
+        ):
             return
 
         index = self._model.index_for_path(candidate)

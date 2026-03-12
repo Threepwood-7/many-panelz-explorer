@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMenu, QPushButton, QSizePolicy
-
 from threep_commons.fs_paths import (
     coerce_path,
     dedup_paths,
@@ -19,6 +17,8 @@ from threep_commons.fs_paths import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ...panel_widget import PanelWidget
 
 
@@ -49,7 +49,9 @@ class PanelNavigationCoordinator:
         self.rebuild_root_buttons(current_path, roots)
         self.rebuild_root_combo(current_path, roots)
 
-    def rebuild_root_buttons(self, current_path: Path | None, roots: list[Path]) -> None:
+    def rebuild_root_buttons(
+        self, current_path: Path | None, roots: list[Path]
+    ) -> None:
         while self.panel.root_buttons_layout.count():
             item = self.panel.root_buttons_layout.takeAt(0)
             if item is None:
@@ -66,7 +68,9 @@ class PanelNavigationCoordinator:
             button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
             button.setToolTip(display_path_text(root_path))
             button.setCheckable(True)
-            button.setChecked(current_path is not None and is_path_under_root(current_path, root_path))
+            button.setChecked(
+                current_path is not None and is_path_under_root(current_path, root_path)
+            )
             button.clicked.connect(
                 lambda _checked=False, p=root_path: self.navigate_to_root(p)
             )
@@ -85,7 +89,9 @@ class PanelNavigationCoordinator:
         try:
             self.panel.root_combo.clear()
             for root_path in roots:
-                self.panel.root_combo.addItem(_navigation_root_text(root_path), str(root_path))
+                self.panel.root_combo.addItem(
+                    _navigation_root_text(root_path), str(root_path)
+                )
                 combo_idx = self.panel.root_combo.count() - 1
                 self.panel.root_combo.setItemData(
                     combo_idx,
@@ -109,7 +115,9 @@ class PanelNavigationCoordinator:
 
     def safe_roots(self, current_path: Path | None) -> list[Path]:
         try:
-            provided_roots = [coerce_path(p) for p in self.panel._roots_provider(current_path)]
+            provided_roots = [
+                coerce_path(p) for p in self.panel._roots_provider(current_path)
+            ]
         except Exception:
             provided_roots = []
         roots = self.existing_unique_paths(provided_roots)
@@ -266,7 +274,9 @@ class PanelNavigationCoordinator:
                         continue
                     if not is_dir:
                         continue
-                    if not self.panel._show_hidden and self._is_hidden_or_system_entry(entry):
+                    if not self.panel._show_hidden and self._is_hidden_or_system_entry(
+                        entry
+                    ):
                         continue
                     name = entry.name
                     if prefix_cmp and not name.casefold().startswith(prefix_cmp):
@@ -288,7 +298,9 @@ class PanelNavigationCoordinator:
         has_trailing_separator = expanded.endswith(("\\", "/"))
         candidate = coerce_path(expanded)
         if has_trailing_separator:
-            parent_dir = candidate if candidate.is_absolute() else (base_path / candidate)
+            parent_dir = (
+                candidate if candidate.is_absolute() else (base_path / candidate)
+            )
             return parent_dir.expanduser(), ""
 
         prefix = candidate.name
@@ -342,5 +354,7 @@ class PanelNavigationCoordinator:
 
         self.panel._history_menu = menu
         menu.popup(
-            self.panel.address_edit.mapToGlobal(self.panel.address_edit.rect().bottomLeft())
+            self.panel.address_edit.mapToGlobal(
+                self.panel.address_edit.rect().bottomLeft()
+            )
         )

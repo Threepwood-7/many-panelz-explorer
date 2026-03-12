@@ -151,19 +151,33 @@ class ExplorerTab(QWidget):
         modifiers = key_event.modifiers()
         key = key_event.key()
         dispatch: dict[tuple[Qt.KeyboardModifier, int], Callable[[], None]] = {
-            (Qt.KeyboardModifier.AltModifier, int(Qt.Key.Key_Left)): self.navigation.go_back,
-            (Qt.KeyboardModifier.AltModifier, int(Qt.Key.Key_Right)): self.navigation.go_forward,
-            (Qt.KeyboardModifier.AltModifier, int(Qt.Key.Key_Up)): self.navigation.go_up,
-            (Qt.KeyboardModifier.NoModifier, int(Qt.Key.Key_Left)): self.navigation.go_up,
-            (Qt.KeyboardModifier.NoModifier, int(Qt.Key.Key_Backspace)): self.navigation.go_up,
+            (
+                Qt.KeyboardModifier.AltModifier,
+                int(Qt.Key.Key_Left),
+            ): self.navigation.go_back,
+            (
+                Qt.KeyboardModifier.AltModifier,
+                int(Qt.Key.Key_Right),
+            ): self.navigation.go_forward,
+            (
+                Qt.KeyboardModifier.AltModifier,
+                int(Qt.Key.Key_Up),
+            ): self.navigation.go_up,
+            (
+                Qt.KeyboardModifier.NoModifier,
+                int(Qt.Key.Key_Left),
+            ): self.navigation.go_up,
+            (
+                Qt.KeyboardModifier.NoModifier,
+                int(Qt.Key.Key_Backspace),
+            ): self.navigation.go_up,
         }
         handler = dispatch.get((modifiers, key))
         if handler is not None:
             handler()
             return True
-        return (
-            modifiers == Qt.KeyboardModifier.NoModifier
-            and key == int(Qt.Key.Key_Right)
+        return modifiers == Qt.KeyboardModifier.NoModifier and key == int(
+            Qt.Key.Key_Right
         )
 
     def _default_file_list_size_formatter(self, value: int) -> str:

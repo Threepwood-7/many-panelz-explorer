@@ -49,7 +49,9 @@ class _ScriptLoaderSignals(QObject):
 
 
 class _AsyncScriptLoader:
-    _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="mpe-context-scripts")
+    _executor = ThreadPoolExecutor(
+        max_workers=2, thread_name_prefix="mpe-context-scripts"
+    )
 
     def __init__(self, parent: QObject) -> None:
         self.signals = _ScriptLoaderSignals(parent)
@@ -163,7 +165,9 @@ class ContextMenuController(QObject):
         tools: ContextToolRegistry,
     ) -> None:
         for root in roots:
-            root_menu = self._track_menu(mode_menu.addMenu(self._root_label(root.root_path)))
+            root_menu = self._track_menu(
+                mode_menu.addMenu(self._root_label(root.root_path))
+            )
             version = root.python_version or "unknown"
             version_action = root_menu.addAction(f"Python: {version}")
             version_action.setEnabled(False)
@@ -209,7 +213,9 @@ class ContextMenuController(QObject):
         tools: ContextToolRegistry,
     ) -> None:
         for root in roots:
-            root_menu = self._track_menu(mode_menu.addMenu(self._root_label(root.root_path)))
+            root_menu = self._track_menu(
+                mode_menu.addMenu(self._root_label(root.root_path))
+            )
             branch = root.branch or "(unknown)"
             branch_action = root_menu.addAction(f"Branch: {branch}")
             branch_action.setEnabled(False)
@@ -227,7 +233,9 @@ class ContextMenuController(QObject):
             copy_action = root_menu.addAction("Copy remote origin URL")
             if root.remote_origin_url:
                 copy_action.triggered.connect(
-                    lambda _checked=False, url=root.remote_origin_url: self._copy_text(url)
+                    lambda _checked=False, url=root.remote_origin_url: self._copy_text(
+                        url
+                    )
                 )
             else:
                 copy_action.setEnabled(False)
@@ -235,7 +243,9 @@ class ContextMenuController(QObject):
             open_remote_action = root_menu.addAction("Open remote URL in browser")
             if root.remote_origin_web_url:
                 open_remote_action.triggered.connect(
-                    lambda _checked=False, url=root.remote_origin_web_url: webbrowser.open(url)
+                    lambda _checked=False, url=root.remote_origin_web_url: (
+                        webbrowser.open(url)
+                    )
                 )
             else:
                 open_remote_action.setEnabled(False)
@@ -250,7 +260,9 @@ class ContextMenuController(QObject):
         tools: ContextToolRegistry,
     ) -> None:
         for root in roots:
-            root_menu = self._track_menu(mode_menu.addMenu(self._root_label(root.root_path)))
+            root_menu = self._track_menu(
+                mode_menu.addMenu(self._root_label(root.root_path))
+            )
             self._add_tool_action(
                 root_menu,
                 label="Open project root in Code Editor",
@@ -334,8 +346,8 @@ class ContextMenuController(QObject):
             action = state.menu.addAction(f"Run: {entry.label}")
             action.setToolTip(entry.command)
             action.triggered.connect(
-                lambda _checked=False, mode=state.mode_key, path=state.root_path, cmd=entry.command: self._run_script(
-                    mode, path, cmd
+                lambda _checked=False, mode=state.mode_key, path=state.root_path, cmd=entry.command: (
+                    self._run_script(mode, path, cmd)
                 )
             )
 
@@ -345,8 +357,12 @@ class ContextMenuController(QObject):
             return
         python_project = mode == "python"
         if python_project:
-            resolved_command = self._python_command_with_fallbacks(root_path, resolved_command)
-        self._open_terminal(root_path, command=resolved_command, python_project=python_project)
+            resolved_command = self._python_command_with_fallbacks(
+                root_path, resolved_command
+            )
+        self._open_terminal(
+            root_path, command=resolved_command, python_project=python_project
+        )
 
     def _add_tool_action(
         self,
@@ -402,7 +418,11 @@ class ContextMenuController(QObject):
         self._window.statusBar().showMessage("Copied remote URL to clipboard.", 1800)
 
     def _open_terminal(
-        self, root_path: Path, *, command: str | None = None, python_project: bool = False
+        self,
+        root_path: Path,
+        *,
+        command: str | None = None,
+        python_project: bool = False,
     ) -> None:
         path = Path(root_path)
         if os.name == "nt":

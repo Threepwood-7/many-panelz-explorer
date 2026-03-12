@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime
-from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
@@ -20,10 +18,13 @@ from shiboken6 import isValid
 
 from . import file_ops
 from ._operations.discovery import is_scripted_backend
-from ._operations.types import OperationJob
 
 if TYPE_CHECKING:
+    from datetime import datetime
+    from pathlib import Path
+
     from ._operations.queue_manager import OperationQueueManager
+    from ._operations.types import OperationJob
 
 
 _HEADERS = [
@@ -36,6 +37,8 @@ _HEADERS = [
     "Created",
 ]
 
+_DEFAULT_MODEL_INDEX = QModelIndex()
+
 
 def _fmt_time(value: datetime | None) -> str:
     if value is None:
@@ -44,7 +47,9 @@ def _fmt_time(value: datetime | None) -> str:
 
 
 class OperationQueueTableModel(QAbstractTableModel):
-    def __init__(self, manager: OperationQueueManager, parent: QWidget | None = None) -> None:
+    def __init__(
+        self, manager: OperationQueueManager, parent: QWidget | None = None
+    ) -> None:
         super().__init__(parent)
         self.manager = manager
         self._jobs: list[OperationJob] = manager.jobs()
@@ -52,15 +57,17 @@ class OperationQueueTableModel(QAbstractTableModel):
         manager.job_updated.connect(self._on_job_updated)
         manager.jobs_reset.connect(self._on_jobs_reset)
 
-    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:  # noqa: N802
+    def rowCount(self, parent: QModelIndex = _DEFAULT_MODEL_INDEX) -> int:  # noqa: N802
         _ = parent
         return len(self._jobs)
 
-    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:  # noqa: N802
+    def columnCount(self, parent: QModelIndex = _DEFAULT_MODEL_INDEX) -> int:  # noqa: N802
         _ = parent
         return len(_HEADERS)
 
-    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> str | None:
+    def data(
+        self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole
+    ) -> str | None:
         if not index.isValid():
             return None
         if index.row() < 0 or index.row() >= len(self._jobs):

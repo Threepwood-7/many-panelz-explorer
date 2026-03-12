@@ -37,7 +37,6 @@ from PySide6.QtWidgets import (
 )
 from threep_commons.qt.widget_identity import assign_widget_identity
 
-from .. import widget_naming
 from .._operations.backend_options import (
     ExternalCopyMoveBackendOptions,
     RobocopyBackendOptions,
@@ -245,7 +244,9 @@ class SettingsDialog(QDialog):
         ),
     }
 
-    def __init__(self, controller: AppController, parent: QWidget | None = None) -> None:
+    def __init__(
+        self, controller: AppController, parent: QWidget | None = None
+    ) -> None:
         super().__init__(parent)
         self.controller = controller
         self._committed_preferences = controller.current_ui_preferences()
@@ -275,7 +276,9 @@ class SettingsDialog(QDialog):
         self.search_edit = QLineEdit(self)
         self.search_edit.setPlaceholderText("Search settings...")
         self.search_edit.setClearButtonEnabled(True)
-        self._assign_identity(self.search_edit, "settings_dialog:search", "settings.search")
+        self._assign_identity(
+            self.search_edit, "settings_dialog:search", "settings.search"
+        )
         self.search_edit.textChanged.connect(self._apply_search_filter)
         root.addWidget(self.search_edit)
 
@@ -323,7 +326,9 @@ class SettingsDialog(QDialog):
             "settings_dialog:reset_context_label",
             "settings.reset.context_label",
         )
-        self.reset_section_button = QPushButton("Reset Section", self._reset_actions_bar)
+        self.reset_section_button = QPushButton(
+            "Reset Section", self._reset_actions_bar
+        )
         self.reset_section_button.clicked.connect(self._on_reset_current_section)
         self._assign_identity(
             self.reset_section_button,
@@ -672,7 +677,9 @@ class SettingsDialog(QDialog):
             controls=[self.show_hidden_checkbox],
         )
 
-        self.show_root_dropdown_checkbox = QCheckBox("Show root dropdown in each panel", self)
+        self.show_root_dropdown_checkbox = QCheckBox(
+            "Show root dropdown in each panel", self
+        )
         self.show_root_dropdown_checkbox.toggled.connect(self._on_controls_changed)
         self._add_row(
             section=panels_group,
@@ -776,7 +783,9 @@ class SettingsDialog(QDialog):
         self.byte_thousands_separator_edit.setToolTip(
             "Thousands separator (leave empty to disable grouping)"
         )
-        self.byte_thousands_separator_edit.textChanged.connect(self._on_controls_changed)
+        self.byte_thousands_separator_edit.textChanged.connect(
+            self._on_controls_changed
+        )
 
         self.byte_decimal_separator_edit = QLineEdit(self)
         self.byte_decimal_separator_edit.setMaxLength(1)
@@ -882,12 +891,20 @@ class SettingsDialog(QDialog):
         )
 
         self.default_copy_move_backend_combo = QComboBox(self)
-        self.default_copy_move_backend_combo.addItem("Python Built-in", "python_builtin")
-        self.default_copy_move_backend_combo.addItem("Windows Explorer", "windows_explorer")
+        self.default_copy_move_backend_combo.addItem(
+            "Python Built-in", "python_builtin"
+        )
+        self.default_copy_move_backend_combo.addItem(
+            "Windows Explorer", "windows_explorer"
+        )
         self.default_copy_move_backend_combo.addItem("Robocopy", "robocopy")
         self.default_copy_move_backend_combo.addItem("TeraCopy", "teracopy")
-        self.default_copy_move_backend_combo.addItem("Unstoppable Copier", "unstoppable")
-        self.default_copy_move_backend_combo.addItem("External Command", "external_copymove")
+        self.default_copy_move_backend_combo.addItem(
+            "Unstoppable Copier", "unstoppable"
+        )
+        self.default_copy_move_backend_combo.addItem(
+            "External Command", "external_copymove"
+        )
         self.default_copy_move_backend_combo.currentIndexChanged.connect(
             self._on_controls_changed
         )
@@ -902,9 +919,13 @@ class SettingsDialog(QDialog):
 
         self.default_delete_backend_combo = QComboBox(self)
         self.default_delete_backend_combo.addItem("Recycle Bin", "recycle_bin")
-        self.default_delete_backend_combo.addItem("Permanent Native", "permanent_native")
+        self.default_delete_backend_combo.addItem(
+            "Permanent Native", "permanent_native"
+        )
         self.default_delete_backend_combo.addItem("cmd Delete", "cmd_delete")
-        self.default_delete_backend_combo.addItem("PowerShell Delete", "powershell_delete")
+        self.default_delete_backend_combo.addItem(
+            "PowerShell Delete", "powershell_delete"
+        )
         self.default_delete_backend_combo.addItem("rimraf", "rimraf")
         self.default_delete_backend_combo.addItem("External Delete", "external_delete")
         self.default_delete_backend_combo.currentIndexChanged.connect(
@@ -921,9 +942,13 @@ class SettingsDialog(QDialog):
 
         self.default_dispatch_mode_combo = QComboBox(self)
         self.default_dispatch_mode_combo.addItem("Queue", "queue")
-        self.default_dispatch_mode_combo.addItem("Launch Now (No Wait)", "launch_now_no_wait")
+        self.default_dispatch_mode_combo.addItem(
+            "Launch Now (No Wait)", "launch_now_no_wait"
+        )
         self.default_dispatch_mode_combo.addItem("Run Now (Wait)", "run_now_wait")
-        self.default_dispatch_mode_combo.currentIndexChanged.connect(self._on_controls_changed)
+        self.default_dispatch_mode_combo.currentIndexChanged.connect(
+            self._on_controls_changed
+        )
         self._add_row(
             section=operations_group,
             key="default_operation_dispatch_mode",
@@ -951,8 +976,12 @@ class SettingsDialog(QDialog):
         )
 
         self.operation_shortcut_behavior_combo = QComboBox(self)
-        self.operation_shortcut_behavior_combo.addItem("Direct Enqueue", "direct_enqueue")
-        self.operation_shortcut_behavior_combo.addItem("Always Show Dialog", "always_dialog")
+        self.operation_shortcut_behavior_combo.addItem(
+            "Direct Enqueue", "direct_enqueue"
+        )
+        self.operation_shortcut_behavior_combo.addItem(
+            "Always Show Dialog", "always_dialog"
+        )
         self.operation_shortcut_behavior_combo.currentIndexChanged.connect(
             self._on_controls_changed
         )
@@ -967,7 +996,9 @@ class SettingsDialog(QDialog):
 
         self.operation_queue_view_mode_combo = QComboBox(self)
         self.operation_queue_view_mode_combo.addItem("Queue Dock", "dock_tab")
-        self.operation_queue_view_mode_combo.addItem("Floating Window", "floating_window")
+        self.operation_queue_view_mode_combo.addItem(
+            "Floating Window", "floating_window"
+        )
         self.operation_queue_view_mode_combo.addItem("Both", "both")
         self.operation_queue_view_mode_combo.currentIndexChanged.connect(
             self._on_controls_changed
@@ -1140,9 +1171,7 @@ class SettingsDialog(QDialog):
 
         self.unstoppable_executable_edit = QLineEdit(self)
         self.unstoppable_test_btn = QPushButton("Test", self)
-        self.unstoppable_reset_backend_btn = QPushButton(
-            "Reset Backend Defaults", self
-        )
+        self.unstoppable_reset_backend_btn = QPushButton("Reset Backend Defaults", self)
         unstoppable_controls = self._build_unstoppable_settings_card()
         self._add_row(
             section=operations_backend_commands_group,
@@ -1198,7 +1227,7 @@ class SettingsDialog(QDialog):
             section=operations_backend_commands_group,
             key="generic_delete_command",
             title="Generic Delete Command",
-            description='Executable and args template. Tokens: {operation} {sources}',
+            description="Executable and args template. Tokens: {operation} {sources}",
             terms="external generic delete executable args template test long path extended",
             controls=[generic_delete_controls],
         )
@@ -1263,7 +1292,7 @@ class SettingsDialog(QDialog):
             section=operations_backend_commands_group,
             key="rimraf_command",
             title="rimraf Command",
-            description='Executable and extra args. Tokens: {sources}',
+            description="Executable and extra args. Tokens: {sources}",
             terms="rimraf executable args delete test long path extended",
             controls=[rimraf_controls],
         )
@@ -1579,12 +1608,16 @@ class SettingsDialog(QDialog):
             "Copy subdirectories (/E)", host
         )
         self.robocopy_struct_mirror_checkbox = QCheckBox("Mirror target (/MIR)", host)
-        self.robocopy_struct_move_checkbox = QCheckBox("Move files for move (/MOVE)", host)
+        self.robocopy_struct_move_checkbox = QCheckBox(
+            "Move files for move (/MOVE)", host
+        )
         self.robocopy_struct_restartable_checkbox = QCheckBox(
             "Restartable mode (/Z)", host
         )
         self.robocopy_struct_backup_checkbox = QCheckBox("Backup mode (/B)", host)
-        self.robocopy_struct_list_only_checkbox = QCheckBox("List only dry-run (/L)", host)
+        self.robocopy_struct_list_only_checkbox = QCheckBox(
+            "List only dry-run (/L)", host
+        )
         self.robocopy_struct_quiet_checkbox = QCheckBox(
             "Suppress detail logs (/NFL /NDL /NJH /NJS /NP)", host
         )
@@ -1592,7 +1625,9 @@ class SettingsDialog(QDialog):
         self.robocopy_struct_retry_spin.setRange(0, 1_000_000)
         self.robocopy_struct_wait_spin = QSpinBox(host)
         self.robocopy_struct_wait_spin.setRange(0, 3_600)
-        self.robocopy_struct_multithread_checkbox = QCheckBox("Multi-threaded (/MT)", host)
+        self.robocopy_struct_multithread_checkbox = QCheckBox(
+            "Multi-threaded (/MT)", host
+        )
         self.robocopy_struct_multithread_spin = QSpinBox(host)
         self.robocopy_struct_multithread_spin.setRange(1, 128)
         self.robocopy_struct_extra_args_edit = QLineEdit(host)
@@ -1616,7 +1651,9 @@ class SettingsDialog(QDialog):
             self.robocopy_struct_multithread_spin,
         ]:
             widget.valueChanged.connect(self._on_controls_changed)
-        self.robocopy_struct_extra_args_edit.textChanged.connect(self._on_controls_changed)
+        self.robocopy_struct_extra_args_edit.textChanged.connect(
+            self._on_controls_changed
+        )
         self.robocopy_struct_multithread_checkbox.toggled.connect(
             self.robocopy_struct_multithread_spin.setEnabled
         )
@@ -1650,7 +1687,9 @@ class SettingsDialog(QDialog):
         self.robocopy_reset_backend_btn.clicked.connect(
             self._reset_robocopy_backend_defaults
         )
-        self.robocopy_test_btn.clicked.connect(lambda: self._test_backend("copy", "robocopy"))
+        self.robocopy_test_btn.clicked.connect(
+            lambda: self._test_backend("copy", "robocopy")
+        )
         actions_layout.addWidget(self.robocopy_reset_backend_btn)
         actions_layout.addWidget(self.robocopy_test_btn)
         layout.addWidget(actions)
@@ -1672,16 +1711,26 @@ class SettingsDialog(QDialog):
         grid = QGridLayout()
         grid.setHorizontalSpacing(8)
         grid.setVerticalSpacing(6)
-        self.teracopy_struct_close_checkbox = QCheckBox("Close when done (/Close)", host)
-        self.teracopy_struct_keep_open_checkbox = QCheckBox("Keep open (/NoClose)", host)
-        self.teracopy_struct_verify_checkbox = QCheckBox("Verify after copy (/Verify)", host)
-        self.teracopy_struct_no_sound_checkbox = QCheckBox("Disable sounds (/NoSound)", host)
+        self.teracopy_struct_close_checkbox = QCheckBox(
+            "Close when done (/Close)", host
+        )
+        self.teracopy_struct_keep_open_checkbox = QCheckBox(
+            "Keep open (/NoClose)", host
+        )
+        self.teracopy_struct_verify_checkbox = QCheckBox(
+            "Verify after copy (/Verify)", host
+        )
+        self.teracopy_struct_no_sound_checkbox = QCheckBox(
+            "Disable sounds (/NoSound)", host
+        )
         self.teracopy_struct_conflict_combo = QComboBox(host)
         self.teracopy_struct_conflict_combo.addItem("No explicit override", "")
         self.teracopy_struct_conflict_combo.addItem("Overwrite All", "/OverwriteAll")
         self.teracopy_struct_conflict_combo.addItem("Skip All", "/SkipAll")
         self.teracopy_struct_conflict_combo.addItem("Rename All", "/RenameAll")
-        self.teracopy_struct_conflict_combo.addItem("Overwrite Older", "/OverwriteOlder")
+        self.teracopy_struct_conflict_combo.addItem(
+            "Overwrite Older", "/OverwriteOlder"
+        )
         self.teracopy_struct_conflict_combo.addItem(
             "Overwrite Different Size", "/OverwriteDiffSize"
         )
@@ -1707,7 +1756,9 @@ class SettingsDialog(QDialog):
         self.teracopy_struct_conflict_combo.currentIndexChanged.connect(
             self._on_controls_changed
         )
-        self.teracopy_struct_extra_args_edit.textChanged.connect(self._on_controls_changed)
+        self.teracopy_struct_extra_args_edit.textChanged.connect(
+            self._on_controls_changed
+        )
 
         grid.addWidget(self.teracopy_struct_close_checkbox, 0, 0, 1, 2)
         grid.addWidget(self.teracopy_struct_keep_open_checkbox, 1, 0, 1, 2)
@@ -1732,7 +1783,9 @@ class SettingsDialog(QDialog):
         self.teracopy_reset_backend_btn.clicked.connect(
             self._reset_teracopy_backend_defaults
         )
-        self.teracopy_test_btn.clicked.connect(lambda: self._test_backend("copy", "teracopy"))
+        self.teracopy_test_btn.clicked.connect(
+            lambda: self._test_backend("copy", "teracopy")
+        )
         actions_layout.addWidget(self.teracopy_reset_backend_btn)
         actions_layout.addWidget(self.teracopy_test_btn)
         layout.addWidget(actions)
@@ -1758,9 +1811,15 @@ class SettingsDialog(QDialog):
         self.unstoppable_struct_keep_attributes_checkbox = QCheckBox(
             "Copy attributes (+a)", host
         )
-        self.unstoppable_struct_keep_owner_checkbox = QCheckBox("Copy ownership (+o)", host)
-        self.unstoppable_struct_keep_time_checkbox = QCheckBox("Copy date/time (+t)", host)
-        self.unstoppable_struct_overwrite_checkbox = QCheckBox("Overwrite existing (+e)", host)
+        self.unstoppable_struct_keep_owner_checkbox = QCheckBox(
+            "Copy ownership (+o)", host
+        )
+        self.unstoppable_struct_keep_time_checkbox = QCheckBox(
+            "Copy date/time (+t)", host
+        )
+        self.unstoppable_struct_overwrite_checkbox = QCheckBox(
+            "Overwrite existing (+e)", host
+        )
         self.unstoppable_struct_include_subdirs_checkbox = QCheckBox(
             "Include subfolders (+i)", host
         )
@@ -1820,12 +1879,8 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.unstoppable_struct_copy_newer_checkbox, 7, 0, 1, 2)
         grid.addWidget(self.unstoppable_struct_skip_damaged_checkbox, 8, 0, 1, 2)
         grid.addWidget(self.unstoppable_struct_undamaged_first_checkbox, 9, 0, 1, 2)
-        grid.addWidget(
-            self.unstoppable_struct_overwrite_readonly_checkbox, 10, 0, 1, 2
-        )
-        grid.addWidget(
-            self.unstoppable_struct_copy_empty_folders_checkbox, 11, 0, 1, 2
-        )
+        grid.addWidget(self.unstoppable_struct_overwrite_readonly_checkbox, 10, 0, 1, 2)
+        grid.addWidget(self.unstoppable_struct_copy_empty_folders_checkbox, 11, 0, 1, 2)
         grid.addWidget(self.unstoppable_struct_eta_checkbox, 12, 0, 1, 2)
         grid.addWidget(self.unstoppable_struct_power_down_checkbox, 13, 0, 1, 2)
         grid.addWidget(QLabel("Extra args", host), 14, 0)
@@ -1978,7 +2033,9 @@ class SettingsDialog(QDialog):
             extra_args=self.teracopy_struct_extra_args_edit.text().strip(),
         )
 
-    def _unstoppable_structured_options_from_controls(self) -> UnstoppableBackendOptions:
+    def _unstoppable_structured_options_from_controls(
+        self,
+    ) -> UnstoppableBackendOptions:
         return UnstoppableBackendOptions(
             use_defaults=self.unstoppable_struct_defaults_checkbox.isChecked(),
             keep_attributes=self.unstoppable_struct_keep_attributes_checkbox.isChecked(),
@@ -2032,7 +2089,9 @@ class SettingsDialog(QDialog):
         self.teracopy_struct_keep_open_checkbox.setChecked(options.keep_open)
         self.teracopy_struct_verify_checkbox.setChecked(options.verify_after_copy)
         self.teracopy_struct_no_sound_checkbox.setChecked(options.no_sound)
-        self._set_combo_value(self.teracopy_struct_conflict_combo, options.conflict_mode)
+        self._set_combo_value(
+            self.teracopy_struct_conflict_combo, options.conflict_mode
+        )
         self.teracopy_struct_extra_args_edit.setText(options.extra_args)
 
     def _apply_unstoppable_structured_options_to_controls(
@@ -2044,7 +2103,9 @@ class SettingsDialog(QDialog):
         )
         self.unstoppable_struct_keep_owner_checkbox.setChecked(options.keep_owner)
         self.unstoppable_struct_keep_time_checkbox.setChecked(options.keep_time)
-        self.unstoppable_struct_overwrite_checkbox.setChecked(options.overwrite_existing)
+        self.unstoppable_struct_overwrite_checkbox.setChecked(
+            options.overwrite_existing
+        )
         self.unstoppable_struct_include_subdirs_checkbox.setChecked(
             options.include_subfolders
         )
@@ -2086,7 +2147,9 @@ class SettingsDialog(QDialog):
 
     def _reset_teracopy_backend_defaults(self) -> None:
         self._apply_teracopy_structured_options_to_controls(TeraCopyBackendOptions())
-        self.teracopy_executable_edit.setText(SettingsManager.DEFAULT_TERACOPY_EXECUTABLE)
+        self.teracopy_executable_edit.setText(
+            SettingsManager.DEFAULT_TERACOPY_EXECUTABLE
+        )
         self._on_controls_changed()
 
     def _reset_unstoppable_backend_defaults(self) -> None:
@@ -2169,7 +2232,9 @@ class SettingsDialog(QDialog):
         self.browse_override_editor_btn = QPushButton("Browse Editor...", actions)
         self.browse_override_viewer_btn = QPushButton("Browse Viewer...", actions)
         self.add_override_row_btn.clicked.connect(self._add_file_open_override_row)
-        self.remove_override_row_btn.clicked.connect(self._remove_file_open_override_row)
+        self.remove_override_row_btn.clicked.connect(
+            self._remove_file_open_override_row
+        )
         self.browse_override_editor_btn.clicked.connect(
             lambda: self._browse_file_open_override_executable(1)
         )
@@ -2216,7 +2281,9 @@ class SettingsDialog(QDialog):
         if item is None:
             item = QTableWidgetItem("")
             self.file_open_overrides_table.setItem(current, column, item)
-        item.setText(settings_normalize.normalize_windows_path_text(selected, fallback=""))
+        item.setText(
+            settings_normalize.normalize_windows_path_text(selected, fallback="")
+        )
         self._on_controls_changed()
 
     def _is_valid_extension(self, text: str) -> bool:
@@ -2304,7 +2371,9 @@ class SettingsDialog(QDialog):
         )
         if not selected:
             return
-        edit.setText(settings_normalize.normalize_windows_path_text(selected, fallback=""))
+        edit.setText(
+            settings_normalize.normalize_windows_path_text(selected, fallback="")
+        )
         self._on_controls_changed()
 
     def _find_executable(
@@ -2334,7 +2403,11 @@ class SettingsDialog(QDialog):
 
     def _test_backend(self, kind: str, backend_id: str) -> None:
         self._on_controls_changed()
-        root = Path(tempfile.gettempdir()) / "many_panelz_explorer_op_tests" / uuid.uuid4().hex
+        root = (
+            Path(tempfile.gettempdir())
+            / "many_panelz_explorer_op_tests"
+            / uuid.uuid4().hex
+        )
         root.mkdir(parents=True, exist_ok=True)
         sources, target_dir = self._create_test_paths(root, kind=kind)
         request_kind = "delete" if kind == "delete" else "copy"
@@ -2374,7 +2447,9 @@ class SettingsDialog(QDialog):
         else:
             QMessageBox.warning(self, "Backend Test Failed", details)
 
-    def _create_test_paths(self, root: Path, *, kind: str) -> tuple[list[Path], Path | None]:
+    def _create_test_paths(
+        self, root: Path, *, kind: str
+    ) -> tuple[list[Path], Path | None]:
         if kind in {"copy", "move"}:
             source_root = root / "source"
             source_root.mkdir(parents=True, exist_ok=True)
@@ -2396,7 +2471,9 @@ class SettingsDialog(QDialog):
         (sample_dir / "nested.txt").write_text("delete nested\n", encoding="utf-8")
         return [sample_file, sample_dir], None
 
-    def _operation_execution_preferences_from_working(self) -> OperationExecutionPreferences:
+    def _operation_execution_preferences_from_working(
+        self,
+    ) -> OperationExecutionPreferences:
         preferences = self._working_preferences
         resolved_cmd, resolved_robocopy = resolve_system_command_paths()
         resolved_copy_move = resolve_copy_move_backend_args(
@@ -2476,7 +2553,9 @@ class SettingsDialog(QDialog):
         self._on_controls_changed()
 
     def _sync_font_override_controls(self) -> None:
-        file_list_override_enabled = not self.file_list_use_app_font_checkbox.isChecked()
+        file_list_override_enabled = (
+            not self.file_list_use_app_font_checkbox.isChecked()
+        )
         self.file_list_font_family_combo.setEnabled(file_list_override_enabled)
         self.file_list_font_size_spin.setEnabled(file_list_override_enabled)
 
@@ -2514,9 +2593,7 @@ class SettingsDialog(QDialog):
             self._sync_color_preview(self.active_color_preview, self._active_color_hex)
             self._sync_color_preview(self.target_color_preview, self._target_color_hex)
 
-            self._set_combo_value(
-                self.new_context_combo, preferences.new_context_mode
-            )
+            self._set_combo_value(self.new_context_combo, preferences.new_context_mode)
             self.context_scan_cap_spin.setValue(
                 preferences.context_immediate_child_scan_cap
             )
@@ -2661,12 +2738,12 @@ class SettingsDialog(QDialog):
             self.rimraf_args_edit.setText(preferences.rimraf_args_template)
             resolved_cmd, resolved_robocopy = resolve_system_command_paths()
             self.resolved_cmd_path_label.setText(f"ComSpec: {resolved_cmd}")
-            self.resolved_robocopy_path_label.setText(
-                f"Robocopy: {resolved_robocopy}"
-            )
+            self.resolved_robocopy_path_label.setText(f"Robocopy: {resolved_robocopy}")
             self.resolved_cmd_path_label.setToolTip(resolved_cmd)
             self.resolved_robocopy_path_label.setToolTip(resolved_robocopy)
-            self._set_combo_value(self.app_font_family_combo, preferences.app_font_family)
+            self._set_combo_value(
+                self.app_font_family_combo, preferences.app_font_family
+            )
             self.app_font_size_spin.setValue(preferences.app_font_size_pt)
             self.file_list_use_app_font_checkbox.setChecked(
                 preferences.file_list_use_app_font
@@ -2681,9 +2758,7 @@ class SettingsDialog(QDialog):
             self._set_combo_value(
                 self.navigation_font_family_combo, preferences.navigation_font_family
             )
-            self.navigation_font_size_spin.setValue(
-                preferences.navigation_font_size_pt
-            )
+            self.navigation_font_size_spin.setValue(preferences.navigation_font_size_pt)
             self._sync_font_override_controls()
             self._sync_byte_format_controls()
             self._update_backend_generated_previews()
@@ -2812,7 +2887,9 @@ class SettingsDialog(QDialog):
         self.controller.preview_ui_preferences(self._working_preferences)
 
     def _choose_active_color(self) -> None:
-        selected = QColorDialog.getColor(QColor(self._active_color_hex), self, "Active Tint Color")
+        selected = QColorDialog.getColor(
+            QColor(self._active_color_hex), self, "Active Tint Color"
+        )
         if not selected.isValid():
             return
         self._active_color_hex = selected.name(QColor.NameFormat.HexRgb).upper()
@@ -2820,7 +2897,9 @@ class SettingsDialog(QDialog):
         self._on_controls_changed()
 
     def _choose_target_color(self) -> None:
-        selected = QColorDialog.getColor(QColor(self._target_color_hex), self, "Target Tint Color")
+        selected = QColorDialog.getColor(
+            QColor(self._target_color_hex), self, "Target Tint Color"
+        )
         if not selected.isValid():
             return
         self._target_color_hex = selected.name(QColor.NameFormat.HexRgb).upper()
@@ -2843,8 +2922,7 @@ class SettingsDialog(QDialog):
             return
         defaults = UiPreferences()
         updates = {
-            field_name: getattr(defaults, field_name)
-            for field_name in field_names
+            field_name: getattr(defaults, field_name) for field_name in field_names
         }
         updated_preferences = replace(self._working_preferences, **updates)
         self._load_preferences_into_controls(updated_preferences)
@@ -2950,7 +3028,9 @@ class SettingsDialog(QDialog):
         self._update_reset_controls()
 
     def _restore_last_tree_selection(self) -> None:
-        saved_subsection = str(self.controller.settings.settings_dialog_last_subsection or "")
+        saved_subsection = str(
+            self.controller.settings.settings_dialog_last_subsection or ""
+        )
         saved_section = str(self.controller.settings.settings_dialog_last_section or "")
         if saved_subsection:
             item = self._subsection_tree_items.get(saved_subsection)
@@ -2996,7 +3076,9 @@ class SettingsDialog(QDialog):
             return False
         kind, key = payload
         if kind == "section":
-            return self._select_first_visible_subsection_for_section(key, persist=persist)
+            return self._select_first_visible_subsection_for_section(
+                key, persist=persist
+            )
         return self._activate_subsection(key, persist=persist)
 
     def _set_current_tree_item(self, item: QTreeWidgetItem, *, persist: bool) -> bool:
@@ -3046,7 +3128,9 @@ class SettingsDialog(QDialog):
         self._sync_active_subsection_visibility()
         self._update_reset_controls()
         if persist:
-            self.controller.settings.settings_dialog_last_section = subsection.section_key
+            self.controller.settings.settings_dialog_last_section = (
+                subsection.section_key
+            )
             self.controller.settings.settings_dialog_last_subsection = subsection.key
         return True
 

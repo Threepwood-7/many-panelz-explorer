@@ -103,7 +103,9 @@ def _parse_hatch_scripts(pyproject_path: Path) -> dict[str, RunnableScript]:
 def _parse_python_file_scripts(root: Path) -> dict[str, RunnableScript]:
     entries: dict[str, RunnableScript] = {}
     candidate_files: list[Path] = []
-    candidate_files.extend(sorted(root.glob("run_*.py"), key=lambda value: value.name.casefold()))
+    candidate_files.extend(
+        sorted(root.glob("run_*.py"), key=lambda value: value.name.casefold())
+    )
     for name in ["main.py", "__main__.py"]:
         path = root / name
         if path.is_file():

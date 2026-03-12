@@ -5,12 +5,12 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from threep_commons.fs_paths import coerce_path, dedup_paths, display_root, path_key
 from threep_commons.platform.windows.storage import (
     WindowsStorageUsage,
     list_windows_storage_roots,
     list_windows_storage_usage,
 )
-from threep_commons.fs_paths import coerce_path, dedup_paths, display_root, path_key
 
 WINDOWS_ROOTS_CACHE_TTL_SECONDS = 2.0
 

@@ -30,22 +30,38 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
     show_storage_overview_status_row = delegate_domain_property(
         "ui", "show_storage_overview_status_row"
     )
-    column_width_auto_align_mode = delegate_domain_property("ui", "column_width_auto_align_mode")
+    column_width_auto_align_mode = delegate_domain_property(
+        "ui", "column_width_auto_align_mode"
+    )
     show_refresh_button = delegate_domain_property("ui", "show_refresh_button")
     show_root_buttons = delegate_domain_property("ui", "show_root_buttons")
     show_address_bar = delegate_domain_property("ui", "show_address_bar")
     show_navigation_buttons = delegate_domain_property("ui", "show_navigation_buttons")
-    byte_thousands_separator = delegate_domain_property("ui", "byte_thousands_separator")
+    byte_thousands_separator = delegate_domain_property(
+        "ui", "byte_thousands_separator"
+    )
     byte_decimal_separator = delegate_domain_property("ui", "byte_decimal_separator")
-    file_list_byte_format_mode = delegate_domain_property("ui", "file_list_byte_format_mode")
-    file_list_byte_custom_template = delegate_domain_property("ui", "file_list_byte_custom_template")
-    status_bar_byte_format_mode = delegate_domain_property("ui", "status_bar_byte_format_mode")
-    status_bar_byte_custom_template = delegate_domain_property("ui", "status_bar_byte_custom_template")
+    file_list_byte_format_mode = delegate_domain_property(
+        "ui", "file_list_byte_format_mode"
+    )
+    file_list_byte_custom_template = delegate_domain_property(
+        "ui", "file_list_byte_custom_template"
+    )
+    status_bar_byte_format_mode = delegate_domain_property(
+        "ui", "status_bar_byte_format_mode"
+    )
+    status_bar_byte_custom_template = delegate_domain_property(
+        "ui", "status_bar_byte_custom_template"
+    )
     status_bar_storage_label_template = delegate_domain_property(
         "ui", "status_bar_storage_label_template"
     )
-    properties_byte_format_mode = delegate_domain_property("ui", "properties_byte_format_mode")
-    properties_byte_custom_template = delegate_domain_property("ui", "properties_byte_custom_template")
+    properties_byte_format_mode = delegate_domain_property(
+        "ui", "properties_byte_format_mode"
+    )
+    properties_byte_custom_template = delegate_domain_property(
+        "ui", "properties_byte_custom_template"
+    )
     app_font_family = delegate_domain_property("ui", "app_font_family")
     app_font_size_pt = delegate_domain_property("ui", "app_font_size_pt")
     file_list_use_app_font = delegate_domain_property("ui", "file_list_use_app_font")
@@ -54,48 +70,100 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
     navigation_use_app_font = delegate_domain_property("ui", "navigation_use_app_font")
     navigation_font_family = delegate_domain_property("ui", "navigation_font_family")
     navigation_font_size_pt = delegate_domain_property("ui", "navigation_font_size_pt")
-    context_immediate_child_scan_cap = delegate_domain_property("ui", "context_immediate_child_scan_cap")
-    context_tool_code_editor_exe_path = delegate_domain_property("ui", "context_tool_code_editor_exe_path")
-    context_tool_code_editor_args_template = delegate_domain_property("ui", "context_tool_code_editor_args_template")
-    context_tool_git_gui_exe_path = delegate_domain_property("ui", "context_tool_git_gui_exe_path")
-    context_tool_git_gui_args_template = delegate_domain_property("ui", "context_tool_git_gui_args_template")
-    active_panel_tint_color_hex = delegate_domain_property("ui", "active_panel_tint_color_hex")
+    context_immediate_child_scan_cap = delegate_domain_property(
+        "ui", "context_immediate_child_scan_cap"
+    )
+    context_tool_code_editor_exe_path = delegate_domain_property(
+        "ui", "context_tool_code_editor_exe_path"
+    )
+    context_tool_code_editor_args_template = delegate_domain_property(
+        "ui", "context_tool_code_editor_args_template"
+    )
+    context_tool_git_gui_exe_path = delegate_domain_property(
+        "ui", "context_tool_git_gui_exe_path"
+    )
+    context_tool_git_gui_args_template = delegate_domain_property(
+        "ui", "context_tool_git_gui_args_template"
+    )
+    active_panel_tint_color_hex = delegate_domain_property(
+        "ui", "active_panel_tint_color_hex"
+    )
     active_panel_tint_intensity_percent = delegate_domain_property(
         "ui", "active_panel_tint_intensity_percent"
     )
-    target_panel_tint_color_hex = delegate_domain_property("ui", "target_panel_tint_color_hex")
+    target_panel_tint_color_hex = delegate_domain_property(
+        "ui", "target_panel_tint_color_hex"
+    )
     target_panel_tint_intensity_percent = delegate_domain_property(
         "ui", "target_panel_tint_intensity_percent"
     )
 
-    default_copy_move_backend = delegate_domain_property("ops", "default_copy_move_backend")
+    default_copy_move_backend = delegate_domain_property(
+        "ops", "default_copy_move_backend"
+    )
     default_delete_backend = delegate_domain_property("ops", "default_delete_backend")
-    default_operation_dispatch_mode = delegate_domain_property("ops", "default_operation_dispatch_mode")
-    default_operation_conflict_policy = delegate_domain_property("ops", "default_operation_conflict_policy")
-    operation_shortcut_behavior = delegate_domain_property("ops", "operation_shortcut_behavior")
-    operation_queue_view_mode = delegate_domain_property("ops", "operation_queue_view_mode")
-    default_editor_executable = delegate_domain_property("ops", "default_editor_executable")
-    default_viewer_executable = delegate_domain_property("ops", "default_viewer_executable")
-    file_open_overrides_json = delegate_domain_property("ops", "file_open_overrides_json")
-    use_extended_paths_robocopy = delegate_domain_property("ops", "use_extended_paths_robocopy")
-    use_extended_paths_teracopy = delegate_domain_property("ops", "use_extended_paths_teracopy")
-    use_extended_paths_unstoppable = delegate_domain_property("ops", "use_extended_paths_unstoppable")
+    default_operation_dispatch_mode = delegate_domain_property(
+        "ops", "default_operation_dispatch_mode"
+    )
+    default_operation_conflict_policy = delegate_domain_property(
+        "ops", "default_operation_conflict_policy"
+    )
+    operation_shortcut_behavior = delegate_domain_property(
+        "ops", "operation_shortcut_behavior"
+    )
+    operation_queue_view_mode = delegate_domain_property(
+        "ops", "operation_queue_view_mode"
+    )
+    default_editor_executable = delegate_domain_property(
+        "ops", "default_editor_executable"
+    )
+    default_viewer_executable = delegate_domain_property(
+        "ops", "default_viewer_executable"
+    )
+    file_open_overrides_json = delegate_domain_property(
+        "ops", "file_open_overrides_json"
+    )
+    use_extended_paths_robocopy = delegate_domain_property(
+        "ops", "use_extended_paths_robocopy"
+    )
+    use_extended_paths_teracopy = delegate_domain_property(
+        "ops", "use_extended_paths_teracopy"
+    )
+    use_extended_paths_unstoppable = delegate_domain_property(
+        "ops", "use_extended_paths_unstoppable"
+    )
     use_extended_paths_external_copymove = delegate_domain_property(
         "ops", "use_extended_paths_external_copymove"
     )
-    use_extended_paths_cmd_delete = delegate_domain_property("ops", "use_extended_paths_cmd_delete")
+    use_extended_paths_cmd_delete = delegate_domain_property(
+        "ops", "use_extended_paths_cmd_delete"
+    )
     use_extended_paths_powershell_delete = delegate_domain_property(
         "ops", "use_extended_paths_powershell_delete"
     )
-    use_extended_paths_rimraf = delegate_domain_property("ops", "use_extended_paths_rimraf")
-    use_extended_paths_external_delete = delegate_domain_property("ops", "use_extended_paths_external_delete")
+    use_extended_paths_rimraf = delegate_domain_property(
+        "ops", "use_extended_paths_rimraf"
+    )
+    use_extended_paths_external_delete = delegate_domain_property(
+        "ops", "use_extended_paths_external_delete"
+    )
     teracopy_executable = delegate_domain_property("ops", "teracopy_executable")
     unstoppable_executable = delegate_domain_property("ops", "unstoppable_executable")
-    generic_copymove_executable = delegate_domain_property("ops", "generic_copymove_executable")
-    generic_delete_executable = delegate_domain_property("ops", "generic_delete_executable")
-    generic_delete_args_template = delegate_domain_property("ops", "generic_delete_args_template")
-    robocopy_structured_options = delegate_domain_property("ops", "robocopy_structured_options")
-    teracopy_structured_options = delegate_domain_property("ops", "teracopy_structured_options")
+    generic_copymove_executable = delegate_domain_property(
+        "ops", "generic_copymove_executable"
+    )
+    generic_delete_executable = delegate_domain_property(
+        "ops", "generic_delete_executable"
+    )
+    generic_delete_args_template = delegate_domain_property(
+        "ops", "generic_delete_args_template"
+    )
+    robocopy_structured_options = delegate_domain_property(
+        "ops", "robocopy_structured_options"
+    )
+    teracopy_structured_options = delegate_domain_property(
+        "ops", "teracopy_structured_options"
+    )
     unstoppable_structured_options = delegate_domain_property(
         "ops", "unstoppable_structured_options"
     )
@@ -106,7 +174,9 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
     powershell_delete_args = delegate_domain_property("ops", "powershell_delete_args")
     rimraf_executable = delegate_domain_property("ops", "rimraf_executable")
     rimraf_args_template = delegate_domain_property("ops", "rimraf_args_template")
-    ops_companion_bootstrap_done = delegate_domain_property("ops", "ops_companion_bootstrap_done")
+    ops_companion_bootstrap_done = delegate_domain_property(
+        "ops", "ops_companion_bootstrap_done"
+    )
     settings_dialog_last_section = delegate_domain_property(
         "session", "settings_dialog_last_section"
     )
@@ -202,12 +272,16 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
         self.file_list_byte_format_mode = preferences.file_list_byte_format_mode
         self.file_list_byte_custom_template = preferences.file_list_byte_custom_template
         self.status_bar_byte_format_mode = preferences.status_bar_byte_format_mode
-        self.status_bar_byte_custom_template = preferences.status_bar_byte_custom_template
+        self.status_bar_byte_custom_template = (
+            preferences.status_bar_byte_custom_template
+        )
         self.status_bar_storage_label_template = (
             preferences.status_bar_storage_label_template
         )
         self.properties_byte_format_mode = preferences.properties_byte_format_mode
-        self.properties_byte_custom_template = preferences.properties_byte_custom_template
+        self.properties_byte_custom_template = (
+            preferences.properties_byte_custom_template
+        )
         self.app_font_family = preferences.app_font_family
         self.app_font_size_pt = preferences.app_font_size_pt
         self.file_list_use_app_font = preferences.file_list_use_app_font
@@ -216,21 +290,35 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
         self.navigation_use_app_font = preferences.navigation_use_app_font
         self.navigation_font_family = preferences.navigation_font_family
         self.navigation_font_size_pt = preferences.navigation_font_size_pt
-        self.context_immediate_child_scan_cap = preferences.context_immediate_child_scan_cap
-        self.context_tool_code_editor_exe_path = preferences.context_tool_code_editor_exe_path
+        self.context_immediate_child_scan_cap = (
+            preferences.context_immediate_child_scan_cap
+        )
+        self.context_tool_code_editor_exe_path = (
+            preferences.context_tool_code_editor_exe_path
+        )
         self.context_tool_code_editor_args_template = (
             preferences.context_tool_code_editor_args_template
         )
         self.context_tool_git_gui_exe_path = preferences.context_tool_git_gui_exe_path
-        self.context_tool_git_gui_args_template = preferences.context_tool_git_gui_args_template
+        self.context_tool_git_gui_args_template = (
+            preferences.context_tool_git_gui_args_template
+        )
         self.active_panel_tint_color_hex = preferences.active_panel_tint_color_hex
-        self.active_panel_tint_intensity_percent = preferences.active_panel_tint_intensity_percent
+        self.active_panel_tint_intensity_percent = (
+            preferences.active_panel_tint_intensity_percent
+        )
         self.target_panel_tint_color_hex = preferences.target_panel_tint_color_hex
-        self.target_panel_tint_intensity_percent = preferences.target_panel_tint_intensity_percent
+        self.target_panel_tint_intensity_percent = (
+            preferences.target_panel_tint_intensity_percent
+        )
         self.default_copy_move_backend = preferences.default_copy_move_backend
         self.default_delete_backend = preferences.default_delete_backend
-        self.default_operation_dispatch_mode = preferences.default_operation_dispatch_mode
-        self.default_operation_conflict_policy = preferences.default_operation_conflict_policy
+        self.default_operation_dispatch_mode = (
+            preferences.default_operation_dispatch_mode
+        )
+        self.default_operation_conflict_policy = (
+            preferences.default_operation_conflict_policy
+        )
         self.operation_shortcut_behavior = preferences.operation_shortcut_behavior
         self.operation_queue_view_mode = preferences.operation_queue_view_mode
         self.default_editor_executable = preferences.default_editor_executable
@@ -239,11 +327,17 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
         self.use_extended_paths_robocopy = preferences.use_extended_paths_robocopy
         self.use_extended_paths_teracopy = preferences.use_extended_paths_teracopy
         self.use_extended_paths_unstoppable = preferences.use_extended_paths_unstoppable
-        self.use_extended_paths_external_copymove = preferences.use_extended_paths_external_copymove
+        self.use_extended_paths_external_copymove = (
+            preferences.use_extended_paths_external_copymove
+        )
         self.use_extended_paths_cmd_delete = preferences.use_extended_paths_cmd_delete
-        self.use_extended_paths_powershell_delete = preferences.use_extended_paths_powershell_delete
+        self.use_extended_paths_powershell_delete = (
+            preferences.use_extended_paths_powershell_delete
+        )
         self.use_extended_paths_rimraf = preferences.use_extended_paths_rimraf
-        self.use_extended_paths_external_delete = preferences.use_extended_paths_external_delete
+        self.use_extended_paths_external_delete = (
+            preferences.use_extended_paths_external_delete
+        )
         self.teracopy_executable = preferences.teracopy_executable
         self.unstoppable_executable = preferences.unstoppable_executable
         self.generic_copymove_executable = preferences.generic_copymove_executable

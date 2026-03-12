@@ -12,8 +12,8 @@ from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
 from threep_commons.qt.widget_identity import object_name_for_id
 
-from many_panelz_explorer.panel_widget import PanelWidget
 from many_panelz_explorer import widget_naming
+from many_panelz_explorer.panel_widget import PanelWidget
 
 
 def _norm(path: Path | str) -> str:
@@ -193,8 +193,10 @@ def test_address_autocomplete_respects_show_hidden_setting(
     panel.address_edit.selectAll()
     QTest.keyClicks(panel.address_edit, ".hid")
     qtbot.waitUntil(
-        lambda: _norm(hidden)
-        in {_norm(item) for item in panel._address_completion_model.stringList()},
+        lambda: (
+            _norm(hidden)
+            in {_norm(item) for item in panel._address_completion_model.stringList()}
+        ),
         timeout=2000,
     )
 
@@ -220,8 +222,10 @@ def test_address_autocomplete_activation_fills_and_navigates_on_enter(
     panel.address_edit.selectAll()
     QTest.keyClicks(panel.address_edit, "al")
     qtbot.waitUntil(
-        lambda: _norm(alpha)
-        in {_norm(item) for item in panel._address_completion_model.stringList()},
+        lambda: (
+            _norm(alpha)
+            in {_norm(item) for item in panel._address_completion_model.stringList()}
+        ),
         timeout=2000,
     )
 
@@ -367,7 +371,9 @@ def test_toolbar_visibility_flags_are_independent(qtbot, tmp_path: Path) -> None
     panel.show()
     panel.add_tab(root)
 
-    qtbot.waitUntil(lambda: panel.root_combo.isVisible() and panel.root_combo.width() > 0)
+    qtbot.waitUntil(
+        lambda: panel.root_combo.isVisible() and panel.root_combo.width() > 0
+    )
     assert panel.refresh_btn.isVisible() is True
     assert panel.root_buttons_host.isVisible() is True
     assert panel.address_edit.isVisible() is True
@@ -409,7 +415,9 @@ def test_toolbar_visibility_flags_are_independent(qtbot, tmp_path: Path) -> None
         show_address_bar=True,
         show_navigation_buttons=True,
     )
-    qtbot.waitUntil(lambda: panel.root_combo.isVisible() and panel.root_combo.width() > 0)
+    qtbot.waitUntil(
+        lambda: panel.root_combo.isVisible() and panel.root_combo.width() > 0
+    )
     assert panel.refresh_btn.isVisible() is True
     assert panel.root_buttons_host.isVisible() is True
     assert panel.address_edit.isVisible() is True
@@ -673,7 +681,9 @@ def test_filter_overlay_appears_in_bottom_right_of_file_list(
     assert abs((view_bottom - overlay_rect.bottom()) - 8) <= 2
 
 
-def test_widget_identity_contract_for_panel_and_file_list(qtbot, tmp_path: Path) -> None:
+def test_widget_identity_contract_for_panel_and_file_list(
+    qtbot, tmp_path: Path
+) -> None:
     root = tmp_path / "root"
     root.mkdir()
 
@@ -689,9 +699,7 @@ def test_widget_identity_contract_for_panel_and_file_list(qtbot, tmp_path: Path)
     second_tab = panel.add_tab(root)
 
     assert first_tab.tab_uuid != second_tab.tab_uuid
-    assert panel.objectName() == object_name_for_id(
-        widget_naming.panel_widget_id(1)
-    )
+    assert panel.objectName() == object_name_for_id(widget_naming.panel_widget_id(1))
     assert str(panel.property("widget_id")) == widget_naming.panel_widget_id(1)
     assert str(panel.address_edit.property("widget_alias")) == "P1.address"
 
@@ -821,9 +829,7 @@ def test_root_controls_fallback_when_provider_raises(qtbot, tmp_path: Path) -> N
     assert panel._root_paths
 
 
-def test_root_buttons_host_can_shrink_under_narrow_width(
-    qtbot, tmp_path: Path
-) -> None:
+def test_root_buttons_host_can_shrink_under_narrow_width(qtbot, tmp_path: Path) -> None:
     root = tmp_path / "root"
     root.mkdir()
     roots: list[Path] = []
@@ -843,7 +849,9 @@ def test_root_buttons_host_can_shrink_under_narrow_width(
     panel.resize(260, 180)
     panel.show()
     panel.add_tab(root)
-    qtbot.waitUntil(lambda: panel.root_combo.isVisible() and panel.root_combo.width() > 0)
+    qtbot.waitUntil(
+        lambda: panel.root_combo.isVisible() and panel.root_combo.width() > 0
+    )
 
     assert panel.root_buttons_host.isVisible() is True
     assert panel.root_buttons

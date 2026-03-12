@@ -14,9 +14,7 @@ from many_panelz_explorer.dialogs.properties_dialog import PropertiesDialog
 from many_panelz_explorer.explorer_tab import ExplorerTab
 
 
-def test_properties_dialog_uses_custom_size_formatter(
-    qtbot, tmp_path: Path
-) -> None:
+def test_properties_dialog_uses_custom_size_formatter(qtbot, tmp_path: Path) -> None:
     sample = tmp_path / "sample.bin"
     sample.write_bytes(b"x" * 3_500)
 

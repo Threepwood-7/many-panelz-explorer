@@ -3,10 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from html import escape
 from string import Formatter
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
-from . import mounts
-
+if TYPE_CHECKING:
+    from . import mounts
 
 DEFAULT_STORAGE_STATUS_LABEL_TEMPLATE: Final[str] = (
     "{disk_root} {disk_label} {used_space}/{total_space}"
@@ -127,7 +127,9 @@ def _safe_template_format(
             return None
         value = context[key]
         try:
-            rendered_parts.append(format(value, format_spec) if format_spec else str(value))
+            rendered_parts.append(
+                format(value, format_spec) if format_spec else str(value)
+            )
         except (TypeError, ValueError):
             return None
     if not has_field:
@@ -190,7 +192,7 @@ def _clamp_ratio(value: float) -> float:
 
 def _ratio_indicator(value: float, *, steps: int = 10) -> str:
     clamped = _clamp_ratio(float(value))
-    filled = int(round(clamped * steps))
+    filled = round(clamped * steps)
     if filled < 0:
         filled = 0
     if filled > steps:

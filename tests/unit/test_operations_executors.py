@@ -20,7 +20,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_execute_robocopy_normalizes_success_exit_codes(monkeypatch, tmp_path: Path) -> None:
+def test_execute_robocopy_normalizes_success_exit_codes(
+    monkeypatch, tmp_path: Path
+) -> None:
     source = tmp_path / "source.txt"
     source.write_text("x", encoding="utf-8")
     target = tmp_path / "target"
@@ -239,7 +241,9 @@ def test_execute_unstoppable_emits_one_command_with_ucb_job_file(
     assert result.status == "succeeded"
     lines = captured["lines"]
     assert isinstance(lines, list)
-    command_lines = [str(line) for line in lines if "UnstoppableCopier.exe" in str(line)]
+    command_lines = [
+        str(line) for line in lines if "UnstoppableCopier.exe" in str(line)
+    ]
     assert len(command_lines) == 1
     command_line = command_lines[0]
     assert str(tmp_path / "unstoppable.ucb") in command_line

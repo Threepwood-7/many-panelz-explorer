@@ -27,7 +27,9 @@ from .types import (
 )
 
 
-def normalize_operation_kind(value: str, *, fallback: OperationKind = "copy") -> OperationKind:
+def normalize_operation_kind(
+    value: str, *, fallback: OperationKind = "copy"
+) -> OperationKind:
     normalized = str(value).strip().lower()
     if normalized in {"copy", "move", "delete"}:
         return normalized

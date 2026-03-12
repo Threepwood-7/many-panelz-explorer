@@ -90,7 +90,10 @@ def resolve_if_missing(configured: str, default_name: str) -> str:
         return configured_text
 
     # Only auto-discover when unset or using simple default command name.
-    if configured_text and configured_text not in {default_name, Path(default_name).name}:
+    if configured_text and configured_text not in {
+        default_name,
+        Path(default_name).name,
+    }:
         return configured_text
 
     for candidate in candidate_executable_paths(default_name):
@@ -117,7 +120,7 @@ def is_scripted_backend(backend_id: str) -> bool:
 
 
 def resolve_system_command_paths() -> tuple[str, str]:
-    comspec_raw = str(os.environ.get("ComSpec", "")).strip()
+    comspec_raw = str(os.environ.get("COMSPEC", "")).strip()
     windir_raw = str(os.environ.get("WINDIR", r"C:\Windows")).strip() or r"C:\Windows"
     cmd_candidates: list[Path] = []
     robocopy_candidates: list[Path] = []

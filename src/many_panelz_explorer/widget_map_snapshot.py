@@ -20,7 +20,9 @@ class _ControllerStub:
         self.operation_queue_manager = OperationQueueManager(
             preferences=OperationExecutionPreferences()
         )
-        self.operation_queue_model = OperationQueueTableModel(self.operation_queue_manager)
+        self.operation_queue_model = OperationQueueTableModel(
+            self.operation_queue_manager
+        )
 
     def close_window(self, _window: ExplorerWindow) -> None:
         return
@@ -48,7 +50,11 @@ def generate_widget_map_image(
 ) -> Path:
     app_instance = QApplication.instance()
     owns_app = app_instance is None
-    app = cast("QApplication", app_instance) if app_instance is not None else QApplication([])
+    app = (
+        cast("QApplication", app_instance)
+        if app_instance is not None
+        else QApplication([])
+    )
 
     try:
         roots_dir = Path(source_root) if source_root is not None else Path.cwd()
@@ -93,11 +99,7 @@ def generate_widget_map_image(
 
 def main(argv: list[str] | None = None) -> int:
     args = list(argv) if argv is not None else sys.argv[1:]
-    output = (
-        Path(args[0])
-        if args
-        else Path("docs") / "images" / "ui-04-widget-map.png"
-    )
+    output = Path(args[0]) if args else Path("docs") / "images" / "ui-04-widget-map.png"
     source_root = Path(args[1]) if len(args) > 1 else Path.cwd()
     try:
         generated = generate_widget_map_image(output, source_root=source_root)

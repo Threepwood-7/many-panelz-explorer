@@ -80,7 +80,9 @@ class WindowPersistenceCoordinator:
                     self.window, "Restore", f"Could not restore panel tree: {exc}"
                 )
                 self.window.panel_tree = PanelTreeModel()
-        self.window._layout_rows = self.window._rows_from_tree(self.window.panel_tree.root)
+        self.window._layout_rows = self.window._rows_from_tree(
+            self.window.panel_tree.root
+        )
 
         tabs_payload_raw = self.window.settings.get_json(
             self.window.settings.window_key(self.window.window_id, "tabs"), {}
@@ -145,7 +147,9 @@ class WindowPersistenceCoordinator:
             self.window.panel_tree = PanelTreeModel.from_dict(
                 cast("dict[str, Any]", panel_tree_data)
             )
-        self.window._layout_rows = self.window._rows_from_tree(self.window.panel_tree.root)
+        self.window._layout_rows = self.window._rows_from_tree(
+            self.window.panel_tree.root
+        )
 
         tabs_state: TabsState = {}
         raw_tabs = deepcopy(state.get("tabs", {}))
@@ -180,4 +184,3 @@ class WindowPersistenceCoordinator:
             geometry_b64 = state.get("geometry_b64")
             if isinstance(geometry_b64, str) and geometry_b64:
                 self.restore_geometry_from_b64(geometry_b64)
-

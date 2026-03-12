@@ -116,9 +116,7 @@ def test_back_and_up_restore_previous_selection(qtbot, tmp_path: Path) -> None:
 
     QTest.keyClick(tab.view, Qt.Key_Left)
     assert tab.navigation.path == a
-    qtbot.waitUntil(
-        lambda: Path(tab.model.filePath(tab.view.currentIndex())) == child
-    )
+    qtbot.waitUntil(lambda: Path(tab.model.filePath(tab.view.currentIndex())) == child)
 
     other_index = tab.model.index(str(other))
     tab.view.selectionModel().setCurrentIndex(other_index, flags)
@@ -127,9 +125,7 @@ def test_back_and_up_restore_previous_selection(qtbot, tmp_path: Path) -> None:
 
     QTest.keyClick(tab.view, Qt.Key_Left, Qt.AltModifier)
     assert tab.navigation.path == a
-    qtbot.waitUntil(
-        lambda: Path(tab.model.filePath(tab.view.currentIndex())) == other
-    )
+    qtbot.waitUntil(lambda: Path(tab.model.filePath(tab.view.currentIndex())) == other)
 
 
 def test_file_columns_format_and_directories_first(qtbot, tmp_path: Path) -> None:
@@ -220,9 +216,7 @@ def test_non_name_sort_columns_use_compatibility_fallback(
     assert Path(tab.model.filePath(tab.model.index(2, 0))) == small
 
 
-def test_large_directory_loading_is_async_and_responsive(
-    qtbot, tmp_path: Path
-) -> None:
+def test_large_directory_loading_is_async_and_responsive(qtbot, tmp_path: Path) -> None:
     root = tmp_path / "large-root"
     root.mkdir()
     for index in range(5000):

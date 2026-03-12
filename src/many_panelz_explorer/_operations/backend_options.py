@@ -23,6 +23,7 @@ _TERACOPY_CONFLICT_OPTIONS = {
     "/RENAMEDESTINATION",
 }
 
+
 @dataclass(frozen=True)
 class RobocopyBackendOptions:
     include_subdirectories: bool = True
@@ -332,7 +333,11 @@ def normalize_external_copymove_options(raw: Any) -> ExternalCopyMoveBackendOpti
         ),
         extra_args=_normalize_text(raw.get("extra_args"), fallback=""),
     )
-    if not options.include_operation_token and not options.include_sources and not options.include_target:
+    if (
+        not options.include_operation_token
+        and not options.include_sources
+        and not options.include_target
+    ):
         return replace(
             options,
             include_operation_token=True,

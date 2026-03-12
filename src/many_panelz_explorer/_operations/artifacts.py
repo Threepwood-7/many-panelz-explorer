@@ -22,7 +22,9 @@ def prepare_artifacts(job_id: str) -> OperationArtifacts:
     job_dir.mkdir(parents=True, exist_ok=True)
     metadata_path = job_dir / "job.json"
     log_path = job_dir / "output.log"
-    return OperationArtifacts(job_dir=job_dir, metadata_path=metadata_path, log_path=log_path)
+    return OperationArtifacts(
+        job_dir=job_dir, metadata_path=metadata_path, log_path=log_path
+    )
 
 
 def write_metadata(job: OperationJob, artifacts: OperationArtifacts) -> None:
@@ -122,8 +124,14 @@ def run_script(
         )
     code = process.wait()
     if code == 0:
-        return OperationResult(status="succeeded", message="Script completed.", processed_count=0)
-    return OperationResult(status="failed", message=f"Script failed with exit code {code}.", processed_count=0)
+        return OperationResult(
+            status="succeeded", message="Script completed.", processed_count=0
+        )
+    return OperationResult(
+        status="failed",
+        message=f"Script failed with exit code {code}.",
+        processed_count=0,
+    )
 
 
 def expand_template(

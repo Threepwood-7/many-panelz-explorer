@@ -24,7 +24,9 @@ class _ControllerStub:
         self.operation_queue_manager = OperationQueueManager(
             preferences=OperationExecutionPreferences()
         )
-        self.operation_queue_model = OperationQueueTableModel(self.operation_queue_manager)
+        self.operation_queue_model = OperationQueueTableModel(
+            self.operation_queue_manager
+        )
 
     def close_window(self, _window) -> None:
         return

@@ -164,7 +164,11 @@ class OperationJob:
         source_count = len(self.request.sources)
         if self.request.kind == "delete":
             return f"Delete {source_count} item(s)"
-        target = str(self.request.target_dir) if self.request.target_dir is not None else "(none)"
+        target = (
+            str(self.request.target_dir)
+            if self.request.target_dir is not None
+            else "(none)"
+        )
         verb = "Copy" if self.request.kind == "copy" else "Move"
         return f"{verb} {source_count} item(s) to {target}"
 

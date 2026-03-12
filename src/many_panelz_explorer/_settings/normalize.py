@@ -5,6 +5,10 @@ import re
 from string import Formatter
 from typing import Any, cast
 
+from threep_commons.fs_paths import (
+    normalize_windows_path_text as _normalize_windows_path_text,
+)
+
 from many_panelz_explorer._operations.backend_options import (
     ExternalCopyMoveBackendOptions,
     RobocopyBackendOptions,
@@ -15,7 +19,6 @@ from many_panelz_explorer._operations.backend_options import (
     normalize_teracopy_options,
     normalize_unstoppable_options,
 )
-from threep_commons.fs_paths import normalize_windows_path_text as _normalize_windows_path_text
 
 HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 _FORMATTER = Formatter()

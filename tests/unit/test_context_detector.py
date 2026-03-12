@@ -15,7 +15,7 @@ def _write_git_marker(root: Path, *, branch: str, remote_url: str) -> None:
     (git_dir / "config").write_text(
         "[core]\n"
         "\trepositoryformatversion = 0\n"
-        "[remote \"origin\"]\n"
+        '[remote "origin"]\n'
         f"\turl = {remote_url}\n",
         encoding="utf-8",
     )
@@ -24,7 +24,9 @@ def _write_git_marker(root: Path, *, branch: str, remote_url: str) -> None:
 def test_detects_python_git_node_in_current_and_children(tmp_path: Path) -> None:
     current = tmp_path / "workspace"
     current.mkdir()
-    (current / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
+    (current / "pyproject.toml").write_text(
+        "[project]\nname='demo'\n", encoding="utf-8"
+    )
 
     git_child = current / "repo-git"
     git_child.mkdir()
@@ -95,7 +97,10 @@ def test_git_remote_web_url_allowlist(tmp_path: Path) -> None:
     )
     allowed_detected = ContextDetector().detect(allowed)
     assert len(allowed_detected.git_roots) == 1
-    assert allowed_detected.git_roots[0].remote_origin_web_url == "https://github.com/acme/allowed"
+    assert (
+        allowed_detected.git_roots[0].remote_origin_web_url
+        == "https://github.com/acme/allowed"
+    )
 
     blocked = tmp_path / "git-blocked"
     blocked.mkdir()

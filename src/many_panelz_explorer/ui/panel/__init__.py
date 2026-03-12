@@ -3,4 +3,3 @@
 from .navigation import PanelNavigationCoordinator
 
 __all__ = ["PanelNavigationCoordinator"]
-

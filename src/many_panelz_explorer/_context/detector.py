@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
 
-
 _PYTHON_MARKER_FILES = {
     "pyproject.toml",
     "setup.py",
@@ -84,7 +83,9 @@ class ContextDetector:
             if node is not None:
                 node_roots.append(node)
 
-        def _sort_key(value: PythonContextRoot | GitContextRoot | NodeContextRoot) -> str:
+        def _sort_key(
+            value: PythonContextRoot | GitContextRoot | NodeContextRoot,
+        ) -> str:
             return str(value.root_path).casefold()
 
         python_roots.sort(key=_sort_key)
@@ -113,9 +114,9 @@ class ContextDetector:
         return roots
 
     def _detect_python_root(self, root: Path) -> PythonContextRoot | None:
-        has_marker = any((root / marker).exists() for marker in _PYTHON_MARKER_FILES) or any(
-            (root / marker).is_dir() for marker in _PYTHON_MARKER_DIRS
-        )
+        has_marker = any(
+            (root / marker).exists() for marker in _PYTHON_MARKER_FILES
+        ) or any((root / marker).is_dir() for marker in _PYTHON_MARKER_DIRS)
         if not has_marker:
             return None
         pyproject = root / "pyproject.toml"
@@ -240,9 +241,9 @@ class ContextDetector:
         return f"https://{host}/{path}"
 
     def _detect_node_root(self, root: Path) -> NodeContextRoot | None:
-        has_marker = any((root / marker).exists() for marker in _NODE_MARKER_FILES) or any(
-            (root / marker).is_dir() for marker in _NODE_MARKER_DIRS
-        )
+        has_marker = any(
+            (root / marker).exists() for marker in _NODE_MARKER_FILES
+        ) or any((root / marker).is_dir() for marker in _NODE_MARKER_DIRS)
         if not has_marker:
             return None
         package_json = root / "package.json"

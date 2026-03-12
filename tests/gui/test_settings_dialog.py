@@ -40,7 +40,9 @@ class _ControllerSettingsStub:
         self.operation_queue_manager = OperationQueueManager(
             preferences=OperationExecutionPreferences()
         )
-        self.operation_queue_model = OperationQueueTableModel(self.operation_queue_manager)
+        self.operation_queue_model = OperationQueueTableModel(
+            self.operation_queue_manager
+        )
 
     def close_window(self, _window: ExplorerWindow) -> None:
         return
@@ -248,7 +250,9 @@ def _new_window(
     return window
 
 
-def test_settings_action_in_view_menu_and_shortcut_trigger(qtbot, tmp_path: Path, isolated_settings: SettingsManager) -> None:
+def test_settings_action_in_view_menu_and_shortcut_trigger(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
     roots_provider = _test_roots_provider(tmp_path)
     controller = _ControllerSettingsStub(isolated_settings)
     window = _new_window(
@@ -658,8 +662,10 @@ def test_settings_dialog_has_left_section_tree_and_search_sync(
     assert operations_item.childCount() >= 5
     dialog._section_tree.setCurrentItem(operations_item)
     qtbot.waitUntil(
-        lambda: dialog._section_tree.currentItem()
-        is dialog._subsection_tree_items["operations/defaults_queue"]
+        lambda: (
+            dialog._section_tree.currentItem()
+            is dialog._subsection_tree_items["operations/defaults_queue"]
+        )
     )
     backend_commands_item = dialog._subsection_tree_items["operations/backend_commands"]
     dialog._section_tree.setCurrentItem(backend_commands_item)
@@ -699,8 +705,7 @@ def test_settings_dialog_remembers_last_selected_subsection(
     qtbot.waitUntil(lambda: first._section_tree.currentItem() is remembered_item)
     assert controller.settings.settings_dialog_last_section == "operations"
     assert (
-        controller.settings.settings_dialog_last_subsection
-        == "operations/backend_args"
+        controller.settings.settings_dialog_last_subsection == "operations/backend_args"
     )
     first.reject()
 
@@ -709,8 +714,10 @@ def test_settings_dialog_remembers_last_selected_subsection(
     second.show()
 
     qtbot.waitUntil(
-        lambda: second._section_tree.currentItem()
-        is second._subsection_tree_items["operations/backend_args"]
+        lambda: (
+            second._section_tree.currentItem()
+            is second._subsection_tree_items["operations/backend_args"]
+        )
     )
     assert second._rows_by_key["robocopy_args"].isVisible() is True
     assert second._rows_by_key["teracopy_command"].isVisible() is False
@@ -782,7 +789,10 @@ def test_settings_dialog_reset_section_resets_selected_section_only(
 
     assert dialog.show_hidden_checkbox.isChecked() is True
     assert dialog.show_root_dropdown_checkbox.isChecked() is False
-    assert str(dialog.column_width_auto_align_mode_combo.currentData()) == "current_panel_tabs"
+    assert (
+        str(dialog.column_width_auto_align_mode_combo.currentData())
+        == "current_panel_tabs"
+    )
     assert dialog.context_scan_cap_spin.value() == 77
     assert dialog._pending_full_store_reset is False
 
@@ -1102,8 +1112,7 @@ def test_settings_dialog_browse_normalizes_windows_executable_paths(
     dialog._apply_and_commit()
     persisted = isolated_settings.ui_preferences()
     assert (
-        persisted.unstoppable_executable
-        == r"C:\bin\roadkil\UnstopCpy_5_2_Win2K_UP.exe"
+        persisted.unstoppable_executable == r"C:\bin\roadkil\UnstopCpy_5_2_Win2K_UP.exe"
     )
 
 

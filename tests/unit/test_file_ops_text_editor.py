@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from many_panelz_explorer import file_ops
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_open_in_text_editor_uses_configured_editor(
@@ -22,7 +25,9 @@ def test_open_in_text_editor_uses_configured_editor(
     script.write_text("@echo off\n", encoding="utf-8")
 
     launched: list[list[str]] = []
-    monkeypatch.setattr(file_ops.subprocess, "Popen", lambda args: launched.append(list(args)))
+    monkeypatch.setattr(
+        file_ops.subprocess, "Popen", lambda args: launched.append(list(args))
+    )
 
     file_ops.open_in_text_editor(script, editor_executable=str(editor))
 
@@ -47,7 +52,9 @@ def test_open_in_text_editor_falls_back_to_notepad_on_windows(
     monkeypatch.setattr(file_ops.os, "name", "nt", raising=False)
     monkeypatch.setenv("WINDIR", str(windir))
     launched: list[list[str]] = []
-    monkeypatch.setattr(file_ops.subprocess, "Popen", lambda args: launched.append(list(args)))
+    monkeypatch.setattr(
+        file_ops.subprocess, "Popen", lambda args: launched.append(list(args))
+    )
 
     file_ops.open_in_text_editor(script, editor_executable="")
 

@@ -21,10 +21,14 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_to_windows_arg_path_switches_extended_prefix(monkeypatch, tmp_path: Path) -> None:
+def test_to_windows_arg_path_switches_extended_prefix(
+    monkeypatch, tmp_path: Path
+) -> None:
     source = tmp_path / "alpha.txt"
     source.write_text("x", encoding="utf-8")
-    monkeypatch.setattr("many_panelz_explorer._operations.path_helpers.os.name", "nt", raising=False)
+    monkeypatch.setattr(
+        "many_panelz_explorer._operations.path_helpers.os.name", "nt", raising=False
+    )
 
     plain = to_windows_arg_path(source, use_extended_paths=False)
     extended = to_windows_arg_path(source, use_extended_paths=True)
@@ -59,10 +63,7 @@ def test_display_path_normalizes_forward_slashes(monkeypatch) -> None:
         display_path(r"\\?\C:/tmp/multi-panelz/source.txt")
         == r"C:\tmp\multi-panelz\source.txt"
     )
-    assert (
-        display_path(r"\\?\UNC\server/share/path")
-        == r"\\server\share\path"
-    )
+    assert display_path(r"\\?\UNC\server/share/path") == r"\\server\share\path"
 
 
 def test_windows_path_normalization_is_platform_specific(monkeypatch) -> None:
@@ -79,14 +80,14 @@ def test_windows_path_normalization_is_platform_specific(monkeypatch) -> None:
     )
 
 
-def test_expand_template_uses_configured_path_mode(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_expand_template_uses_configured_path_mode(monkeypatch, tmp_path: Path) -> None:
     source = tmp_path / "source.txt"
     target = tmp_path / "target"
     source.write_text("x", encoding="utf-8")
     target.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setattr("many_panelz_explorer._operations.path_helpers.os.name", "nt", raising=False)
+    monkeypatch.setattr(
+        "many_panelz_explorer._operations.path_helpers.os.name", "nt", raising=False
+    )
 
     plain = expand_template(
         "{sources} {target}",
@@ -125,7 +126,9 @@ def test_write_script_uses_utf8_without_bom_and_sets_chcp_first(tmp_path: Path) 
 def test_write_unstoppable_job_file_uses_utf16le_bom_and_source_target_lines(
     monkeypatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr("many_panelz_explorer._operations.path_helpers.os.name", "nt", raising=False)
+    monkeypatch.setattr(
+        "many_panelz_explorer._operations.path_helpers.os.name", "nt", raising=False
+    )
     source_a = tmp_path / "source-a.txt"
     source_b = tmp_path / "source-b.txt"
     target = tmp_path / "target"
@@ -147,15 +150,15 @@ def test_write_unstoppable_job_file_uses_utf16le_bom_and_source_target_lines(
 
     raw = job_path.read_bytes()
     assert raw.startswith(b"\xff\xfe")
-    assert raw == (
-        f"{source_a}|{target}\r\n{source_b}|{target}\r\n".encode("utf-16")
-    )
+    assert raw == (f"{source_a}|{target}\r\n{source_b}|{target}\r\n".encode("utf-16"))
 
 
 def test_write_unstoppable_job_file_uses_extended_paths_when_enabled(
     monkeypatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr("many_panelz_explorer._operations.path_helpers.os.name", "nt", raising=False)
+    monkeypatch.setattr(
+        "many_panelz_explorer._operations.path_helpers.os.name", "nt", raising=False
+    )
     source = tmp_path / "source.txt"
     target = tmp_path / "target"
     source.write_text("x", encoding="utf-8")
@@ -199,7 +202,9 @@ def test_run_script_does_not_redirect_companion_output(
         captured["kwargs"] = kwargs
         return _FakeProcess()
 
-    monkeypatch.setattr("many_panelz_explorer._operations.artifacts.subprocess.Popen", _fake_popen)
+    monkeypatch.setattr(
+        "many_panelz_explorer._operations.artifacts.subprocess.Popen", _fake_popen
+    )
     result = run_script(
         script_path,
         log_path,

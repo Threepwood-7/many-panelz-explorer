@@ -276,7 +276,9 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.remove(SettingsManager.FILE_LIST_BYTE_CUSTOM_TEMPLATE_KEY)
         settings.set_value(SettingsManager.STATUS_BAR_BYTE_FORMAT_MODE_KEY, "INVALID")
         settings.remove(SettingsManager.STATUS_BAR_BYTE_CUSTOM_TEMPLATE_KEY)
-        settings.set_value(SettingsManager.STATUS_BAR_STORAGE_LABEL_TEMPLATE_KEY, "plain text")
+        settings.set_value(
+            SettingsManager.STATUS_BAR_STORAGE_LABEL_TEMPLATE_KEY, "plain text"
+        )
         settings.set_value(SettingsManager.PROPERTIES_BYTE_FORMAT_MODE_KEY, "bad")
         settings.remove(SettingsManager.PROPERTIES_BYTE_CUSTOM_TEMPLATE_KEY)
         settings.remove(SettingsManager.APP_FONT_FAMILY_KEY)
@@ -287,7 +289,9 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.remove(SettingsManager.NAVIGATION_USE_APP_FONT_KEY)
         settings.remove(SettingsManager.NAVIGATION_FONT_FAMILY_KEY)
         settings.remove(SettingsManager.NAVIGATION_FONT_SIZE_PT_KEY)
-        settings.set_value(SettingsManager.CONTEXT_IMMEDIATE_CHILD_SCAN_CAP_KEY, "invalid")
+        settings.set_value(
+            SettingsManager.CONTEXT_IMMEDIATE_CHILD_SCAN_CAP_KEY, "invalid"
+        )
         settings.remove(SettingsManager.CONTEXT_TOOL_CODE_EDITOR_EXE_PATH_KEY)
         settings.remove(SettingsManager.CONTEXT_TOOL_CODE_EDITOR_ARGS_TEMPLATE_KEY)
         settings.remove(SettingsManager.CONTEXT_TOOL_GIT_GUI_EXE_PATH_KEY)
@@ -298,8 +302,12 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.set_value(SettingsManager.TARGET_PANEL_TINT_INTENSITY_KEY, "nope")
         settings.set_value(SettingsManager.DEFAULT_COPY_MOVE_BACKEND_KEY, "invalid")
         settings.set_value(SettingsManager.DEFAULT_DELETE_BACKEND_KEY, "invalid")
-        settings.set_value(SettingsManager.DEFAULT_OPERATION_DISPATCH_MODE_KEY, "invalid")
-        settings.set_value(SettingsManager.DEFAULT_OPERATION_CONFLICT_POLICY_KEY, "invalid")
+        settings.set_value(
+            SettingsManager.DEFAULT_OPERATION_DISPATCH_MODE_KEY, "invalid"
+        )
+        settings.set_value(
+            SettingsManager.DEFAULT_OPERATION_CONFLICT_POLICY_KEY, "invalid"
+        )
         settings.set_value(SettingsManager.OPERATION_SHORTCUT_BEHAVIOR_KEY, "invalid")
         settings.set_value(SettingsManager.OPERATION_QUEUE_VIEW_MODE_KEY, "invalid")
         settings.remove(SettingsManager.DEFAULT_EDITOR_EXECUTABLE_KEY)
@@ -321,7 +329,9 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.set_value(SettingsManager.ROBOCOPY_STRUCTURED_OPTIONS_KEY, "bad")
         settings.set_value(SettingsManager.TERACOPY_STRUCTURED_OPTIONS_KEY, "bad")
         settings.set_value(SettingsManager.UNSTOPPABLE_STRUCTURED_OPTIONS_KEY, "bad")
-        settings.set_value(SettingsManager.EXTERNAL_COPYMOVE_STRUCTURED_OPTIONS_KEY, "bad")
+        settings.set_value(
+            SettingsManager.EXTERNAL_COPYMOVE_STRUCTURED_OPTIONS_KEY, "bad"
+        )
         settings.remove(SettingsManager.CMD_DELETE_ARGS_KEY)
         settings.remove(SettingsManager.POWERSHELL_DELETE_ARGS_KEY)
         settings.remove(SettingsManager.RIMRAF_EXECUTABLE_KEY)
@@ -385,7 +395,8 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
             == SettingsManager.DEFAULT_FILE_LIST_USE_APP_FONT
         )
         assert (
-            loaded.file_list_font_family == SettingsManager.DEFAULT_FILE_LIST_FONT_FAMILY
+            loaded.file_list_font_family
+            == SettingsManager.DEFAULT_FILE_LIST_FONT_FAMILY
         )
         assert (
             loaded.file_list_font_size_pt
@@ -439,7 +450,10 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
             loaded.target_panel_tint_intensity_percent
             == SettingsManager.DEFAULT_TARGET_PANEL_TINT_INTENSITY_PERCENT
         )
-        assert loaded.default_copy_move_backend == SettingsManager.DEFAULT_COPY_MOVE_BACKEND
+        assert (
+            loaded.default_copy_move_backend
+            == SettingsManager.DEFAULT_COPY_MOVE_BACKEND
+        )
         assert loaded.default_delete_backend == SettingsManager.DEFAULT_DELETE_BACKEND
         assert (
             loaded.default_operation_dispatch_mode
@@ -501,6 +515,8 @@ def test_ui_preferences_font_size_clamps_to_range() -> None:
         assert loaded.navigation_font_size_pt == 32
     finally:
         _restore(settings, before)
+
+
 def test_ui_preferences_intensity_clamps_to_range() -> None:
     settings = SettingsManager()
     before = _snapshot(settings)

@@ -27,7 +27,9 @@ class _ControllerStub:
         self.operation_queue_manager = OperationQueueManager(
             preferences=OperationExecutionPreferences()
         )
-        self.operation_queue_model = OperationQueueTableModel(self.operation_queue_manager)
+        self.operation_queue_model = OperationQueueTableModel(
+            self.operation_queue_manager
+        )
 
     def close_window(self, _window) -> None:
         self.closed_windows.append(_window)
@@ -177,7 +179,9 @@ def test_show_widget_map_toggle_updates_existing_and_new_panels(
     qtbot.addWidget(window)
     window.show()
 
-    assert all(not panel.widget_map_enabled() for panel in window.panel_widgets.values())
+    assert all(
+        not panel.widget_map_enabled() for panel in window.panel_widgets.values()
+    )
 
     window._show_widget_map_action.setChecked(True)
     assert all(panel.widget_map_enabled() for panel in window.panel_widgets.values())
@@ -187,7 +191,9 @@ def test_show_widget_map_toggle_updates_existing_and_new_panels(
     assert all(panel.widget_map_enabled() for panel in window.panel_widgets.values())
 
     window._show_widget_map_action.setChecked(False)
-    assert all(not panel.widget_map_enabled() for panel in window.panel_widgets.values())
+    assert all(
+        not panel.widget_map_enabled() for panel in window.panel_widgets.values()
+    )
 
 
 def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> None:
@@ -524,13 +530,17 @@ def test_copy_to_target_uses_last_active_non_source_panel(
     source_panel.current_tab().navigation.set_path(src_dir)
     target_panel.current_tab().navigation.set_path(dst_dir)
 
-    monkeypatch.setattr(source_panel.current_tab(), "selected_paths", lambda: [src_file])
+    monkeypatch.setattr(
+        source_panel.current_tab(), "selected_paths", lambda: [src_file]
+    )
     captured: list[Path] = []
     queue_manager = window.controller.operation_queue_manager
     original_submit = queue_manager.submit
 
     def _capture_submit(request):
-        captured.append(Path(request.target_dir) if request.target_dir is not None else Path())
+        captured.append(
+            Path(request.target_dir) if request.target_dir is not None else Path()
+        )
         return original_submit(request)
 
     monkeypatch.setattr(queue_manager, "submit", _capture_submit)
@@ -835,35 +845,49 @@ def test_copy_or_move_conflict_choices(qtbot, tmp_path: Path, monkeypatch) -> No
     existing.write_text("dst", encoding="utf-8")
 
     monkeypatch.setattr(window, "_prompt_conflict_resolution", lambda *_a, **_k: "skip")
-    assert window._copy_or_move_one(
-        source=source, destination_dir=destination_dir, move=False
-    ) == "skip"
+    assert (
+        window._copy_or_move_one(
+            source=source, destination_dir=destination_dir, move=False
+        )
+        == "skip"
+    )
     assert existing.read_text(encoding="utf-8") == "dst"
 
-    monkeypatch.setattr(window, "_prompt_conflict_resolution", lambda *_a, **_k: "rename")
-    assert window._copy_or_move_one(
-        source=source, destination_dir=destination_dir, move=False
-    ) == "done"
+    monkeypatch.setattr(
+        window, "_prompt_conflict_resolution", lambda *_a, **_k: "rename"
+    )
+    assert (
+        window._copy_or_move_one(
+            source=source, destination_dir=destination_dir, move=False
+        )
+        == "done"
+    )
     assert (destination_dir / "source (1).txt").exists()
 
     monkeypatch.setattr(
         window, "_prompt_conflict_resolution", lambda *_a, **_k: "overwrite"
     )
     source.write_text("new", encoding="utf-8")
-    assert window._copy_or_move_one(
-        source=source, destination_dir=destination_dir, move=False
-    ) == "done"
+    assert (
+        window._copy_or_move_one(
+            source=source, destination_dir=destination_dir, move=False
+        )
+        == "done"
+    )
     assert existing.read_text(encoding="utf-8") == "new"
 
-    monkeypatch.setattr(window, "_prompt_conflict_resolution", lambda *_a, **_k: "cancel")
-    assert window._copy_or_move_one(
-        source=source, destination_dir=destination_dir, move=False
-    ) == "cancel"
+    monkeypatch.setattr(
+        window, "_prompt_conflict_resolution", lambda *_a, **_k: "cancel"
+    )
+    assert (
+        window._copy_or_move_one(
+            source=source, destination_dir=destination_dir, move=False
+        )
+        == "cancel"
+    )
 
 
-def test_column_width_sync_stays_within_active_pane_tabs(
-    qtbot, tmp_path: Path
-) -> None:
+def test_column_width_sync_stays_within_active_pane_tabs(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
     settings.column_width_auto_align_mode = "current_panel_tabs"
     settings.sync()

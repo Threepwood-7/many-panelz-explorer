@@ -39,7 +39,9 @@ def test_open_script_uses_text_editor_api(qtbot, monkeypatch, tmp_path: Path) ->
         "many_panelz_explorer.operation_queue_widgets.file_ops.open_with_default",
         lambda _path: (_ for _ in ()).throw(AssertionError("must not be called")),
     )
-    monkeypatch.setattr(panel, "_artifact_path", lambda kind: script_path if kind == "script" else None)
+    monkeypatch.setattr(
+        panel, "_artifact_path", lambda kind: script_path if kind == "script" else None
+    )
 
     panel._open_script()
 
@@ -63,7 +65,11 @@ def test_open_log_and_metadata_use_default_opener(
     monkeypatch.setattr(
         panel,
         "_artifact_path",
-        lambda kind: log_path if kind == "log" else (metadata_path if kind == "metadata" else None),
+        lambda kind: (
+            log_path
+            if kind == "log"
+            else (metadata_path if kind == "metadata" else None)
+        ),
     )
 
     panel._open_log()
@@ -81,7 +87,9 @@ def test_open_script_failure_shows_warning(qtbot, monkeypatch, tmp_path: Path) -
         "many_panelz_explorer.operation_queue_widgets.file_ops.open_in_text_editor",
         lambda _path, editor_executable="": (_ for _ in ()).throw(RuntimeError("boom")),
     )
-    monkeypatch.setattr(panel, "_artifact_path", lambda kind: script_path if kind == "script" else None)
+    monkeypatch.setattr(
+        panel, "_artifact_path", lambda kind: script_path if kind == "script" else None
+    )
 
     warnings: list[tuple[str, str]] = []
     monkeypatch.setattr(
