@@ -22,6 +22,41 @@ type TabsState = dict[int, PanelState]
 type PanelRows = list[list[int]]
 
 
+def serialize_window_tabs_state(window: ExplorerWindow) -> TabsState:
+    """Serialize all panel tabs into persistence state."""
+
+    return {
+        panel_id: panel.state_coordinator.serialize_state()
+        for panel_id, panel in window.panel_widgets.items()
+    }
+
+
+def resolve_window_target_panel_id(
+    window: ExplorerWindow,
+    source_panel_id: int,
+) -> int | None:
+    """Resolve the preferred target panel for cross-panel actions."""
+
+    ordered = WindowLayoutCoordinator.ordered_panel_ids(window.layout_rows)
+    candidates = [pid for pid in ordered if pid != source_panel_id]
+    if not candidates:
+        return None
+    if window.last_non_source_panel_id in candidates:
+        return window.last_non_source_panel_id
+    return candidates[0]
+
+
+def window_default_close_warning(window: ExplorerWindow) -> bool:
+    """Return whether closing the window should be treated as lossy."""
+
+    if len(window.panel_widgets) > 1:
+        return True
+    if window.active_panel_id is None:
+        return False
+    panel = window.panel_widgets.get(window.active_panel_id)
+    return panel is not None and panel.tab_count() > 1
+
+
 def _clear_layout(window: ExplorerWindow) -> None:
     """Delete the current central layout widgets."""
     while window.central_layout.count() > 0:
@@ -102,7 +137,7 @@ class WindowPanelsCoordinator:
         if self.window.active_panel_id is None or active_panel is None:
             return
 
-        tabs_state = self.serialize_tabs_state()
+        tabs_state = serialize_window_tabs_state(self.window)
         rows = deepcopy(self.window.layout_rows)
         row_index, column_index = self.window.layout_coordinator.find_panel_position(
             self.window.active_panel_id,
@@ -167,7 +202,7 @@ class WindowPanelsCoordinator:
         if self.window.active_panel_id is None:
             return
 
-        tabs_state = self.serialize_tabs_state()
+        tabs_state = serialize_window_tabs_state(self.window)
         rows = deepcopy(self.window.layout_rows)
         row_index, column_index = self.window.layout_coordinator.find_panel_position(
             self.window.active_panel_id,
@@ -433,7 +468,7 @@ class WindowPanelsCoordinator:
         if panel_id not in self.window.panel_widgets:
             return
 
-        tabs_state = self.serialize_tabs_state()
+        tabs_state = serialize_window_tabs_state(self.window)
         rows = deepcopy(self.window.layout_rows)
         removed = False
         new_rows: PanelRows = []
@@ -468,13 +503,6 @@ class WindowPanelsCoordinator:
             preferred_active_panel=preferred,
         )
 
-    def serialize_tabs_state(self) -> TabsState:
-        """Serialize all panel tabs into persistence state."""
-        return {
-            panel_id: panel.state_coordinator.serialize_state()
-            for panel_id, panel in self.window.panel_widgets.items()
-        }
-
     def focus_next_panel(self) -> None:
         """Move focus to the next panel."""
         ordered = WindowLayoutCoordinator.ordered_panel_ids(self.window.layout_rows)
@@ -498,16 +526,6 @@ class WindowPanelsCoordinator:
         else:
             next_index = 0
         _activate_panel_and_focus(self, ordered[next_index])
-
-    def resolve_target_panel_id(self, source_panel_id: int) -> int | None:
-        """Resolve the preferred target panel for cross-panel actions."""
-        ordered = WindowLayoutCoordinator.ordered_panel_ids(self.window.layout_rows)
-        candidates = [pid for pid in ordered if pid != source_panel_id]
-        if not candidates:
-            return None
-        if self.window.last_non_source_panel_id in candidates:
-            return self.window.last_non_source_panel_id
-        return candidates[0]
 
     def on_panel_column_widths_sync_requested(
         self,
@@ -535,10 +553,3 @@ class WindowPanelsCoordinator:
         for panel_id, panel in self.window.panel_widgets.items():
             _ = panel_id
             panel.state_coordinator.apply_column_widths_to_panel_tabs(widths)
-
-    def default_close_warning(self) -> bool:
-        """Return whether closing the window should be treated as lossy."""
-        if len(self.window.panel_widgets) > 1:
-            return True
-        panel = self.active_panel()
-        return panel is not None and panel.tab_count() > 1

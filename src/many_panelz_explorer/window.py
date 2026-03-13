@@ -36,6 +36,10 @@ from .ui.window import (
     WindowUiComposer,
     WindowViewsCoordinator,
 )
+from .ui.window.panels import (
+    resolve_window_target_panel_id,
+    window_default_close_warning,
+)
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QAction, QCloseEvent, QShortcut
@@ -242,7 +246,7 @@ class ExplorerWindow(QMainWindow):
         if panel is not None:
             panel.navigation_coordinator.refresh_current_path()
         target_id = (
-            self.panels_coordinator.resolve_target_panel_id(self.active_panel_id)
+            resolve_window_target_panel_id(self, self.active_panel_id)
             if self.active_panel_id is not None
             else None
         )
@@ -291,4 +295,4 @@ class ExplorerWindow(QMainWindow):
         self.context_menu_controller.rebuild()
 
     def default_close_warning(self) -> bool:
-        return self.panels_coordinator.default_close_warning()
+        return window_default_close_warning(self)

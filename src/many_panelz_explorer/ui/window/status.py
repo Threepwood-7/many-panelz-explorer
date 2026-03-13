@@ -20,6 +20,7 @@ from ...storage_status_formatting import (
     StorageStatusRenderResult,
     format_storage_usage_entry,
 )
+from .panels import resolve_window_target_panel_id
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -156,7 +157,7 @@ class WindowStatusCoordinator:
     def update_pane_visuals(self) -> None:
         source_id = self.window.active_panel_id
         target_id = (
-            self.window.panels_coordinator.resolve_target_panel_id(source_id)
+            resolve_window_target_panel_id(self.window, source_id)
             if source_id is not None
             else None
         )

@@ -9,6 +9,7 @@ from PySide6.QtCore import QByteArray
 from PySide6.QtWidgets import QMessageBox
 
 from ...panel_tree import PanelTreeModel
+from .panels import serialize_window_tabs_state
 
 if TYPE_CHECKING:
     from ...window import ExplorerWindow
@@ -39,7 +40,7 @@ class WindowPersistenceCoordinator:
         payload: dict[str, Any] = {
             "window_id": self.window.window_id,
             "panel_tree": self.window.panel_tree.to_dict(),
-            "tabs": self.window.panels_coordinator.serialize_tabs_state(),
+            "tabs": serialize_window_tabs_state(self.window),
             "active_panel_id": self.window.active_panel_id,
             "on_top": self.window.on_top_action.isChecked(),
         }

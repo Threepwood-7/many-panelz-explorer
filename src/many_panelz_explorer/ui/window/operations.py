@@ -14,6 +14,7 @@ from ..._operations.types import (
     OperationKind,
     OperationRequest,
 )
+from .panels import resolve_window_target_panel_id
 
 if TYPE_CHECKING:
     from ...window import ExplorerWindow
@@ -77,7 +78,7 @@ class WindowOperationsCoordinator:
             )
             return
 
-        target_id = self.window.panels_coordinator.resolve_target_panel_id(source_id)
+        target_id = resolve_window_target_panel_id(self.window, source_id)
         if target_id is None:
             QMessageBox.information(
                 self.window,
