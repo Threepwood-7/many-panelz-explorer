@@ -56,7 +56,6 @@ from .._operations.types import (
     OperationRequest,
 )
 from .._settings import normalize as settings_normalize
-from .._settings.models import UiPreferences
 from .settings import (
     FontSizeSpinBox,
     SectionEntry,
@@ -67,11 +66,15 @@ from .settings import (
     build_sections,
     control_builders,
     open_overrides_controls,
+    preferences_flow,
+    preferences_sync,
+    tree_navigation,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from .._settings.models import UiPreferences
     from ..app_controller import AppController
 
 
@@ -310,8 +313,8 @@ class SettingsDialog(QDialog):
         root = self._build_dialog_layout()
         build_sections(self)
         self._load_preferences_into_controls(self._working_preferences)
-        self._apply_search_filter("")
-        self._restore_last_tree_selection()
+        self.apply_search_filter("")
+        tree_navigation.restore_last_tree_selection(self)
         self._build_live_preview_and_buttons(root)
 
     def _initialize_dialog_state(self) -> None:
@@ -367,7 +370,7 @@ class SettingsDialog(QDialog):
         self.assign_identity(
             self.search_edit, "settings_dialog:search", "settings.search"
         )
-        self.search_edit.textChanged.connect(self._apply_search_filter)
+        self.search_edit.textChanged.connect(self.apply_search_filter)
         root.addWidget(self.search_edit)
 
     def _build_content_host(self, root: QVBoxLayout) -> None:
@@ -394,7 +397,7 @@ class SettingsDialog(QDialog):
         self._section_tree.setIndentation(12)
         self._section_tree.setMinimumWidth(220)
         self._section_tree.setMaximumWidth(280)
-        self._section_tree.currentItemChanged.connect(self._on_section_tree_changed)
+        self._section_tree.currentItemChanged.connect(self.on_section_tree_changed)
         self.assign_identity(
             self._section_tree, "settings_dialog:section_tree", "settings.section_tree"
         )
@@ -449,7 +452,7 @@ class SettingsDialog(QDialog):
         self.reset_section_button = QPushButton(
             "Reset Section", self._reset_actions_bar
         )
-        self.reset_section_button.clicked.connect(self._on_reset_current_section)
+        self.reset_section_button.clicked.connect(self.on_reset_current_section)
         self.assign_identity(
             self.reset_section_button,
             "settings_dialog:reset_section_button",
@@ -458,7 +461,7 @@ class SettingsDialog(QDialog):
         self.reset_all_button = QPushButton(
             "Reset Everything Stored", self._reset_actions_bar
         )
-        self.reset_all_button.clicked.connect(self._on_reset_all_everything_stored)
+        self.reset_all_button.clicked.connect(self.on_reset_all_everything_stored)
         self.assign_identity(
             self.reset_all_button,
             "settings_dialog:reset_everything_button",
@@ -854,8 +857,138 @@ class SettingsDialog(QDialog):
         finally:
             self.file_open_overrides_table.blockSignals(False)
 
+    @property
+    def active_color_hex(self) -> str:
+        return self._active_color_hex
+
+    @property
+    def target_color_hex(self) -> str:
+        return self._target_color_hex
+
+    @property
+    def committed_preferences(self) -> UiPreferences:
+        """Return the last applied preferences snapshot."""
+
+        return self._committed_preferences
+
+    @committed_preferences.setter
+    def committed_preferences(self, preferences: UiPreferences) -> None:
+        """Store the last applied preferences snapshot."""
+
+        self._committed_preferences = preferences
+
+    @property
+    def working_preferences(self) -> UiPreferences:
+        """Return the in-progress preferences snapshot."""
+
+        return self._working_preferences
+
+    @working_preferences.setter
+    def working_preferences(self, preferences: UiPreferences) -> None:
+        """Store the in-progress preferences snapshot."""
+
+        self._working_preferences = preferences
+
+    @property
+    def pending_live_preview(self) -> bool:
+        """Return whether a debounced preview update is pending."""
+
+        return self._pending_live_preview
+
+    @pending_live_preview.setter
+    def pending_live_preview(self, value: bool) -> None:
+        """Store whether a debounced preview update is pending."""
+
+        self._pending_live_preview = value
+
+    @property
+    def pending_full_store_reset(self) -> bool:
+        """Return whether a full settings-store reset is pending."""
+
+        return self._pending_full_store_reset
+
+    @pending_full_store_reset.setter
+    def pending_full_store_reset(self, value: bool) -> None:
+        """Store whether a full settings-store reset is pending."""
+
+        self._pending_full_store_reset = value
+
+    @property
+    def tree_sync_in_progress(self) -> bool:
+        """Return whether tree selection sync is in progress."""
+
+        return self._tree_sync_in_progress
+
+    @tree_sync_in_progress.setter
+    def tree_sync_in_progress(self, value: bool) -> None:
+        """Store whether tree selection sync is in progress."""
+
+        self._tree_sync_in_progress = value
+
+    @property
+    def active_subsection_key(self) -> str:
+        """Return the active subsection key."""
+
+        return self._active_subsection_key
+
+    @active_subsection_key.setter
+    def active_subsection_key(self, key: str) -> None:
+        """Store the active subsection key."""
+
+        self._active_subsection_key = key
+
+    @property
+    def live_preview_timer(self) -> QTimer:
+        """Return the timer that debounces live preview updates."""
+
+        return self._live_preview_timer
+
+    @property
+    def no_matches_label(self) -> QLabel:
+        """Return the label shown when search yields no matching rows."""
+
+        return self._no_matches_label
+
+    @property
+    def scroll_area(self) -> QScrollArea:
+        """Return the scroll area that hosts section content."""
+
+        return self._scroll
+
     def on_controls_changed(self) -> None:
         self._on_controls_changed()
+
+    def apply_search_filter(self, text: str) -> None:
+        """Apply a section-row search filter."""
+
+        tree_navigation.apply_search_filter(self, text)
+
+    def on_section_tree_changed(
+        self,
+        current: QTreeWidgetItem | None,
+        previous: QTreeWidgetItem | None,
+    ) -> None:
+        """Handle section-tree selection changes."""
+
+        tree_navigation.on_section_tree_changed(self, current, previous)
+
+    def load_preferences_into_controls(self, preferences: UiPreferences) -> None:
+        """Populate dialog controls from a preferences snapshot."""
+
+        self._load_preferences_into_controls(preferences)
+
+    def load_file_open_overrides(self, json_text: str) -> None:
+        self._load_file_open_overrides(json_text)
+
+    def on_reset_current_section(self) -> None:
+        """Reset the active section to defaults."""
+
+        preferences_flow.on_reset_current_section(self)
+
+    def on_reset_all_everything_stored(self) -> None:
+        """Schedule a full reset of persisted settings and session data."""
+
+        preferences_flow.on_reset_all_everything_stored(self)
 
     def browse_executable(self, edit: QLineEdit) -> None:
         self._browse_executable(edit)
@@ -880,6 +1013,50 @@ class SettingsDialog(QDialog):
 
     def test_backend(self, kind: OperationKind, backend_id: str) -> None:
         self._test_backend(kind, backend_id)
+
+    def update_reset_controls(self) -> None:
+        """Refresh the reset-action UI for the active section."""
+
+        preferences_flow.update_reset_controls(self)
+
+    def robocopy_structured_options_from_controls(self) -> RobocopyBackendOptions:
+        return self._robocopy_structured_options_from_controls()
+
+    def teracopy_structured_options_from_controls(self) -> TeraCopyBackendOptions:
+        return self._teracopy_structured_options_from_controls()
+
+    def unstoppable_structured_options_from_controls(
+        self,
+    ) -> UnstoppableBackendOptions:
+        return self._unstoppable_structured_options_from_controls()
+
+    def external_copymove_structured_options_from_controls(
+        self,
+    ) -> ExternalCopyMoveBackendOptions:
+        return self._external_copymove_structured_options_from_controls()
+
+    def apply_robocopy_structured_options_to_controls(
+        self, options: RobocopyBackendOptions
+    ) -> None:
+        self._apply_robocopy_structured_options_to_controls(options)
+
+    def apply_teracopy_structured_options_to_controls(
+        self, options: TeraCopyBackendOptions
+    ) -> None:
+        self._apply_teracopy_structured_options_to_controls(options)
+
+    def apply_unstoppable_structured_options_to_controls(
+        self, options: UnstoppableBackendOptions
+    ) -> None:
+        self._apply_unstoppable_structured_options_to_controls(options)
+
+    def apply_external_copymove_structured_options_to_controls(
+        self, options: ExternalCopyMoveBackendOptions
+    ) -> None:
+        self._apply_external_copymove_structured_options_to_controls(options)
+
+    def serialize_file_open_overrides(self) -> str:
+        return self._serialize_file_open_overrides()
 
     def _browse_executable(self, edit: QLineEdit) -> None:
         selected, _ = QFileDialog.getOpenFileName(
@@ -1060,40 +1237,16 @@ class SettingsDialog(QDialog):
         return combo
 
     def _on_byte_format_mode_changed(self, _index: int) -> None:
-        self._sync_byte_format_controls()
+        preferences_sync.sync_byte_format_controls(self)
         self._on_controls_changed()
 
     def on_file_list_use_app_font_toggled(self, _checked: bool) -> None:
-        self._sync_font_override_controls()
+        preferences_sync.sync_font_override_controls(self)
         self._on_controls_changed()
 
     def on_navigation_use_app_font_toggled(self, _checked: bool) -> None:
-        self._sync_font_override_controls()
+        preferences_sync.sync_font_override_controls(self)
         self._on_controls_changed()
-
-    def _sync_font_override_controls(self) -> None:
-        file_list_override_enabled = (
-            not self.file_list_use_app_font_checkbox.isChecked()
-        )
-        self.file_list_font_family_combo.setEnabled(file_list_override_enabled)
-        self.file_list_font_size_spin.setEnabled(file_list_override_enabled)
-
-        navigation_override_enabled = (
-            not self.navigation_use_app_font_checkbox.isChecked()
-        )
-        self.navigation_font_family_combo.setEnabled(navigation_override_enabled)
-        self.navigation_font_size_spin.setEnabled(navigation_override_enabled)
-
-    def _sync_byte_format_controls(self) -> None:
-        self.file_list_byte_custom_template_edit.setEnabled(
-            str(self.file_list_byte_format_mode_combo.currentData()) == "custom"
-        )
-        self.status_bar_byte_custom_template_edit.setEnabled(
-            str(self.status_bar_byte_format_mode_combo.currentData()) == "custom"
-        )
-        self.properties_byte_custom_template_edit.setEnabled(
-            str(self.properties_byte_format_mode_combo.currentData()) == "custom"
-        )
 
     def _load_panel_tint_preferences(self, preferences: UiPreferences) -> None:
         """Load active and target panel tint preferences into controls."""
@@ -1107,178 +1260,14 @@ class SettingsDialog(QDialog):
 
         self._active_color_hex = preferences.active_panel_tint_color_hex
         self._target_color_hex = preferences.target_panel_tint_color_hex
-        self._sync_color_preview(self.active_color_preview, self._active_color_hex)
-        self._sync_color_preview(self.target_color_preview, self._target_color_hex)
-
-    def _load_panel_preferences(self, preferences: UiPreferences) -> None:
-        """Load panel behavior and byte-display preferences into controls."""
-
-        self._set_combo_value(self.new_context_combo, preferences.new_context_mode)
-        self.context_scan_cap_spin.setValue(
-            preferences.context_immediate_child_scan_cap
+        preferences_sync.sync_color_preview(
+            self.active_color_preview,
+            self._active_color_hex,
         )
-        self.show_hidden_checkbox.setChecked(preferences.show_hidden_default)
-        self.show_root_dropdown_checkbox.setChecked(preferences.show_root_dropdown)
-        self._set_combo_value(
-            self.column_width_auto_align_mode_combo,
-            preferences.column_width_auto_align_mode,
+        preferences_sync.sync_color_preview(
+            self.target_color_preview,
+            self._target_color_hex,
         )
-        self.show_refresh_button_checkbox.setChecked(preferences.show_refresh_button)
-        self.show_root_buttons_checkbox.setChecked(preferences.show_root_buttons)
-        self.show_address_bar_checkbox.setChecked(preferences.show_address_bar)
-        self.show_navigation_buttons_checkbox.setChecked(
-            preferences.show_navigation_buttons
-        )
-        self.show_storage_overview_status_row_checkbox.setChecked(
-            preferences.show_storage_overview_status_row
-        )
-        self.byte_thousands_separator_edit.setText(preferences.byte_thousands_separator)
-        self.byte_decimal_separator_edit.setText(preferences.byte_decimal_separator)
-        self._set_combo_value(
-            self.file_list_byte_format_mode_combo,
-            preferences.file_list_byte_format_mode,
-        )
-        self.file_list_byte_custom_template_edit.setText(
-            preferences.file_list_byte_custom_template
-        )
-        self._set_combo_value(
-            self.status_bar_byte_format_mode_combo,
-            preferences.status_bar_byte_format_mode,
-        )
-        self.status_bar_byte_custom_template_edit.setText(
-            preferences.status_bar_byte_custom_template
-        )
-        self.status_bar_storage_label_template_edit.setText(
-            preferences.status_bar_storage_label_template
-        )
-        self._set_combo_value(
-            self.properties_byte_format_mode_combo,
-            preferences.properties_byte_format_mode,
-        )
-        self.properties_byte_custom_template_edit.setText(
-            preferences.properties_byte_custom_template
-        )
-
-    def _load_operations_preferences(self, preferences: UiPreferences) -> None:
-        """Load operation backend, queue, and diagnostics preferences."""
-
-        self._set_combo_value(
-            self.default_copy_move_backend_combo,
-            preferences.default_copy_move_backend,
-        )
-        self._set_combo_value(
-            self.default_delete_backend_combo,
-            preferences.default_delete_backend,
-        )
-        self._set_combo_value(
-            self.default_dispatch_mode_combo,
-            preferences.default_operation_dispatch_mode,
-        )
-        self._set_combo_value(
-            self.default_conflict_policy_combo,
-            preferences.default_operation_conflict_policy,
-        )
-        self._set_combo_value(
-            self.operation_shortcut_behavior_combo,
-            preferences.operation_shortcut_behavior,
-        )
-        self._set_combo_value(
-            self.operation_queue_view_mode_combo,
-            preferences.operation_queue_view_mode,
-        )
-        self.default_editor_executable_edit.setText(
-            preferences.default_editor_executable
-        )
-        self.default_viewer_executable_edit.setText(
-            preferences.default_viewer_executable
-        )
-        self.context_code_editor_executable_edit.setText(
-            preferences.context_tool_code_editor_exe_path
-        )
-        self.context_code_editor_args_edit.setText(
-            preferences.context_tool_code_editor_args_template
-        )
-        self.context_git_gui_executable_edit.setText(
-            preferences.context_tool_git_gui_exe_path
-        )
-        self.context_git_gui_args_edit.setText(
-            preferences.context_tool_git_gui_args_template
-        )
-        self._load_file_open_overrides(preferences.file_open_overrides_json)
-        self.use_extended_paths_robocopy_checkbox.setChecked(
-            preferences.use_extended_paths_robocopy
-        )
-        self.use_extended_paths_teracopy_checkbox.setChecked(
-            preferences.use_extended_paths_teracopy
-        )
-        self.use_extended_paths_unstoppable_checkbox.setChecked(
-            preferences.use_extended_paths_unstoppable
-        )
-        self.use_extended_paths_external_copymove_checkbox.setChecked(
-            preferences.use_extended_paths_external_copymove
-        )
-        self.use_extended_paths_cmd_delete_checkbox.setChecked(
-            preferences.use_extended_paths_cmd_delete
-        )
-        self.use_extended_paths_powershell_delete_checkbox.setChecked(
-            preferences.use_extended_paths_powershell_delete
-        )
-        self.use_extended_paths_rimraf_checkbox.setChecked(
-            preferences.use_extended_paths_rimraf
-        )
-        self.use_extended_paths_external_delete_checkbox.setChecked(
-            preferences.use_extended_paths_external_delete
-        )
-        self.teracopy_executable_edit.setText(preferences.teracopy_executable)
-        self.unstoppable_executable_edit.setText(preferences.unstoppable_executable)
-        self.generic_copymove_executable_edit.setText(
-            preferences.generic_copymove_executable
-        )
-        self.generic_delete_executable_edit.setText(
-            preferences.generic_delete_executable
-        )
-        self.generic_delete_args_edit.setText(preferences.generic_delete_args_template)
-        self._apply_robocopy_structured_options_to_controls(
-            preferences.robocopy_structured_options
-        )
-        self._apply_teracopy_structured_options_to_controls(
-            preferences.teracopy_structured_options
-        )
-        self._apply_unstoppable_structured_options_to_controls(
-            preferences.unstoppable_structured_options
-        )
-        self._apply_external_copymove_structured_options_to_controls(
-            preferences.external_copymove_structured_options
-        )
-        self.cmd_delete_args_edit.setText(preferences.cmd_delete_args)
-        self.powershell_delete_args_edit.setText(preferences.powershell_delete_args)
-        self.rimraf_executable_edit.setText(preferences.rimraf_executable)
-        self.rimraf_args_edit.setText(preferences.rimraf_args_template)
-        resolved_cmd, resolved_robocopy = resolve_system_command_paths()
-        self.resolved_cmd_path_label.setText(f"ComSpec: {resolved_cmd}")
-        self.resolved_robocopy_path_label.setText(f"Robocopy: {resolved_robocopy}")
-        self.resolved_cmd_path_label.setToolTip(resolved_cmd)
-        self.resolved_robocopy_path_label.setToolTip(resolved_robocopy)
-
-    def _load_typography_preferences(self, preferences: UiPreferences) -> None:
-        """Load app and panel font preferences into controls."""
-
-        self._set_combo_value(self.app_font_family_combo, preferences.app_font_family)
-        self.app_font_size_spin.setValue(preferences.app_font_size_pt)
-        self.file_list_use_app_font_checkbox.setChecked(
-            preferences.file_list_use_app_font
-        )
-        self._set_combo_value(
-            self.file_list_font_family_combo, preferences.file_list_font_family
-        )
-        self.file_list_font_size_spin.setValue(preferences.file_list_font_size_pt)
-        self.navigation_use_app_font_checkbox.setChecked(
-            preferences.navigation_use_app_font
-        )
-        self._set_combo_value(
-            self.navigation_font_family_combo, preferences.navigation_font_family
-        )
-        self.navigation_font_size_spin.setValue(preferences.navigation_font_size_pt)
 
     def _load_preferences_into_controls(self, preferences: UiPreferences) -> None:
         """Populate dialog controls from the current UI preferences."""
@@ -1287,25 +1276,16 @@ class SettingsDialog(QDialog):
         try:
             self._working_preferences = replace(preferences)
             self._load_panel_tint_preferences(preferences)
-            self._load_panel_preferences(preferences)
-            self._load_operations_preferences(preferences)
-            self._load_typography_preferences(preferences)
-            self._sync_font_override_controls()
-            self._sync_byte_format_controls()
+            preferences_sync.load_panel_preferences(self, preferences)
+            preferences_sync.load_operations_preferences(self, preferences)
+            preferences_sync.load_typography_preferences(self, preferences)
+            preferences_sync.sync_font_override_controls(self)
+            preferences_sync.sync_byte_format_controls(self)
             self.update_backend_generated_previews()
-            self._sync_slider_value_labels()
-            self._update_reset_controls()
+            preferences_sync.sync_slider_value_labels(self)
+            preferences_flow.update_reset_controls(self)
         finally:
             self._loading_ui = False
-
-    def _sync_slider_value_labels(self) -> None:
-        self.active_intensity_value.setText(f"{self.active_intensity_slider.value()}%")
-        self.target_intensity_value.setText(f"{self.target_intensity_slider.value()}%")
-
-    def _sync_color_preview(self, target: QLabel, color_hex: str) -> None:
-        target.setStyleSheet(f"background: {color_hex}; border: 1px solid #777;")
-        target.setText(color_hex)
-        target.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
     def set_combo_value(self, combo: QComboBox, value: str) -> None:
         self._set_combo_value(combo, value)
@@ -1320,95 +1300,9 @@ class SettingsDialog(QDialog):
     def _on_controls_changed(self) -> None:
         if self._loading_ui:
             return
-        self._sync_slider_value_labels()
-        self._working_preferences = UiPreferences(
-            new_context_mode=str(self.new_context_combo.currentData()),
-            show_hidden_default=self.show_hidden_checkbox.isChecked(),
-            show_root_dropdown=self.show_root_dropdown_checkbox.isChecked(),
-            column_width_auto_align_mode=str(
-                self.column_width_auto_align_mode_combo.currentData()
-            ),
-            context_immediate_child_scan_cap=self.context_scan_cap_spin.value(),
-            show_refresh_button=self.show_refresh_button_checkbox.isChecked(),
-            show_root_buttons=self.show_root_buttons_checkbox.isChecked(),
-            show_address_bar=self.show_address_bar_checkbox.isChecked(),
-            show_navigation_buttons=self.show_navigation_buttons_checkbox.isChecked(),
-            show_storage_overview_status_row=self.show_storage_overview_status_row_checkbox.isChecked(),
-            byte_thousands_separator=self.byte_thousands_separator_edit.text(),
-            byte_decimal_separator=self.byte_decimal_separator_edit.text(),
-            file_list_byte_format_mode=str(
-                self.file_list_byte_format_mode_combo.currentData()
-            ),
-            file_list_byte_custom_template=self.file_list_byte_custom_template_edit.text(),
-            status_bar_byte_format_mode=str(
-                self.status_bar_byte_format_mode_combo.currentData()
-            ),
-            status_bar_byte_custom_template=self.status_bar_byte_custom_template_edit.text(),
-            status_bar_storage_label_template=self.status_bar_storage_label_template_edit.text(),
-            properties_byte_format_mode=str(
-                self.properties_byte_format_mode_combo.currentData()
-            ),
-            properties_byte_custom_template=self.properties_byte_custom_template_edit.text(),
-            default_copy_move_backend=str(
-                self.default_copy_move_backend_combo.currentData()
-            ),
-            default_delete_backend=str(self.default_delete_backend_combo.currentData()),
-            default_operation_dispatch_mode=str(
-                self.default_dispatch_mode_combo.currentData()
-            ),
-            default_operation_conflict_policy=str(
-                self.default_conflict_policy_combo.currentData()
-            ),
-            operation_shortcut_behavior=str(
-                self.operation_shortcut_behavior_combo.currentData()
-            ),
-            operation_queue_view_mode=str(
-                self.operation_queue_view_mode_combo.currentData()
-            ),
-            default_editor_executable=self.default_editor_executable_edit.text().strip(),
-            default_viewer_executable=self.default_viewer_executable_edit.text().strip(),
-            context_tool_code_editor_exe_path=self.context_code_editor_executable_edit.text().strip(),
-            context_tool_code_editor_args_template=self.context_code_editor_args_edit.text().strip(),
-            context_tool_git_gui_exe_path=self.context_git_gui_executable_edit.text().strip(),
-            context_tool_git_gui_args_template=self.context_git_gui_args_edit.text().strip(),
-            file_open_overrides_json=self._serialize_file_open_overrides(),
-            use_extended_paths_robocopy=self.use_extended_paths_robocopy_checkbox.isChecked(),
-            use_extended_paths_teracopy=self.use_extended_paths_teracopy_checkbox.isChecked(),
-            use_extended_paths_unstoppable=self.use_extended_paths_unstoppable_checkbox.isChecked(),
-            use_extended_paths_external_copymove=self.use_extended_paths_external_copymove_checkbox.isChecked(),
-            use_extended_paths_cmd_delete=self.use_extended_paths_cmd_delete_checkbox.isChecked(),
-            use_extended_paths_powershell_delete=self.use_extended_paths_powershell_delete_checkbox.isChecked(),
-            use_extended_paths_rimraf=self.use_extended_paths_rimraf_checkbox.isChecked(),
-            use_extended_paths_external_delete=self.use_extended_paths_external_delete_checkbox.isChecked(),
-            teracopy_executable=self.teracopy_executable_edit.text().strip(),
-            unstoppable_executable=self.unstoppable_executable_edit.text().strip(),
-            generic_copymove_executable=self.generic_copymove_executable_edit.text().strip(),
-            generic_delete_executable=self.generic_delete_executable_edit.text().strip(),
-            generic_delete_args_template=self.generic_delete_args_edit.text().strip(),
-            robocopy_structured_options=self._robocopy_structured_options_from_controls(),
-            teracopy_structured_options=self._teracopy_structured_options_from_controls(),
-            unstoppable_structured_options=self._unstoppable_structured_options_from_controls(),
-            external_copymove_structured_options=self._external_copymove_structured_options_from_controls(),
-            cmd_delete_args=self.cmd_delete_args_edit.text().strip(),
-            powershell_delete_args=self.powershell_delete_args_edit.text().strip(),
-            rimraf_executable=self.rimraf_executable_edit.text().strip(),
-            rimraf_args_template=self.rimraf_args_edit.text().strip(),
-            app_font_family=str(self.app_font_family_combo.currentData() or ""),
-            app_font_size_pt=self.app_font_size_spin.value(),
-            file_list_use_app_font=self.file_list_use_app_font_checkbox.isChecked(),
-            file_list_font_family=str(
-                self.file_list_font_family_combo.currentData() or ""
-            ),
-            file_list_font_size_pt=self.file_list_font_size_spin.value(),
-            navigation_use_app_font=self.navigation_use_app_font_checkbox.isChecked(),
-            navigation_font_family=str(
-                self.navigation_font_family_combo.currentData() or ""
-            ),
-            navigation_font_size_pt=self.navigation_font_size_spin.value(),
-            active_panel_tint_color_hex=self._active_color_hex,
-            active_panel_tint_intensity_percent=self.active_intensity_slider.value(),
-            target_panel_tint_color_hex=self._target_color_hex,
-            target_panel_tint_intensity_percent=self.target_intensity_slider.value(),
+        preferences_sync.sync_slider_value_labels(self)
+        self._working_preferences = preferences_sync.collect_preferences_from_controls(
+            self
         )
         self.update_backend_generated_previews()
         self._pending_live_preview = True
@@ -1427,7 +1321,10 @@ class SettingsDialog(QDialog):
         if not selected.isValid():
             return
         self._active_color_hex = selected.name(QColor.NameFormat.HexRgb).upper()
-        self._sync_color_preview(self.active_color_preview, self._active_color_hex)
+        preferences_sync.sync_color_preview(
+            self.active_color_preview,
+            self._active_color_hex,
+        )
         self._on_controls_changed()
 
     def choose_target_color(self) -> None:
@@ -1437,270 +1334,22 @@ class SettingsDialog(QDialog):
         if not selected.isValid():
             return
         self._target_color_hex = selected.name(QColor.NameFormat.HexRgb).upper()
-        self._sync_color_preview(self.target_color_preview, self._target_color_hex)
-        self._on_controls_changed()
-
-    def _active_section_key(self) -> str:
-        subsection_key = self._selected_subsection_key()
-        subsection = self._subsections.get(subsection_key)
-        if subsection is None:
-            return ""
-        return subsection.section_key
-
-    def _resettable_fields_for_section(self, section_key: str) -> tuple[str, ...]:
-        return self.RESETTABLE_FIELDS_BY_SECTION.get(section_key, ())
-
-    def _apply_defaults_for_section(self, section_key: str) -> None:
-        field_names = self._resettable_fields_for_section(section_key)
-        if not field_names:
-            return
-        defaults = UiPreferences()
-        updates = {
-            field_name: getattr(defaults, field_name) for field_name in field_names
-        }
-        updated_preferences = replace(self._working_preferences, **updates)
-        self._load_preferences_into_controls(updated_preferences)
-        self._on_controls_changed()
-        self._update_reset_controls()
-
-    def _on_reset_current_section(self) -> None:
-        section_key = self._active_section_key()
-        if not section_key:
-            return
-        if not self._resettable_fields_for_section(section_key):
-            return
-        self._pending_full_store_reset = False
-        self._apply_defaults_for_section(section_key)
-
-    def _on_reset_all_everything_stored(self) -> None:
-        decision = QMessageBox.warning(
-            self,
-            "Reset Everything Stored",
-            (
-                "Schedule full reset of all stored settings and session data?\n\n"
-                "Apply/OK will clear the entire settings store, then persist current "
-                "defaults. Cancel keeps existing persisted settings unchanged."
-            ),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
+        preferences_sync.sync_color_preview(
+            self.target_color_preview,
+            self._target_color_hex,
         )
-        if decision != QMessageBox.StandardButton.Yes:
-            return
-        self._pending_full_store_reset = True
-        self._load_preferences_into_controls(UiPreferences())
         self._on_controls_changed()
-        self._update_reset_controls()
-
-    def _update_reset_controls(self) -> None:
-        section_key = self._active_section_key()
-        section_entry = self._sections.get(section_key)
-        section_text = section_entry.title if section_entry is not None else "(none)"
-        self.reset_section_context_label.setText(f"Current Section: {section_text}")
-        section_fields = self._resettable_fields_for_section(section_key)
-        self.reset_section_button.setEnabled(bool(section_fields))
-        self.reset_pending_label.setVisible(self._pending_full_store_reset)
-        if self._pending_full_store_reset:
-            self.reset_pending_label.setText(
-                "Full reset is scheduled. Apply/OK will clear all stored "
-                "settings and session data."
-            )
-        else:
-            self.reset_pending_label.setText("")
 
     def _accept_with_apply(self) -> None:
         self._apply_and_commit()
         self.accept()
 
     def _apply_and_commit(self) -> None:
-        self._on_controls_changed()
-        self._live_preview_timer.stop()
-        self._pending_live_preview = False
-        if self._pending_full_store_reset:
-            self.controller.settings.clear_all()
-        self.controller.apply_ui_preferences(self._working_preferences)
-        self._committed_preferences = replace(self._working_preferences)
-        self._pending_full_store_reset = False
-        self._update_reset_controls()
+        preferences_flow.apply_and_commit(self)
 
     def reject(self) -> None:
-        self._live_preview_timer.stop()
-        self._pending_live_preview = False
-        self._pending_full_store_reset = False
-        self.controller.preview_ui_preferences(self._committed_preferences)
-        self._update_reset_controls()
+        preferences_flow.prepare_reject(self)
         super().reject()
-
-    def _apply_search_filter(self, text: str) -> None:
-        query = str(text or "").strip().casefold()
-        visible_rows = 0
-        for section_key, section in self._sections.items():
-            section_visible_subsections = 0
-            for subsection_key in section.subsection_keys:
-                subsection = self._subsections.get(subsection_key)
-                if subsection is None:
-                    continue
-                subsection_visible_rows = 0
-                for row in subsection.rows:
-                    row_visible = (not query) or (query in row.terms)
-                    row.widget.setVisible(row_visible)
-                    if row_visible:
-                        subsection_visible_rows += 1
-                subsection.visible_row_count = subsection_visible_rows
-                subsection_visible = subsection_visible_rows > 0
-                subsection_item = self._subsection_tree_items.get(subsection_key)
-                if subsection_item is not None:
-                    subsection_item.setHidden(not subsection_visible)
-                if subsection_visible:
-                    section_visible_subsections += 1
-                visible_rows += subsection_visible_rows
-            section_visible = section_visible_subsections > 0
-            section_item = self._section_tree_items.get(section_key)
-            if section_item is not None:
-                section_item.setHidden(not section_visible)
-        self._no_matches_label.setVisible(bool(query) and visible_rows == 0)
-        self._ensure_visible_tree_selection(persist=False)
-        self._sync_active_subsection_visibility()
-        self._update_reset_controls()
-
-    def _restore_last_tree_selection(self) -> None:
-        saved_subsection = str(
-            self.controller.settings.settings_dialog_last_subsection or ""
-        )
-        saved_section = str(self.controller.settings.settings_dialog_last_section or "")
-        if saved_subsection:
-            item = self._subsection_tree_items.get(saved_subsection)
-            if item is not None and not item.isHidden():
-                self._set_current_tree_item(item, persist=False)
-                return
-        if saved_section and self._select_first_visible_subsection_for_section(
-            saved_section, persist=False
-        ):
-            return
-        self._ensure_visible_tree_selection(persist=False)
-
-    def _ensure_visible_tree_selection(self, *, persist: bool) -> None:
-        current = cast(
-            "QTreeWidgetItem | None",
-            self._section_tree.currentItem(),
-        )
-        if current is not None and self._activate_tree_item(current, persist=persist):
-            return
-        item = self._first_visible_subsection_item()
-        if item is not None:
-            self._set_current_tree_item(item, persist=persist)
-
-    def _on_section_tree_changed(
-        self, current: QTreeWidgetItem | None, _previous: QTreeWidgetItem | None
-    ) -> None:
-        if self._tree_sync_in_progress or current is None:
-            return
-        self._activate_tree_item(current, persist=True)
-
-    def _tree_item_payload(self, item: QTreeWidgetItem) -> tuple[str, str] | None:
-        payload = item.data(0, Qt.ItemDataRole.UserRole)
-        if not isinstance(payload, (list, tuple)):
-            return None
-        payload_parts = tuple(cast("tuple[object, ...]", payload))
-        if len(payload_parts) != 2:
-            return None
-        kind = str(payload_parts[0]).strip().lower()
-        key = str(payload_parts[1] or "").strip()
-        if kind not in {"section", "subsection"} or not key:
-            return None
-        return kind, key
-
-    def _activate_tree_item(self, item: QTreeWidgetItem, *, persist: bool) -> bool:
-        if item.isHidden():
-            return False
-        payload = self._tree_item_payload(item)
-        if payload is None:
-            return False
-        kind, key = payload
-        if kind == "section":
-            return self._select_first_visible_subsection_for_section(
-                key, persist=persist
-            )
-        return self._activate_subsection(key, persist=persist)
-
-    def _set_current_tree_item(self, item: QTreeWidgetItem, *, persist: bool) -> bool:
-        if item.isHidden():
-            return False
-        current = cast(
-            "QTreeWidgetItem | None",
-            self._section_tree.currentItem(),
-        )
-        if current is not item:
-            self._tree_sync_in_progress = True
-            try:
-                self._section_tree.setCurrentItem(item)
-            finally:
-                self._tree_sync_in_progress = False
-        return self._activate_tree_item(item, persist=persist)
-
-    def _first_visible_subsection_item(self) -> QTreeWidgetItem | None:
-        for section_key in self._sections:
-            section_item = self._section_tree_items.get(section_key)
-            if section_item is None or section_item.isHidden():
-                continue
-            for index in range(section_item.childCount()):
-                child = section_item.child(index)
-                if not child.isHidden():
-                    return child
-        return None
-
-    def _select_first_visible_subsection_for_section(
-        self,
-        section_key: str,
-        *,
-        persist: bool,
-    ) -> bool:
-        section_item = self._section_tree_items.get(section_key)
-        if section_item is None or section_item.isHidden():
-            return False
-        for index in range(section_item.childCount()):
-            child = section_item.child(index)
-            if child.isHidden():
-                continue
-            return self._set_current_tree_item(child, persist=persist)
-        return False
-
-    def _activate_subsection(self, subsection_key: str, *, persist: bool) -> bool:
-        subsection = self._subsections.get(subsection_key)
-        if subsection is None or subsection.visible_row_count <= 0:
-            return False
-        self._active_subsection_key = subsection_key
-        self._sync_active_subsection_visibility()
-        self._update_reset_controls()
-        if persist:
-            self.controller.settings.settings_dialog_last_section = (
-                subsection.section_key
-            )
-            self.controller.settings.settings_dialog_last_subsection = subsection.key
-        return True
-
-    def _sync_active_subsection_visibility(self) -> None:
-        active_key = str(self._active_subsection_key or "")
-        for key, subsection in self._subsections.items():
-            subsection.group.setVisible(
-                key == active_key and subsection.visible_row_count > 0
-            )
-        if active_key:
-            self._scroll.verticalScrollBar().setValue(0)
-
-    def _selected_subsection_key(self) -> str:
-        current = cast(
-            "QTreeWidgetItem | None",
-            self._section_tree.currentItem(),
-        )
-        if current is None:
-            return ""
-        payload = self._tree_item_payload(current)
-        if payload is None:
-            return ""
-        kind, key = payload
-        if kind != "subsection":
-            return ""
-        return key
 
     def assign_identity(self, widget: QWidget, widget_id: str, alias: str) -> None:
         assign_widget_identity(widget, widget_id=widget_id, widget_alias=alias)
