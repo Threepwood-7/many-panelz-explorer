@@ -1,4 +1,5 @@
 import os
+from os import linesep
 from pathlib import Path
 
 import pytest
@@ -1116,6 +1117,26 @@ def test_settings_dialog_browse_normalizes_windows_executable_paths(
     assert (
         persisted.unstoppable_executable == r"C:\bin\roadkil\UnstopCpy_5_2_Win2K_UP.exe"
     )
+
+
+def test_backend_create_test_paths_writes_runtime_txt_with_crlf_and_no_bom(
+    tmp_path: Path,
+) -> None:
+    from many_panelz_explorer.dialogs.settings import backend_actions
+
+    sources, target_dir = backend_actions.create_test_paths(tmp_path, kind="copy")
+
+    sample_file = next(path for path in sources if path.name == "sample-file.txt")
+    nested_file = tmp_path / "source" / "sample-dir" / "nested.txt"
+    assert target_dir == tmp_path / "target"
+
+    for file_path, expected_text in (
+        (sample_file, f"many-panelz test{linesep}"),
+        (nested_file, f"nested{linesep}"),
+    ):
+        raw = file_path.read_bytes()
+        assert raw.startswith(b"\xef\xbb\xbf") is False
+        assert raw.decode("utf-8") == expected_text
 
 
 def test_settings_dialog_rich_backend_controls_update_preview_and_persist(

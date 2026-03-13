@@ -23,6 +23,7 @@ from ..._operations.types import (
     OperationRequest,
 )
 from ..._settings import normalize as settings_normalize
+from ...runtime_text import write_runtime_lines
 
 if TYPE_CHECKING:
     from ..settings_dialog import SettingsDialog
@@ -136,10 +137,14 @@ def create_test_paths(
         source_root = root / "source"
         source_root.mkdir(parents=True, exist_ok=True)
         sample_file = source_root / "sample-file.txt"
-        sample_file.write_text("many-panelz test\n", encoding="utf-8")
+        write_runtime_lines(sample_file, ["many-panelz test"], trailing_newline=True)
         sample_dir = source_root / "sample-dir"
         sample_dir.mkdir(parents=True, exist_ok=True)
-        (sample_dir / "nested.txt").write_text("nested\n", encoding="utf-8")
+        write_runtime_lines(
+            sample_dir / "nested.txt",
+            ["nested"],
+            trailing_newline=True,
+        )
         target_dir = root / "target"
         target_dir.mkdir(parents=True, exist_ok=True)
         return [sample_file, sample_dir], target_dir
@@ -147,10 +152,14 @@ def create_test_paths(
     delete_root = root / "delete-source"
     delete_root.mkdir(parents=True, exist_ok=True)
     sample_file = delete_root / "to-delete.txt"
-    sample_file.write_text("delete me\n", encoding="utf-8")
+    write_runtime_lines(sample_file, ["delete me"], trailing_newline=True)
     sample_dir = delete_root / "to-delete-dir"
     sample_dir.mkdir(parents=True, exist_ok=True)
-    (sample_dir / "nested.txt").write_text("delete nested\n", encoding="utf-8")
+    write_runtime_lines(
+        sample_dir / "nested.txt",
+        ["delete nested"],
+        trailing_newline=True,
+    )
     return [sample_file, sample_dir], None
 
 

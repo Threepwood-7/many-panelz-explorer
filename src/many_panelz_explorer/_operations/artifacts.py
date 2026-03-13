@@ -11,6 +11,7 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
+from ..runtime_text import write_runtime_lines
 from .path_helpers import quoted, to_windows_arg_path
 from .types import OperationArtifacts, OperationJob, OperationResult
 
@@ -94,16 +95,16 @@ def write_exception_log(
 def write_script(artifacts: OperationArtifacts, script_lines: list[str]) -> Path:
     """Write the launcher script used by companion executors."""
     script_path = artifacts.script_path or (artifacts.job_dir / "run.cmd")
-    full_text = "\n".join(
+    write_runtime_lines(
+        script_path,
         [
             "@echo off",
             "chcp 65001 >nul",
             "setlocal enableextensions",
             *list(script_lines),
             "exit /b %ERRORLEVEL%",
-        ]
+        ],
     )
-    script_path.write_text(full_text, encoding="utf-8", newline="\n")
     return script_path
 
 
@@ -123,10 +124,7 @@ def write_unstoppable_job_file(
         )
         for source in sources
     ]
-    payload = "\r\n".join(lines)
-    if payload:
-        payload = f"{payload}\r\n"
-    job_path.write_text(payload, encoding="utf-16", newline="")
+    write_runtime_lines(job_path, lines, trailing_newline=bool(lines))
     return job_path
 
 

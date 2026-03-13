@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+from os import linesep
 from typing import TYPE_CHECKING
 
 from many_panelz_explorer._operations.artifacts import (
@@ -118,6 +119,15 @@ def test_write_script_uses_utf8_without_bom_and_sets_chcp_first(tmp_path: Path) 
     raw = script_path.read_bytes()
 
     assert raw.startswith(b"\xef\xbb\xbf") is False
+    assert raw.decode("utf-8") == linesep.join(
+        [
+            "@echo off",
+            "chcp 65001 >nul",
+            "setlocal enableextensions",
+            "echo hello",
+            "exit /b %ERRORLEVEL%",
+        ]
+    )
     lines = script_path.read_text(encoding="utf-8").splitlines()
     assert lines[0] == "@echo off"
     assert lines[1].lower() == "chcp 65001 >nul"
@@ -150,7 +160,13 @@ def test_write_unstoppable_job_file_uses_utf16le_bom_and_source_target_lines(
 
     raw = job_path.read_bytes()
     assert raw.startswith(b"\xff\xfe")
-    assert raw == (f"{source_a}|{target}\r\n{source_b}|{target}\r\n".encode("utf-16"))
+    assert raw.decode("utf-16") == linesep.join(
+        [
+            f"{source_a}|{target}",
+            f"{source_b}|{target}",
+            "",
+        ]
+    )
 
 
 def test_write_unstoppable_job_file_uses_extended_paths_when_enabled(
