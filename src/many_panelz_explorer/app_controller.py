@@ -78,7 +78,7 @@ class AppController:
     ) -> ExplorerWindow:
         initial_path = Path.home()
         if from_window is not None:
-            active_panel = from_window.active_panel()
+            active_panel = from_window.panels_coordinator.active_panel()
             if active_panel is not None:
                 initial_path = active_panel.current_path()
             if roots_provider is None:
@@ -108,7 +108,7 @@ class AppController:
 
     def close_window(self, window: ExplorerWindow) -> None:
         # Persist the last closed window so app restart can restore it.
-        window.save_to_settings()
+        window.persistence_coordinator.save_to_settings()
         if window in self.windows:
             was_last = len(self.windows) == 1
             self.windows.remove(window)
@@ -137,7 +137,7 @@ class AppController:
         for window in list(self.windows):
             if not window.isVisible():
                 continue
-            window.save_to_settings()
+            window.persistence_coordinator.save_to_settings()
             window_ids.append(window.window_id)
 
         if not window_ids and self._last_closed_window_id is not None:
@@ -154,7 +154,7 @@ class AppController:
 
         for window_id in window_ids:
             window = self.new_window(window_id=window_id, show=False)
-            window.restore_from_settings()
+            window.persistence_coordinator.restore_from_settings()
             window.show()
 
     def _on_window_activated(self, _window: ExplorerWindow | None = None) -> None:
@@ -198,7 +198,7 @@ class AppController:
         source_tab: object | None = None,
     ) -> None:
         for window in list(self.windows):
-            window.apply_column_widths_all_panels(
+            window.panels_coordinator.apply_column_widths_all_panels(
                 widths,
                 source_panel_id=source_panel_id if window is source_window else None,
                 source_tab=source_tab if window is source_window else None,

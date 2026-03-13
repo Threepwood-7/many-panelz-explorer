@@ -40,6 +40,11 @@ class _FakeWindow:
 class _FakeClosableWindow:
     def __init__(self, window_id: str) -> None:
         self.window_id = window_id
+        self.persistence_coordinator = _FakePersistenceCoordinator()
+
+
+class _FakePersistenceCoordinator:
+    def __init__(self) -> None:
         self.saved = 0
 
     def save_to_settings(self) -> None:
@@ -127,5 +132,5 @@ def test_save_session_uses_last_closed_window_when_none_open(tmp_path: Path) -> 
     controller.close_window(fake)  # type: ignore[arg-type]
     controller.save_session()
 
-    assert fake.saved == 1
+    assert fake.persistence_coordinator.saved == 1
     assert controller.settings.session_window_ids() == ["w-closed"]

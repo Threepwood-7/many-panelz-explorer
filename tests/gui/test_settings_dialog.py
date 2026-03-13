@@ -113,7 +113,7 @@ class _ControllerSettingsStub:
         source_tab: object | None = None,
     ) -> None:
         for window in list(self.windows):
-            window.apply_column_widths_all_panels(
+            window.panels_coordinator.apply_column_widths_all_panels(
                 widths,
                 source_panel_id=source_panel_id if window is source_window else None,
                 source_tab=source_tab if window is source_window else None,
@@ -431,8 +431,8 @@ def test_settings_live_preview_all_windows_and_cancel_revert(
         roots_provider=roots_provider,
     )
 
-    first_active = first.active_panel()
-    second_active = second.active_panel()
+    first_active = first.panels_coordinator.active_panel()
+    second_active = second.panels_coordinator.active_panel()
     assert first_active is not None
     assert second_active is not None
     assert "rgba(168, 182, 196, 61)" in first_active.styleSheet()
@@ -536,7 +536,7 @@ def test_settings_apply_persists_and_new_window_uses_values(
         window_id="settings-apply-reopened",
         roots_provider=roots_provider,
     )
-    reopened_panel = reopened.active_panel()
+    reopened_panel = reopened.panels_coordinator.active_panel()
     assert reopened_panel is not None
     assert reopened.show_hidden_action.isChecked() is False
     assert reopened_panel.root_combo.isVisible() is True
@@ -596,8 +596,8 @@ def test_settings_checkbox_changes_sync_existing_windows(
     qtbot.waitUntil(lambda: first.show_hidden_action.isChecked() is False)
     assert second.show_hidden_action.isChecked() is False
 
-    first_panel = first.active_panel()
-    second_panel = second.active_panel()
+    first_panel = first.panels_coordinator.active_panel()
+    second_panel = second.panels_coordinator.active_panel()
     assert first_panel is not None
     assert second_panel is not None
     assert first_panel.root_combo.isVisible() is True
@@ -922,7 +922,7 @@ def test_settings_byte_format_preview_and_persistence(
     root.mkdir(parents=True, exist_ok=True)
     sample = root / "sample.bin"
     sample.write_bytes(b"x" * 3_500)
-    panel = window.active_panel()
+    panel = window.panels_coordinator.active_panel()
     assert panel is not None
     tab = panel.current_tab()
     assert tab is not None

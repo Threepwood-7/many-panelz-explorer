@@ -25,7 +25,7 @@ class WindowUiComposer:
         self.window.new_tab_action = QAction("&New Tab", self.window)
         self.window.new_tab_action.setShortcut(QKeySequence("Ctrl+T"))
         self.window.new_tab_action.triggered.connect(
-            self.window.new_tab_in_active_panel
+            self.window.panels_coordinator.new_tab_in_active_panel
         )
 
         self.window.new_vertical_panel_action = QAction(
@@ -33,7 +33,9 @@ class WindowUiComposer:
         )
         self.window.new_vertical_panel_action.setShortcut(QKeySequence("Ctrl+P"))
         self.window.new_vertical_panel_action.triggered.connect(
-            lambda: self.window.split_active_panel(Qt.Orientation.Horizontal)
+            lambda: self.window.panels_coordinator.split_active_panel(
+                Qt.Orientation.Horizontal
+            )
         )
 
         self.window.new_horizontal_panel_action = QAction(
@@ -41,60 +43,78 @@ class WindowUiComposer:
         )
         self.window.new_horizontal_panel_action.setShortcut(QKeySequence("Ctrl+H"))
         self.window.new_horizontal_panel_action.triggered.connect(
-            lambda: self.window.split_active_panel(Qt.Orientation.Vertical)
+            lambda: self.window.panels_coordinator.split_active_panel(
+                Qt.Orientation.Vertical
+            )
         )
 
         self.window.clone_vertical_panel_action = QAction(
             "Clone Current Panel (Ver&tical)", self.window
         )
         self.window.clone_vertical_panel_action.triggered.connect(
-            lambda: self.window.clone_active_panel(Qt.Orientation.Horizontal)
+            lambda: self.window.panels_coordinator.clone_active_panel(
+                Qt.Orientation.Horizontal
+            )
         )
 
         self.window.clone_horizontal_panel_action = QAction(
             "Clone Current Panel (Hori&zontal)", self.window
         )
         self.window.clone_horizontal_panel_action.triggered.connect(
-            lambda: self.window.clone_active_panel(Qt.Orientation.Vertical)
+            lambda: self.window.panels_coordinator.clone_active_panel(
+                Qt.Orientation.Vertical
+            )
         )
 
         self.window.copy_to_target_action = QAction("&Copy to Target Pane", self.window)
         self.window.copy_to_target_action.setShortcut(QKeySequence("F5"))
         self.window.copy_to_target_action.triggered.connect(
-            self.window.copy_selected_to_target
+            lambda: self.window.operations_coordinator.transfer_selected_to_target(
+                move=False
+            )
         )
 
         self.window.copy_to_target_configure_action = QAction(
             "Copy to Target Pane (Configure...)", self.window
         )
         self.window.copy_to_target_configure_action.triggered.connect(
-            lambda: self.window.copy_selected_to_target(configure=True)
+            lambda: self.window.operations_coordinator.transfer_selected_to_target(
+                move=False,
+                configure=True,
+            )
         )
 
         self.window.move_to_target_action = QAction("&Move to Target Pane", self.window)
         self.window.move_to_target_action.setShortcut(QKeySequence("F6"))
         self.window.move_to_target_action.triggered.connect(
-            self.window.move_selected_to_target
+            lambda: self.window.operations_coordinator.transfer_selected_to_target(
+                move=True
+            )
         )
 
         self.window.move_to_target_configure_action = QAction(
             "Move to Target Pane (Configure...)", self.window
         )
         self.window.move_to_target_configure_action.triggered.connect(
-            lambda: self.window.move_selected_to_target(configure=True)
+            lambda: self.window.operations_coordinator.transfer_selected_to_target(
+                move=True,
+                configure=True,
+            )
         )
 
         self.window.delete_selection_action = QAction("&Delete Selection", self.window)
         self.window.delete_selection_action.setShortcut(QKeySequence("F8"))
         self.window.delete_selection_action.triggered.connect(
-            self.window.delete_selected_items
+            self.window.operations_coordinator.delete_selected_items
         )
 
         self.window.delete_selection_configure_action = QAction(
             "Delete Selection (Configure...)", self.window
         )
         self.window.delete_selection_configure_action.triggered.connect(
-            lambda: self.window.delete_selected_items(configure=True)
+            lambda: self.window.operations_coordinator.delete_selected_items(
+                configure=True
+            )
         )
 
         self.window.new_window_action = QAction("New &Window", self.window)
@@ -119,11 +139,15 @@ class WindowUiComposer:
 
         self.window.close_tab_action = QAction("Close Ta&b", self.window)
         self.window.close_tab_action.setShortcut(QKeySequence("Ctrl+W"))
-        self.window.close_tab_action.triggered.connect(self.window.close_active_tab)
+        self.window.close_tab_action.triggered.connect(
+            self.window.panels_coordinator.close_active_tab
+        )
 
         self.window.close_panel_action = QAction("Close Pane&l", self.window)
         self.window.close_panel_action.setShortcut(QKeySequence("Ctrl+Shift+W"))
-        self.window.close_panel_action.triggered.connect(self.window.close_active_panel)
+        self.window.close_panel_action.triggered.connect(
+            self.window.panels_coordinator.close_active_panel
+        )
 
         self.window.close_window_action = QAction("Close Win&dow", self.window)
         self.window.close_window_action.setShortcut(QKeySequence("Alt+W"))
@@ -137,7 +161,9 @@ class WindowUiComposer:
 
         self.window.refresh_action = QAction("&Refresh", self.window)
         self.window.refresh_action.setShortcut(QKeySequence("Ctrl+R"))
-        self.window.refresh_action.triggered.connect(self.window.refresh_active_panel)
+        self.window.refresh_action.triggered.connect(
+            self.window.panels_coordinator.refresh_active_panel
+        )
 
         self.window.on_top_action = QAction("On &Top", self.window)
         self.window.on_top_action.setCheckable(True)
@@ -161,14 +187,14 @@ class WindowUiComposer:
             "Align Columns: Current Panel Tabs", self.window
         )
         self.window.align_columns_current_panel_tabs_action.triggered.connect(
-            self.window.align_columns_current_panel_tabs
+            self.window.panels_coordinator.align_columns_current_panel_tabs
         )
 
         self.window.align_columns_all_panels_tabs_action = QAction(
             "Align Columns: All Panels and Tabs", self.window
         )
         self.window.align_columns_all_panels_tabs_action.triggered.connect(
-            self.window.align_columns_all_panels_tabs
+            self.window.panels_coordinator.align_columns_all_panels_tabs
         )
 
         self.window.show_queue_dock_action = QAction("Show Queue Dock", self.window)
@@ -195,7 +221,9 @@ class WindowUiComposer:
         self.window.next_pane_shortcut.setContext(
             Qt.ShortcutContext.WidgetWithChildrenShortcut
         )
-        self.window.next_pane_shortcut.activated.connect(self.window.focus_next_panel)
+        self.window.next_pane_shortcut.activated.connect(
+            self.window.panels_coordinator.focus_next_panel
+        )
 
         self.window.previous_pane_shortcut = QShortcut(
             QKeySequence("Shift+Tab"), self.window
@@ -204,7 +232,7 @@ class WindowUiComposer:
             Qt.ShortcutContext.WidgetWithChildrenShortcut
         )
         self.window.previous_pane_shortcut.activated.connect(
-            self.window.focus_previous_panel
+            self.window.panels_coordinator.focus_previous_panel
         )
 
         self.window.menu_focus_shortcut = QShortcut(QKeySequence("F10"), self.window)

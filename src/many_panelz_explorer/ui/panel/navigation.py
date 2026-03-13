@@ -194,9 +194,6 @@ class PanelNavigationCoordinator:
         if tab is not None:
             tab.navigation.refresh()
 
-    def refresh(self) -> None:
-        self.refresh_current_path()
-
     def on_address_submitted(self) -> None:
         tab = self.panel.current_tab()
         if tab is None:

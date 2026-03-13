@@ -31,11 +31,11 @@ class WindowPersistenceCoordinator:
             self.window.restoreGeometry(raw)
 
     def serialize_state(self, *, include_geometry: bool = False) -> dict[str, Any]:
-        self.window.sync_panel_tree_from_rows()
+        self.window.layout_coordinator.sync_panel_tree_from_rows()
         payload: dict[str, Any] = {
             "window_id": self.window.window_id,
             "panel_tree": self.window.panel_tree.to_dict(),
-            "tabs": self.window.serialize_tabs_state(),
+            "tabs": self.window.panels_coordinator.serialize_tabs_state(),
             "active_panel_id": self.window.active_panel_id,
             "on_top": self.window.on_top_action.isChecked(),
         }
@@ -80,7 +80,7 @@ class WindowPersistenceCoordinator:
                     self.window, "Restore", f"Could not restore panel tree: {exc}"
                 )
                 self.window.panel_tree = PanelTreeModel()
-        self.window.layout_rows = self.window.rows_from_tree(
+        self.window.layout_rows = self.window.layout_coordinator.rows_from_tree(
             self.window.panel_tree.root
         )
 
@@ -106,11 +106,13 @@ class WindowPersistenceCoordinator:
                 continue
             if isinstance(state, dict):
                 tabs_state[panel_id] = state
-        self.window.layout_rows = self.window.append_missing_panel_ids(
-            self.window.layout_rows,
-            list(tabs_state.keys()),
+        self.window.layout_rows = (
+            self.window.layout_coordinator.append_missing_panel_ids(
+                self.window.layout_rows,
+                list(tabs_state.keys()),
+            )
         )
-        self.window.sync_panel_tree_from_rows()
+        self.window.layout_coordinator.sync_panel_tree_from_rows()
 
         preferred_active = None
         raw_active = tabs_payload.get("active_panel_id")
@@ -120,7 +122,7 @@ class WindowPersistenceCoordinator:
             except (TypeError, ValueError):
                 preferred_active = None
 
-        self.window.rebuild_from_tree(
+        self.window.panels_coordinator.rebuild_from_tree(
             tabs_state=tabs_state, preferred_active_panel=preferred_active
         )
 
@@ -148,7 +150,7 @@ class WindowPersistenceCoordinator:
             self.window.panel_tree = PanelTreeModel.from_dict(
                 cast("dict[str, Any]", panel_tree_data)
             )
-        self.window.layout_rows = self.window.rows_from_tree(
+        self.window.layout_rows = self.window.layout_coordinator.rows_from_tree(
             self.window.panel_tree.root
         )
 
@@ -162,11 +164,13 @@ class WindowPersistenceCoordinator:
                     continue
                 if isinstance(panel_state, dict):
                     tabs_state[panel_id_int] = panel_state
-        self.window.layout_rows = self.window.append_missing_panel_ids(
-            self.window.layout_rows,
-            list(tabs_state.keys()),
+        self.window.layout_rows = (
+            self.window.layout_coordinator.append_missing_panel_ids(
+                self.window.layout_rows,
+                list(tabs_state.keys()),
+            )
         )
-        self.window.sync_panel_tree_from_rows()
+        self.window.layout_coordinator.sync_panel_tree_from_rows()
 
         preferred_active_panel: int | None
         raw_active_panel = state.get("active_panel_id")
@@ -177,7 +181,7 @@ class WindowPersistenceCoordinator:
         except (TypeError, ValueError):
             preferred_active_panel = None
 
-        self.window.rebuild_from_tree(
+        self.window.panels_coordinator.rebuild_from_tree(
             tabs_state=tabs_state,
             preferred_active_panel=preferred_active_panel,
         )

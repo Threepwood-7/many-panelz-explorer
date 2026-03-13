@@ -72,7 +72,7 @@ def test_context_menu_hidden_without_modes(qtbot, tmp_path: Path) -> None:
 
     empty_dir = tmp_path / "empty"
     empty_dir.mkdir()
-    panel = window.active_panel()
+    panel = window.panels_coordinator.active_panel()
     assert panel is not None
     panel.current_tab().navigation.set_path(empty_dir)
     qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is False)
@@ -94,7 +94,7 @@ def test_context_menu_shows_python_mode(qtbot, tmp_path: Path) -> None:
     (py_root / "pyproject.toml").write_text(
         "[project]\nname='demo'\n", encoding="utf-8"
     )
-    panel = window.active_panel()
+    panel = window.panels_coordinator.active_panel()
     assert panel is not None
     panel.current_tab().navigation.set_path(py_root)
     qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is True)
@@ -126,7 +126,7 @@ def test_context_menu_tracks_current_and_child_roots(qtbot, tmp_path: Path) -> N
         '{"name":"child","scripts":{"dev":"echo child"}}',
         encoding="utf-8",
     )
-    panel = window.active_panel()
+    panel = window.panels_coordinator.active_panel()
     assert panel is not None
     panel.current_tab().navigation.set_path(root)
     qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is True)
@@ -163,7 +163,7 @@ def test_context_scripts_load_lazily(qtbot, tmp_path: Path, monkeypatch) -> None
         '{"name":"node-scripts","scripts":{"dev":"vite","test":"vitest"}}',
         encoding="utf-8",
     )
-    panel = window.active_panel()
+    panel = window.panels_coordinator.active_panel()
     assert panel is not None
     panel.current_tab().navigation.set_path(root)
     qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is True)
@@ -206,7 +206,7 @@ def test_context_menu_rebuilds_on_tab_switch(qtbot, tmp_path: Path) -> None:
     py_root.mkdir()
     (py_root / "pyproject.toml").write_text("[project]\nname='x'\n", encoding="utf-8")
 
-    panel = window.active_panel()
+    panel = window.panels_coordinator.active_panel()
     assert panel is not None
     first_tab = panel.current_tab()
     assert first_tab is not None
@@ -237,7 +237,7 @@ def test_context_menu_disables_missing_tools_with_hints(
     (root / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
     _write_git_marker(root)
 
-    panel = window.active_panel()
+    panel = window.panels_coordinator.active_panel()
     assert panel is not None
     panel.current_tab().navigation.set_path(root)
     qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is True)
@@ -288,7 +288,7 @@ def test_context_menu_rebuilds_on_window_activation(
     (py_root / "pyproject.toml").write_text(
         "[project]\nname='demo'\n", encoding="utf-8"
     )
-    panel = window.active_panel()
+    panel = window.panels_coordinator.active_panel()
     assert panel is not None
     panel.current_tab().navigation.set_path(py_root)
     qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is True)

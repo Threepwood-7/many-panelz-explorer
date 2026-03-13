@@ -62,7 +62,7 @@ class _ControllerBroadcastStub(_ControllerStub):
         source_tab: object | None = None,
     ) -> None:
         for window in list(self.windows):
-            window.apply_column_widths_all_panels(
+            window.panels_coordinator.apply_column_widths_all_panels(
                 widths,
                 source_panel_id=source_panel_id if window is source_window else None,
                 source_tab=source_tab if window is source_window else None,
@@ -124,20 +124,20 @@ def test_split_tab_close_actions(qtbot, tmp_path: Path) -> None:
     window.show()
 
     assert len(window.panel_widgets) == 1
-    panel = window.active_panel()
+    panel = window.panels_coordinator.active_panel()
     assert panel is not None
     assert panel.tab_count() == 1
 
-    window.new_tab_in_active_panel()
-    assert window.active_panel().tab_count() == 2
+    window.panels_coordinator.new_tab_in_active_panel()
+    assert window.panels_coordinator.active_panel().tab_count() == 2
 
-    window.close_active_tab()
-    assert window.active_panel().tab_count() == 1
+    window.panels_coordinator.close_active_tab()
+    assert window.panels_coordinator.active_panel().tab_count() == 1
 
-    window.split_active_panel(Qt.Orientation.Horizontal)
+    window.panels_coordinator.split_active_panel(Qt.Orientation.Horizontal)
     assert len(window.panel_widgets) == 2
 
-    window.close_active_panel()
+    window.panels_coordinator.close_active_panel()
     assert len(window.panel_widgets) == 1
 
 
@@ -153,7 +153,7 @@ def test_show_hidden_toggle_updates_tabs(qtbot, tmp_path: Path) -> None:
     qtbot.addWidget(window)
     window.show()
 
-    panel = window.active_panel()
+    panel = window.panels_coordinator.active_panel()
     tab = panel.current_tab()
     assert tab is not None
 
@@ -208,8 +208,8 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
     qtbot.addWidget(window)
     window.show()
 
-    window.new_tab_in_active_panel()
-    source_panel = window.active_panel()
+    window.panels_coordinator.new_tab_in_active_panel()
+    source_panel = window.panels_coordinator.active_panel()
     assert source_panel is not None
     source_panel.tabs.setCurrentIndex(0)
     source_tab_count = source_panel.tab_count()
@@ -217,14 +217,14 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
 
     window.clone_vertical_panel_action.trigger()
     assert len(window.panel_widgets) == 2
-    cloned_panel_vertical = window.active_panel()
+    cloned_panel_vertical = window.panels_coordinator.active_panel()
     assert cloned_panel_vertical is not None
     assert cloned_panel_vertical.tab_count() == source_tab_count
     assert cloned_panel_vertical.tabs.currentIndex() == source_current_index
 
     window.clone_horizontal_panel_action.trigger()
     assert len(window.panel_widgets) == 4
-    cloned_panel_horizontal = window.active_panel()
+    cloned_panel_horizontal = window.panels_coordinator.active_panel()
     assert cloned_panel_horizontal is not None
     assert cloned_panel_horizontal.tab_count() == source_tab_count
     assert cloned_panel_horizontal.tabs.currentIndex() == source_current_index
@@ -267,7 +267,7 @@ def test_clone_current_window_action(qtbot, tmp_path: Path) -> None:
     qtbot.addWidget(source)
     source.show()
 
-    source.new_tab_in_active_panel()
+    source.panels_coordinator.new_tab_in_active_panel()
     source.clone_vertical_panel_action.trigger()
     source.set_on_top(True)
 
@@ -324,9 +324,11 @@ def test_root_dropdown_ini_setting_controls_panel_dropdown(
     )
     qtbot.addWidget(window_on)
     window_on.show()
-    assert window_on.active_panel() is not None
-    assert window_on.active_panel().root_combo.isVisible() is True
-    qtbot.waitUntil(lambda: window_on.active_panel().root_combo.width() > 0)
+    assert window_on.panels_coordinator.active_panel() is not None
+    assert window_on.panels_coordinator.active_panel().root_combo.isVisible() is True
+    qtbot.waitUntil(
+        lambda: window_on.panels_coordinator.active_panel().root_combo.width() > 0
+    )
 
     settings_off = SettingsManager()
     settings_off.show_root_dropdown = False
@@ -340,8 +342,8 @@ def test_root_dropdown_ini_setting_controls_panel_dropdown(
     )
     qtbot.addWidget(window_off)
     window_off.show()
-    assert window_off.active_panel() is not None
-    assert window_off.active_panel().root_combo.isVisible() is False
+    assert window_off.panels_coordinator.active_panel() is not None
+    assert window_off.panels_coordinator.active_panel().root_combo.isVisible() is False
 
 
 def test_apply_ui_preferences_updates_toolbar_visibility_flags(
@@ -421,8 +423,8 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     source.resize(777, 555)
     source.move(120, 130)
 
-    source.new_tab_in_active_panel()
-    source.split_active_panel(Qt.Orientation.Horizontal)
+    source.panels_coordinator.new_tab_in_active_panel()
+    source.panels_coordinator.split_active_panel(Qt.Orientation.Horizontal)
     source.set_on_top(True)
     assert len(source.panel_widgets) == 2
 
@@ -439,7 +441,7 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     assert "geometry_b64" in saved
     assert saved["on_top"] is True
 
-    source.close_active_panel()
+    source.panels_coordinator.close_active_panel()
     assert len(source.panel_widgets) == 1
 
     monkeypatch.setattr(QInputDialog, "getItem", lambda *_a, **_k: ("My View", True))
@@ -545,8 +547,8 @@ def test_copy_to_target_uses_last_active_non_source_panel(
 
     monkeypatch.setattr(queue_manager, "submit", _capture_submit)
 
-    window._set_active_panel(preferred_target_id)
-    window._set_active_panel(source_id)
+    window.panels_coordinator.set_active_panel(preferred_target_id)
+    window.panels_coordinator.set_active_panel(source_id)
     window.copy_to_target_action.trigger()
 
     assert captured == [dst_dir]
@@ -588,8 +590,8 @@ def test_status_bar_persistent_source_target_paths_update_with_context_changes(
     source_panel.current_tab().navigation.set_path(source_dir)
     target_panel.current_tab().navigation.set_path(target_dir)
 
-    window._set_active_panel(target_id)
-    window._set_active_panel(source_id)
+    window.panels_coordinator.set_active_panel(target_id)
+    window.panels_coordinator.set_active_panel(source_id)
 
     qtbot.waitUntil(
         lambda: window.source_path_label.text() == f"Source path: {source_dir}"
@@ -844,9 +846,13 @@ def test_copy_or_move_conflict_choices(qtbot, tmp_path: Path, monkeypatch) -> No
     existing = destination_dir / "source.txt"
     existing.write_text("dst", encoding="utf-8")
 
-    monkeypatch.setattr(window, "prompt_conflict_resolution", lambda *_a, **_k: "skip")
+    monkeypatch.setattr(
+        window.operations_coordinator,
+        "prompt_conflict_resolution",
+        lambda *_a, **_k: "skip",
+    )
     assert (
-        window._copy_or_move_one(
+        window.operations_coordinator.copy_or_move_one(
             source=source, destination_dir=destination_dir, move=False
         )
         == "skip"
@@ -854,10 +860,12 @@ def test_copy_or_move_conflict_choices(qtbot, tmp_path: Path, monkeypatch) -> No
     assert existing.read_text(encoding="utf-8") == "dst"
 
     monkeypatch.setattr(
-        window, "prompt_conflict_resolution", lambda *_a, **_k: "rename"
+        window.operations_coordinator,
+        "prompt_conflict_resolution",
+        lambda *_a, **_k: "rename",
     )
     assert (
-        window._copy_or_move_one(
+        window.operations_coordinator.copy_or_move_one(
             source=source, destination_dir=destination_dir, move=False
         )
         == "done"
@@ -865,11 +873,13 @@ def test_copy_or_move_conflict_choices(qtbot, tmp_path: Path, monkeypatch) -> No
     assert (destination_dir / "source (1).txt").exists()
 
     monkeypatch.setattr(
-        window, "prompt_conflict_resolution", lambda *_a, **_k: "overwrite"
+        window.operations_coordinator,
+        "prompt_conflict_resolution",
+        lambda *_a, **_k: "overwrite",
     )
     source.write_text("new", encoding="utf-8")
     assert (
-        window._copy_or_move_one(
+        window.operations_coordinator.copy_or_move_one(
             source=source, destination_dir=destination_dir, move=False
         )
         == "done"
@@ -877,10 +887,12 @@ def test_copy_or_move_conflict_choices(qtbot, tmp_path: Path, monkeypatch) -> No
     assert existing.read_text(encoding="utf-8") == "new"
 
     monkeypatch.setattr(
-        window, "prompt_conflict_resolution", lambda *_a, **_k: "cancel"
+        window.operations_coordinator,
+        "prompt_conflict_resolution",
+        lambda *_a, **_k: "cancel",
     )
     assert (
-        window._copy_or_move_one(
+        window.operations_coordinator.copy_or_move_one(
             source=source, destination_dir=destination_dir, move=False
         )
         == "cancel"
@@ -985,14 +997,14 @@ def test_column_width_auto_align_all_panels_tabs_syncs_all_open_windows(
     first.show()
     second.show()
 
-    source_panel = first.active_panel()
+    source_panel = first.panels_coordinator.active_panel()
     assert source_panel is not None
     source_primary = source_panel.current_tab()
     source_secondary = source_panel.add_tab(source_panel.current_path())
     assert source_primary is not None
     assert source_secondary is not None
 
-    target_panel = second.active_panel()
+    target_panel = second.panels_coordinator.active_panel()
     assert target_panel is not None
     target_tab = target_panel.current_tab()
     assert target_tab is not None
@@ -1038,7 +1050,7 @@ def test_view_align_columns_current_panel_tabs_is_one_shot(
     assert source_secondary.view.columnWidth(0) != 365
     other_original = other_tab.view.columnWidth(0)
 
-    window._set_active_panel(source_panel.panel_id)
+    window.panels_coordinator.set_active_panel(source_panel.panel_id)
     window.align_columns_current_panel_tabs_action.trigger()
     qtbot.waitUntil(lambda: source_secondary.view.columnWidth(0) == 365)
     assert other_tab.view.columnWidth(0) == other_original
@@ -1080,7 +1092,8 @@ def test_view_align_columns_all_panels_tabs_is_one_shot_across_windows(
     source_primary = source_panel.current_tab()
     source_secondary = source_panel.add_tab(source_panel.current_path())
     other_tab = other_panel.current_tab()
-    second_tab = second.active_panel().current_tab() if second.active_panel() else None
+    second_panel = second.panels_coordinator.active_panel()
+    second_tab = second_panel.current_tab() if second_panel else None
     assert source_primary is not None
     assert source_secondary is not None
     assert other_tab is not None
@@ -1093,7 +1106,7 @@ def test_view_align_columns_all_panels_tabs_is_one_shot_across_windows(
     assert other_tab.view.columnWidth(0) != 355
     assert second_tab.view.columnWidth(0) != 355
 
-    first._set_active_panel(source_panel.panel_id)
+    first.panels_coordinator.set_active_panel(source_panel.panel_id)
     first.align_columns_all_panels_tabs_action.trigger()
     qtbot.waitUntil(lambda: source_secondary.view.columnWidth(0) == 355)
     qtbot.waitUntil(lambda: other_tab.view.columnWidth(0) == 355)

@@ -24,14 +24,8 @@ class WindowOperationsCoordinator:
     def __init__(self, window: ExplorerWindow) -> None:
         self.window = window
 
-    def copy_selected_to_target(self, configure: bool = False) -> None:
-        self.transfer_selected_to_target(move=False, configure=configure)
-
-    def move_selected_to_target(self, configure: bool = False) -> None:
-        self.transfer_selected_to_target(move=True, configure=configure)
-
     def delete_selected_items(self, configure: bool = False) -> None:
-        panel = self.window.active_panel()
+        panel = self.window.panels_coordinator.active_panel()
         if panel is None:
             return
         tab = panel.current_tab()
@@ -58,12 +52,12 @@ class WindowOperationsCoordinator:
             3500,
         )
         if job.status in {"succeeded", "failed", "cancelled"}:
-            panel.refresh_current_path()
+            panel.navigation_coordinator.refresh_current_path()
 
     def transfer_selected_to_target(
         self, *, move: bool, configure: bool = False
     ) -> None:
-        source_panel = self.window.active_panel()
+        source_panel = self.window.panels_coordinator.active_panel()
         source_id = self.window.active_panel_id
         if source_panel is None or source_id is None:
             return
@@ -78,7 +72,7 @@ class WindowOperationsCoordinator:
             )
             return
 
-        target_id = self.window.resolve_target_panel_id(source_id)
+        target_id = self.window.panels_coordinator.resolve_target_panel_id(source_id)
         if target_id is None:
             QMessageBox.information(
                 self.window,
@@ -107,8 +101,8 @@ class WindowOperationsCoordinator:
             3500,
         )
         if job.status in {"succeeded", "failed", "cancelled"}:
-            source_panel.refresh_current_path()
-            target_panel.refresh_current_path()
+            source_panel.navigation_coordinator.refresh_current_path()
+            target_panel.navigation_coordinator.refresh_current_path()
 
     def build_operation_request(
         self,
@@ -162,20 +156,17 @@ class WindowOperationsCoordinator:
         destination_dir = Path(destination_dir)
         destination = destination_dir / source.name
         if destination.exists():
-            # Keep the window seam intact so tests can monkeypatch conflict behavior.
-            choice = self.window.prompt_conflict_resolution(source, destination)
+            choice = self.prompt_conflict_resolution(source, destination)
             if choice == "cancel":
                 return "cancel"
             if choice == "skip":
                 return "skip"
             if choice == "rename":
-                destination = self.window.next_available_path(
-                    destination_dir, source.name
-                )
+                destination = self.next_available_path(destination_dir, source.name)
             elif choice == "overwrite":
                 if source.resolve() == destination.resolve():
                     return "skip"
-                self.window.remove_existing_path(destination)
+                self.remove_existing_path(destination)
         try:
             source_raw = to_windows_long_path(source)
             destination_raw = to_windows_long_path(destination)

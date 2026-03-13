@@ -56,16 +56,16 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
     qtbot.addWidget(window)
     window.show()
 
-    panel = window.active_panel()
+    panel = window.panels_coordinator.active_panel()
     assert panel is not None
     assert panel.tab_count() == 1
 
     window.new_tab_action.trigger()
-    assert window.active_panel().tab_count() == 2
+    assert window.panels_coordinator.active_panel().tab_count() == 2
 
     assert window.new_tab_action.shortcut().toString() == "Ctrl+T"
     window.new_tab_action.trigger()
-    assert window.active_panel().tab_count() == 3
+    assert window.panels_coordinator.active_panel().tab_count() == 3
 
     window.new_vertical_panel_action.trigger()
     assert len(window.panel_widgets) == 2
@@ -146,7 +146,7 @@ def test_hidden_action_updates_model_filter(qtbot, tmp_path: Path) -> None:
     qtbot.addWidget(window)
     window.show()
 
-    tab = window.active_panel().current_tab()
+    tab = window.panels_coordinator.active_panel().current_tab()
     assert tab is not None
 
     window.show_hidden_action.setChecked(False)
@@ -170,7 +170,7 @@ def test_menu_activation_from_view_filter_and_address(qtbot, tmp_path: Path) -> 
     window.activateWindow()
     window.raise_()
 
-    panel = window.active_panel()
+    panel = window.panels_coordinator.active_panel()
     assert panel is not None
     tab = panel.current_tab()
     assert tab is not None

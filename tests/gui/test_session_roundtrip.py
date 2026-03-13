@@ -53,10 +53,10 @@ def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
     qtbot.addWidget(source)
     source.show()
 
-    source.new_tab_in_active_panel()
-    source.split_active_panel(1)
+    source.panels_coordinator.new_tab_in_active_panel()
+    source.panels_coordinator.split_active_panel(1)
     source.set_on_top(True)
-    source.save_to_settings()
+    source.persistence_coordinator.save_to_settings()
 
     restored_settings = SettingsManager()
     restored = ExplorerWindow(
@@ -66,7 +66,7 @@ def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
         roots_provider=roots_provider,
     )
     qtbot.addWidget(restored)
-    restored.restore_from_settings()
+    restored.persistence_coordinator.restore_from_settings()
 
     assert len(restored.panel_widgets) == 2
     assert restored.on_top_action.isChecked() is True

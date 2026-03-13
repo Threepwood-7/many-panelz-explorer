@@ -207,7 +207,7 @@ class PanelWidget(QWidget):
         self._properties_size_formatter = (
             properties_size_formatter or self._default_properties_size_formatter
         )
-        self._navigation_coordinator = PanelNavigationCoordinator(
+        self.navigation_coordinator = PanelNavigationCoordinator(
             self,
             is_hidden_or_system_entry=_is_hidden_or_system_entry,
         )
@@ -236,7 +236,9 @@ class PanelWidget(QWidget):
         self.refresh_btn.setSizePolicy(
             QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
         )
-        self.refresh_btn.clicked.connect(self._navigation_coordinator.refresh)
+        self.refresh_btn.clicked.connect(
+            self.navigation_coordinator.refresh_current_path
+        )
         toolbar.addWidget(self.refresh_btn)
 
         self.root_buttons_host = QWidget()
@@ -250,7 +252,7 @@ class PanelWidget(QWidget):
         toolbar.addWidget(self.root_buttons_host, 1)
 
         self.root_combo = QComboBox()
-        self.root_combo.activated.connect(self._navigation_coordinator.on_root_selected)
+        self.root_combo.activated.connect(self.navigation_coordinator.on_root_selected)
         self.root_combo.setVisible(self._show_root_dropdown)
         self.root_combo.setMinimumWidth(self.ROOT_COMBO_MIN_WIDTH)
         self.root_combo.setSizePolicy(
@@ -260,7 +262,7 @@ class PanelWidget(QWidget):
 
         self.address_edit = QLineEdit()
         self.address_edit.returnPressed.connect(
-            self._navigation_coordinator.on_address_submitted
+            self.navigation_coordinator.on_address_submitted
         )
         self.address_edit.setMinimumWidth(0)
         self.address_edit.setSizePolicy(
@@ -280,13 +282,13 @@ class PanelWidget(QWidget):
         )
         self.address_edit.setCompleter(self._address_completer)
         self.address_edit.textEdited.connect(
-            self._navigation_coordinator.schedule_address_completion_update
+            self.navigation_coordinator.schedule_address_completion_update
         )
 
         self.back_btn = QPushButton("<")
         self.back_btn.setMinimumWidth(28)
         self.back_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.back_btn.clicked.connect(self._navigation_coordinator.go_back)
+        self.back_btn.clicked.connect(self.navigation_coordinator.go_back)
         toolbar.addWidget(self.back_btn)
 
         self.forward_btn = QPushButton(">")
@@ -294,19 +296,19 @@ class PanelWidget(QWidget):
         self.forward_btn.setSizePolicy(
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
-        self.forward_btn.clicked.connect(self._navigation_coordinator.go_forward)
+        self.forward_btn.clicked.connect(self.navigation_coordinator.go_forward)
         toolbar.addWidget(self.forward_btn)
 
         self.up_btn = QPushButton("..")
         self.up_btn.setMinimumWidth(32)
         self.up_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.up_btn.clicked.connect(self._navigation_coordinator.go_up)
+        self.up_btn.clicked.connect(self.navigation_coordinator.go_up)
         toolbar.addWidget(self.up_btn)
 
         self.root_btn = QPushButton("\\")
         self.root_btn.setMinimumWidth(28)
         self.root_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.root_btn.clicked.connect(self._navigation_coordinator.go_root)
+        self.root_btn.clicked.connect(self.navigation_coordinator.go_root)
         toolbar.addWidget(self.root_btn)
         self._navigation_buttons = [
             self.back_btn,
@@ -408,7 +410,7 @@ class PanelWidget(QWidget):
             Qt.ShortcutContext.WidgetWithChildrenShortcut
         )
         self._alt_down_shortcut.activated.connect(
-            self._navigation_coordinator.show_history_menu
+            self.navigation_coordinator.show_history_menu
         )
         self._ctrl_f_shortcut = QShortcut("Ctrl+F", self)
         self._ctrl_f_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
@@ -421,7 +423,7 @@ class PanelWidget(QWidget):
         self._address_completion_timer = QTimer(self)
         self._address_completion_timer.setSingleShot(True)
         self._address_completion_timer.timeout.connect(
-            self._navigation_coordinator.refresh_address_completions
+            self.navigation_coordinator.refresh_address_completions
         )
 
         self._sync_toolbar_for_current_tab()
@@ -502,7 +504,7 @@ class PanelWidget(QWidget):
                 key_event.modifiers() == Qt.KeyboardModifier.AltModifier
                 and key_event.key() == int(Qt.Key.Key_Down)
             ):
-                self._navigation_coordinator.show_history_menu()
+                self.navigation_coordinator.show_history_menu()
                 return True
             if self._is_active_files_list_source(
                 obj
@@ -590,7 +592,7 @@ class PanelWidget(QWidget):
             if isinstance(widget, ExplorerTab):
                 widget.navigation.set_show_hidden(self._show_hidden)
         if self.address_edit.hasFocus():
-            self._navigation_coordinator.schedule_address_completion_update(
+            self.navigation_coordinator.schedule_address_completion_update(
                 self.address_edit.text()
             )
 
@@ -634,7 +636,7 @@ class PanelWidget(QWidget):
         self._show_address_bar = bool(show_address_bar)
         self._show_navigation_buttons = bool(show_navigation_buttons)
         if dropdown_changed:
-            self._navigation_coordinator.rebuild_root_controls(self.current_path())
+            self.navigation_coordinator.rebuild_root_controls(self.current_path())
         self._sync_toolbar_visibility()
         self._sync_widget_map_overlay()
 
@@ -922,8 +924,8 @@ class PanelWidget(QWidget):
             self.up_btn.setEnabled(False)
             self.root_btn.setEnabled(False)
             self.refresh_btn.setEnabled(False)
-            self._navigation_coordinator.set_address_text_programmatically("")
-            self._navigation_coordinator.rebuild_root_controls(None)
+            self.navigation_coordinator.set_address_text_programmatically("")
+            self.navigation_coordinator.rebuild_root_controls(None)
             self._sync_widget_map_overlay()
             return
 
@@ -932,10 +934,10 @@ class PanelWidget(QWidget):
         self.up_btn.setEnabled(True)
         self.root_btn.setEnabled(True)
         self.refresh_btn.setEnabled(True)
-        self._navigation_coordinator.set_address_text_programmatically(
+        self.navigation_coordinator.set_address_text_programmatically(
             display_path_text(tab.navigation.path)
         )
-        self._navigation_coordinator.rebuild_root_controls(tab.navigation.path)
+        self.navigation_coordinator.rebuild_root_controls(tab.navigation.path)
         if self.filter_edit.isVisible():
             tab.navigation.set_inline_filter(self.filter_edit.text())
         self._sync_widget_map_overlay()
@@ -979,11 +981,8 @@ class PanelWidget(QWidget):
     def _default_properties_size_formatter(self, value: int) -> str:
         return f"{int(value):,}"
 
-    def refresh_current_path(self) -> None:
-        self._navigation_coordinator.refresh_current_path()
-
     def _handle_address_completion_activated(self, path_text: object) -> None:
-        self._navigation_coordinator.on_address_completion_activated(str(path_text))
+        self.navigation_coordinator.on_address_completion_activated(str(path_text))
 
     def set_role_visual_state(self, *, is_active: bool, is_target: bool) -> None:
         if is_active:

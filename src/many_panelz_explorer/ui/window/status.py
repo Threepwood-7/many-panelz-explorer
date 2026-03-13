@@ -151,7 +151,7 @@ class WindowStatusCoordinator:
     def update_pane_visuals(self) -> None:
         source_id = self.window.active_panel_id
         target_id = (
-            self.window.resolve_target_panel_id(source_id)
+            self.window.panels_coordinator.resolve_target_panel_id(source_id)
             if source_id is not None
             else None
         )
@@ -212,7 +212,7 @@ class WindowStatusCoordinator:
             self._set_storage_overview_entries([])
             return
 
-        active_panel = self.window.active_panel()
+        active_panel = self.window.panels_coordinator.active_panel()
         current_path = active_panel.current_path() if active_panel is not None else None
         entries = mounts.list_storage_usage_entries(current_path=current_path)
         if not entries:

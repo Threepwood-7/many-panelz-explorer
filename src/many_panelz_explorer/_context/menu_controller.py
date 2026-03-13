@@ -131,7 +131,7 @@ class ContextMenuController(QObject):
         self._last_rebuild_signature = signature
 
     def _active_path(self) -> Path | None:
-        panel = self._window.active_panel()
+        panel = self._window.panels_coordinator.active_panel()
         if panel is None:
             return None
         return panel.current_path()

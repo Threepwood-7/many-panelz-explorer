@@ -76,7 +76,7 @@ def generate_widget_map_image(
         window.show()
         _pump_events(app, 0.2)
 
-        panel = window.active_panel()
+        panel = window.panels_coordinator.active_panel()
         if panel is None:
             raise RuntimeError("No active panel available for snapshot generation.")
         tab = panel.current_tab()
