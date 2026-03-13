@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Signal
 
-from .artifacts import prepare_artifacts, write_metadata
+from .artifacts import prepare_artifacts, write_exception_log, write_metadata
 from .executors import execute_operation_request
 from .types import (
     DISPATCH_MODE_LAUNCH_NO_WAIT,
@@ -192,10 +192,11 @@ class OperationQueueManager(QObject):
                 artifacts=artifacts,
             )
         except Exception as exc:
+            write_exception_log(artifacts, exc)
             failed = replace(
                 running,
                 status="failed",
-                message=str(exc),
+                message=f"{type(exc).__name__}: {exc}",
                 completed_at=utcnow(),
             )
             write_metadata(failed, artifacts)

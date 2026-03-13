@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import tempfile
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -53,6 +54,22 @@ def write_metadata(job: OperationJob, artifacts: OperationArtifacts) -> None:
     }
     artifacts.metadata_path.write_text(
         json.dumps(payload, indent=2, sort_keys=True),
+        encoding="utf-8",
+        newline="\n",
+    )
+
+
+def write_exception_log(
+    artifacts: OperationArtifacts,
+    exc: BaseException,
+) -> None:
+    """Persist an executor traceback to the job log for failed operations."""
+
+    traceback_text = "".join(
+        traceback.format_exception(type(exc), exc, exc.__traceback__)
+    )
+    artifacts.log_path.write_text(
+        f"Executor failure:\n\n{traceback_text}",
         encoding="utf-8",
         newline="\n",
     )
