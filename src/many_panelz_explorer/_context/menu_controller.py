@@ -464,18 +464,7 @@ class ContextMenuController(QObject):
             return
 
         if command:
-            if shutil.which("x-terminal-emulator"):
-                subprocess.Popen(
-                    [
-                        "x-terminal-emulator",
-                        "--working-directory",
-                        str(path),
-                        "-e",
-                        f"sh -lc '{command}; exec sh'",
-                    ]
-                )
-                return
-            subprocess.Popen(command, shell=True, cwd=path)
+            self._open_posix_terminal_with_command(path, command)
             return
 
         if shutil.which("x-terminal-emulator"):
@@ -486,6 +475,25 @@ class ContextMenuController(QObject):
             "Context Action Failed",
             "No terminal launcher found for this platform.",
         )
+
+    def _open_posix_terminal_with_command(self, root_path: Path, command: str) -> None:
+        """Open a POSIX terminal at ``root_path`` and run ``command``."""
+
+        path = Path(root_path)
+        if shutil.which("x-terminal-emulator"):
+            subprocess.Popen(
+                [
+                    "x-terminal-emulator",
+                    "--working-directory",
+                    str(path),
+                    "-e",
+                    "sh",
+                    "-lc",
+                    f"{command}; exec sh",
+                ]
+            )
+            return
+        subprocess.Popen(["sh", "-lc", command], cwd=path)
 
     def _python_command_with_fallbacks(self, root_path: Path, command: str) -> str:
         activate_path = root_path / ".venv" / "Scripts" / "Activate.ps1"

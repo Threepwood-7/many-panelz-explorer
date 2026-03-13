@@ -305,3 +305,93 @@ def test_context_menu_rebuilds_on_window_activation(
     monkeypatch.setattr(controller, "rebuild", _counted_rebuild)
     window.event(QEvent(QEvent.Type.WindowActivate))
     assert calls["count"] >= 1
+
+
+def test_context_terminal_command_uses_explicit_sh_fallback(
+    qtbot, tmp_path: Path, monkeypatch
+) -> None:
+    settings = SettingsManager()
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="context-terminal-fallback",
+        roots_provider=_test_roots_provider(tmp_path),
+    )
+    qtbot.addWidget(window)
+    controller = window.context_menu_controller
+    assert controller is not None
+
+    recorded: list[dict[str, object]] = []
+
+    def _record_popen(args: object, **kwargs: object) -> None:
+        recorded.append({"args": args, "kwargs": kwargs})
+        return None
+
+    monkeypatch.setattr(
+        "many_panelz_explorer._context.menu_controller.os.name",
+        "posix",
+    )
+    monkeypatch.setattr(
+        "many_panelz_explorer._context.menu_controller.shutil.which",
+        lambda name: None,
+    )
+    monkeypatch.setattr(
+        "many_panelz_explorer._context.menu_controller.subprocess.Popen",
+        _record_popen,
+    )
+
+    controller._open_terminal(tmp_path, command="printf hello")
+
+    assert len(recorded) == 1
+    assert recorded[0]["args"] == ["sh", "-lc", "printf hello"]
+    assert str(recorded[0]["kwargs"]["cwd"]) == str(tmp_path).replace("\\", "/")
+
+
+def test_context_terminal_command_splits_x_terminal_arguments(
+    qtbot, tmp_path: Path, monkeypatch
+) -> None:
+    settings = SettingsManager()
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="context-terminal-emulator",
+        roots_provider=_test_roots_provider(tmp_path),
+    )
+    qtbot.addWidget(window)
+    controller = window.context_menu_controller
+    assert controller is not None
+
+    recorded: list[object] = []
+
+    def _record_popen(args: object, **_kwargs: object) -> None:
+        recorded.append(args)
+        return None
+
+    monkeypatch.setattr(
+        "many_panelz_explorer._context.menu_controller.os.name",
+        "posix",
+    )
+    monkeypatch.setattr(
+        "many_panelz_explorer._context.menu_controller.shutil.which",
+        lambda name: (
+            "/usr/bin/x-terminal-emulator" if name == "x-terminal-emulator" else None
+        ),
+    )
+    monkeypatch.setattr(
+        "many_panelz_explorer._context.menu_controller.subprocess.Popen",
+        _record_popen,
+    )
+
+    controller._open_terminal(tmp_path, command="echo hi")
+
+    assert recorded == [
+        [
+            "x-terminal-emulator",
+            "--working-directory",
+            str(tmp_path).replace("\\", "/"),
+            "-e",
+            "sh",
+            "-lc",
+            "echo hi; exec sh",
+        ]
+    ]
