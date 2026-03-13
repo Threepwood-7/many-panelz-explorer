@@ -5,19 +5,30 @@ from __future__ import annotations
 import json
 import subprocess
 import tempfile
+import threading
 import traceback
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
 from .path_helpers import quoted, to_windows_arg_path
 from .types import OperationArtifacts, OperationJob, OperationResult
 
+_artifacts_root: Path | None = None
+_ARTIFACTS_ROOT_LOCK = threading.Lock()
+
 
 def ensure_artifacts_root() -> Path:
     """Return the shared artifact root used for companion process files."""
-    root = Path(tempfile.gettempdir()) / "many_panelz_explorer_ops"
-    root.mkdir(parents=True, exist_ok=True)
-    return root
+
+    global _artifacts_root
+
+    with _ARTIFACTS_ROOT_LOCK:
+        if _artifacts_root is None:
+            _artifacts_root = Path(tempfile.mkdtemp(prefix="many-panelz-explorer-ops-"))
+            with suppress(OSError):
+                _artifacts_root.chmod(0o700)
+        return _artifacts_root
 
 
 def prepare_artifacts(job_id: str) -> OperationArtifacts:
