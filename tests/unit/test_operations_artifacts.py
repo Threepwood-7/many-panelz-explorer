@@ -44,3 +44,4 @@ def test_prepare_artifacts_uses_session_root(monkeypatch, tmp_path: Path) -> Non
     assert prepared.job_dir.exists()
     assert prepared.metadata_path == prepared.job_dir / "job.json"
     assert prepared.log_path == prepared.job_dir / "output.log"
+    assert prepared.script_path == prepared.job_dir / "run.cmd"

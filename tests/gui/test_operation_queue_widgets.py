@@ -9,7 +9,13 @@ pytest.importorskip("PySide6")
 pytest.importorskip("pytestqt")
 
 from many_panelz_explorer._operations.queue_manager import OperationQueueManager
-from many_panelz_explorer._operations.types import OperationExecutionPreferences
+from many_panelz_explorer._operations.types import (
+    OperationArtifacts,
+    OperationExecutionPreferences,
+    OperationJob,
+    OperationRequest,
+    utcnow,
+)
 from many_panelz_explorer.operation_queue_widgets import (
     OperationQueuePanel,
     OperationQueueTableModel,
@@ -100,3 +106,36 @@ def test_open_script_failure_shows_warning(qtbot, monkeypatch, tmp_path: Path) -
     panel._open_script()
 
     assert warnings == [("Open Artifact Failed", "boom")]
+
+
+def test_artifact_path_prefers_script_path_from_artifacts(
+    qtbot, monkeypatch, tmp_path: Path
+) -> None:
+    panel = _new_panel(qtbot)
+    script_path = tmp_path / "custom-script.cmd"
+    script_path.write_text("@echo off\n", encoding="utf-8")
+    job_dir = tmp_path / "job-dir"
+    job_dir.mkdir(parents=True, exist_ok=True)
+    artifacts = OperationArtifacts(
+        job_dir=job_dir,
+        metadata_path=tmp_path / "job.json",
+        log_path=tmp_path / "output.log",
+        script_path=script_path,
+    )
+    job = OperationJob(
+        job_id="job-1",
+        request=OperationRequest(
+            kind="copy",
+            sources=(tmp_path / "source.txt",),
+            target_dir=tmp_path / "target",
+            backend_id="robocopy",
+            dispatch_mode="queue",
+            conflict_policy="rename",
+        ),
+        status="queued",
+        created_at=utcnow(),
+        artifacts=artifacts,
+    )
+    monkeypatch.setattr(panel, "_selected_job", lambda: job)
+
+    assert panel._artifact_path("script") == script_path

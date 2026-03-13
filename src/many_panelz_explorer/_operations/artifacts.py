@@ -38,8 +38,12 @@ def prepare_artifacts(job_id: str) -> OperationArtifacts:
     job_dir.mkdir(parents=True, exist_ok=True)
     metadata_path = job_dir / "job.json"
     log_path = job_dir / "output.log"
+    script_path = job_dir / "run.cmd"
     return OperationArtifacts(
-        job_dir=job_dir, metadata_path=metadata_path, log_path=log_path
+        job_dir=job_dir,
+        metadata_path=metadata_path,
+        log_path=log_path,
+        script_path=script_path,
     )
 
 
@@ -60,6 +64,7 @@ def write_metadata(job: OperationJob, artifacts: OperationArtifacts) -> None:
         "message": job.message,
         "processed_count": job.processed_count,
         "pid": job.pid,
+        "script_path": str(job.artifacts.script_path) if job.artifacts else None,
         "backend_options": dict(job.request.backend_options),
         "created_by": job.request.created_by,
     }
@@ -88,7 +93,7 @@ def write_exception_log(
 
 def write_script(artifacts: OperationArtifacts, script_lines: list[str]) -> Path:
     """Write the launcher script used by companion executors."""
-    script_path = artifacts.job_dir / "run.cmd"
+    script_path = artifacts.script_path or (artifacts.job_dir / "run.cmd")
     full_text = "\n".join(
         [
             "@echo off",

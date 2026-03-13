@@ -256,7 +256,9 @@ class OperationQueuePanel(QWidget):
         if artifact == "script":
             if not is_scripted_backend(job.request.backend_id):
                 return None
-            script_path = job.artifacts.job_dir / "run.cmd"
+            script_path = job.artifacts.script_path or (
+                job.artifacts.job_dir / "run.cmd"
+            )
             return script_path if script_path.exists() else None
         if artifact == "log":
             path = job.artifacts.log_path
