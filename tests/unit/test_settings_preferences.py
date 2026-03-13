@@ -148,7 +148,9 @@ def test_ui_preferences_round_trip() -> None:
             operation_queue_view_mode="both",
             default_editor_executable=r"C:\tools\editor.exe",
             default_viewer_executable=r"C:\tools\viewer.exe",
-            file_open_overrides_json='{".txt": {"editor": "txtedit.exe", "viewer": "txtview.exe"}}',
+            file_open_overrides_json=(
+                '{".txt": {"editor": "txtedit.exe", "viewer": "txtview.exe"}}'
+            ),
             use_extended_paths_robocopy=True,
             use_extended_paths_teracopy=True,
             use_extended_paths_unstoppable=True,

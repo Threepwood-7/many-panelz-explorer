@@ -460,7 +460,10 @@ class SettingsDialog(QDialog):
             section_key="panels",
             key="panels/visibility",
             title="Visibility",
-            terms="visibility show hide controls root dropdown buttons address navigation status",
+            terms=(
+                "visibility show hide controls root dropdown buttons address "
+                "navigation status"
+            ),
         )
         panels_file_list_layout_group = self._add_subsection(
             section_key="panels",
@@ -670,7 +673,10 @@ class SettingsDialog(QDialog):
             section=behavior_scan_limits_group,
             key="context_scan_cap",
             title="Context Child Scan Cap",
-            description="Maximum immediate child directories scanned for Context mode detection.",
+            description=(
+                "Maximum immediate child directories scanned for Context mode "
+                "detection."
+            ),
             terms="context detection child scan cap limit",
             controls=[self.context_scan_cap_spin],
         )
@@ -766,7 +772,9 @@ class SettingsDialog(QDialog):
             section=panels_group,
             key="show_navigation_buttons",
             title="Navigation Buttons Group",
-            description="Display back, forward, up, and root buttons in panel toolbars.",
+            description=(
+                "Display back, forward, up, and root buttons in panel toolbars."
+            ),
             terms="navigation buttons back forward up root panel toolbar",
             controls=[self.show_navigation_buttons_checkbox],
         )
@@ -781,7 +789,9 @@ class SettingsDialog(QDialog):
             section=panels_group,
             key="show_storage_overview_status_row",
             title="Storage Overview Status Row",
-            description="Display an always-visible storage usage row in the window status bar.",
+            description=(
+                "Display an always-visible storage usage row in the window status bar."
+            ),
             terms="storage overview status row disk usage free total mount points",
             controls=[self.show_storage_overview_status_row_checkbox],
         )
@@ -872,7 +882,8 @@ class SettingsDialog(QDialog):
             title="Status Bar Disk Label Template",
             description=(
                 "Template for each disk label in the storage status row. "
-                "Use placeholders like {disk_label}, {used_space}, and {usage_indicator}."
+                "Use placeholders like {disk_label}, {used_space}, and "
+                "{usage_indicator}."
             ),
             terms=(
                 "status bar storage disk label template placeholders usage free total "
@@ -921,8 +932,13 @@ class SettingsDialog(QDialog):
             section=operations_group,
             key="default_copy_move_backend",
             title="Default Copy/Move Backend",
-            description="Backend used for copy/move when no per-run override is chosen.",
-            terms="copy move backend default python explorer robocopy teracopy unstoppable external",
+            description=(
+                "Backend used for copy/move when no per-run override is chosen."
+            ),
+            terms=(
+                "copy move backend default python explorer robocopy teracopy "
+                "unstoppable external"
+            ),
             controls=[self.default_copy_move_backend_combo],
         )
 
@@ -944,8 +960,13 @@ class SettingsDialog(QDialog):
             section=operations_group,
             key="default_delete_backend",
             title="Default Delete Backend",
-            description="Backend used for delete operations when no per-run override is chosen.",
-            terms="delete backend default recycle bin permanent cmd powershell rimraf external",
+            description=(
+                "Backend used for delete operations when no per-run override is chosen."
+            ),
+            terms=(
+                "delete backend default recycle bin permanent cmd powershell "
+                "rimraf external"
+            ),
             controls=[self.default_delete_backend_combo],
         )
 
@@ -962,7 +983,10 @@ class SettingsDialog(QDialog):
             section=operations_group,
             key="default_operation_dispatch_mode",
             title="Default Dispatch Mode",
-            description="Choose whether operations queue, launch detached, or run synchronously.",
+            description=(
+                "Choose whether operations queue, launch detached, or run "
+                "synchronously."
+            ),
             terms="dispatch mode queue launch wait operation",
             controls=[self.default_dispatch_mode_combo],
         )
@@ -998,7 +1022,10 @@ class SettingsDialog(QDialog):
             section=operations_group,
             key="operation_shortcut_behavior",
             title="Shortcut Behavior",
-            description="Choose whether F5/F6/F8 use defaults directly or open a configuration dialog.",
+            description=(
+                "Choose whether F5/F6/F8 use defaults directly or open a "
+                "configuration dialog."
+            ),
             terms="shortcut behavior f5 f6 f8 dialog enqueue",
             controls=[self.operation_shortcut_behavior_combo],
         )
@@ -1030,7 +1057,9 @@ class SettingsDialog(QDialog):
             section=operations_open_tools_group,
             key="default_editor_executable",
             title="Default Editor",
-            description="Default executable used for edit operations, including queue scripts.",
+            description=(
+                "Default executable used for edit operations, including queue scripts."
+            ),
             terms="default editor executable open edit script",
             controls=[default_editor_controls],
         )
@@ -1044,7 +1073,10 @@ class SettingsDialog(QDialog):
             section=operations_open_tools_group,
             key="default_viewer_executable",
             title="Default Viewer",
-            description="Default executable used for view operations. Empty means use Default Editor.",
+            description=(
+                "Default executable used for view operations. Empty means use "
+                "Default Editor."
+            ),
             terms="default viewer executable open view fallback editor",
             controls=[default_viewer_controls],
         )
@@ -1063,7 +1095,9 @@ class SettingsDialog(QDialog):
             section=operations_open_tools_group,
             key="context_code_editor_tool",
             title="Context Tool: Code Editor",
-            description="Executable and args template for context actions using code editor.",
+            description=(
+                "Executable and args template for context actions using code editor."
+            ),
             terms="context tool code editor executable args template",
             controls=[context_code_editor_controls],
         )
@@ -1082,7 +1116,9 @@ class SettingsDialog(QDialog):
             section=operations_open_tools_group,
             key="context_git_gui_tool",
             title="Context Tool: Git GUI",
-            description="Executable and args template for context actions using Git GUI.",
+            description=(
+                "Executable and args template for context actions using Git GUI."
+            ),
             terms="context tool git gui executable args template",
             controls=[context_git_gui_controls],
         )
@@ -1110,12 +1146,16 @@ class SettingsDialog(QDialog):
             section=operations_open_tools_group,
             key="file_open_overrides",
             title="Per-Extension Open Overrides",
-            description="Override editor/viewer executables by extension (example: .log, .json, .cmd).",
+            description=(
+                "Override editor/viewer executables by extension "
+                "(example: .log, .json, .cmd)."
+            ),
             terms="extension override editor viewer open file",
             controls=[overrides_controls],
         )
 
-        # Per-backend extended-path toggles are shown alongside each backend configuration panel.
+        # Per-backend extended-path toggles are shown alongside each backend
+        # configuration panel.
         self.use_extended_paths_robocopy_checkbox = QCheckBox(
             r"Use extended paths \\?\... as args",
             self,
@@ -1172,7 +1212,8 @@ class SettingsDialog(QDialog):
                 "Structured options for TeraCopy behavior with generated args preview."
             ),
             terms=(
-                "teracopy executable behavior conflict close verify no sound generated preview "
+                "teracopy executable behavior conflict close verify no sound "
+                "generated preview "
                 "extra args template test long path extended"
             ),
             controls=[teracopy_controls],
@@ -1187,10 +1228,12 @@ class SettingsDialog(QDialog):
             key="unstoppable_command",
             title="Unstoppable Copier Command",
             description=(
-                "Structured toggles for documented Unstoppable switches with generated preview."
+                "Structured toggles for documented Unstoppable switches with "
+                "generated preview."
             ),
             terms=(
-                "unstoppable copier executable switches defaults attributes owner time overwrite "
+                "unstoppable copier executable switches defaults attributes "
+                "owner time overwrite "
                 "subfolders resume damaged generated preview extra args template "
                 "test long path extended"
             ),
@@ -1212,7 +1255,8 @@ class SettingsDialog(QDialog):
                 "generated preview."
             ),
             terms=(
-                "external generic copy move executable structured placeholders operation sources target "
+                "external generic copy move executable structured placeholders "
+                "operation sources target "
                 "generated preview extra args template test long path extended"
             ),
             controls=[generic_copymove_controls],
@@ -1237,7 +1281,10 @@ class SettingsDialog(QDialog):
             key="generic_delete_command",
             title="Generic Delete Command",
             description="Executable and args template. Tokens: {operation} {sources}",
-            terms="external generic delete executable args template test long path extended",
+            terms=(
+                "external generic delete executable args template test long "
+                "path extended"
+            ),
             controls=[generic_delete_controls],
         )
 
@@ -2215,11 +2262,21 @@ class SettingsDialog(QDialog):
             "Effective args template: "
             f"{resolved.teracopy_args_template}"
         )
+        generated_unstoppable_preview = (
+            f"{generated_unstoppable} {{job_file}}\n"
+            if generated_unstoppable
+            else "{job_file}\n"
+        )
+        effective_unstoppable_preview = (
+            f"{resolved.unstoppable_args_template} {{job_file}}"
+            if resolved.unstoppable_args_template
+            else "{job_file}"
+        )
         self.unstoppable_preview_label.setText(
             "Generated args template: "
-            f"{(generated_unstoppable + ' {job_file}') if generated_unstoppable else '{job_file}'}\n"
+            f"{generated_unstoppable_preview}"
             "Effective args template: "
-            f"{(resolved.unstoppable_args_template + ' {job_file}') if resolved.unstoppable_args_template else '{job_file}'}"
+            f"{effective_unstoppable_preview}"
         )
         self.external_copymove_preview_label.setText(
             "Generated args template: "
@@ -3003,7 +3060,8 @@ class SettingsDialog(QDialog):
         self.reset_pending_label.setVisible(self._pending_full_store_reset)
         if self._pending_full_store_reset:
             self.reset_pending_label.setText(
-                "Full reset is scheduled. Apply/OK will clear all stored settings and session data."
+                "Full reset is scheduled. Apply/OK will clear all stored "
+                "settings and session data."
             )
         else:
             self.reset_pending_label.setText("")

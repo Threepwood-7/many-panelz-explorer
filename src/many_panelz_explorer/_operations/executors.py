@@ -217,7 +217,8 @@ def execute_robocopy(
                 target, use_extended_paths=use_extended_paths
             )
             script_lines.append(
-                f"{quoted(robocopy_exe)} {quoted(src_parent)} {quoted(dst_parent)} {quoted(source.name)} {arg_tail}"
+                f"{quoted(robocopy_exe)} {quoted(src_parent)} "
+                f"{quoted(dst_parent)} {quoted(source.name)} {arg_tail}"
             )
         script_lines.append("if %ERRORLEVEL% GTR 7 exit /b %ERRORLEVEL%")
     # Robocopy uses 0-7 as success/info codes; normalize success to 0 for queue status.
@@ -396,7 +397,8 @@ def execute_cmd_delete(
             to_windows_arg_path(source, use_extended_paths=use_extended_paths)
         )
         script_lines.append(
-            f"if exist {literal}\\* (rmdir /S {tail} {literal}) else (del {tail} {literal})"
+            f"if exist {literal}\\* (rmdir /S {tail} {literal}) "
+            f"else (del {tail} {literal})"
         )
     script_path = write_script(artifacts, script_lines)
     return run_script(

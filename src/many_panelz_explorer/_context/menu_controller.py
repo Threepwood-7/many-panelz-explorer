@@ -250,7 +250,8 @@ class ContextMenuController(QObject):
             else:
                 open_remote_action.setEnabled(False)
                 open_remote_action.setToolTip(
-                    "Remote URL missing or not a supported host (GitHub/GitLab/Bitbucket)."
+                    "Remote URL missing or not a supported host "
+                    "(GitHub/GitLab/Bitbucket)."
                 )
 
     def _populate_node_mode(
@@ -376,7 +377,10 @@ class ContextMenuController(QObject):
     ) -> QAction:
         action = menu.addAction(label)
         if not tool.is_available:
-            hint = f"{tool.label} unavailable. {tool.error or 'Configure tool path in Settings.'}"
+            hint = (
+                f"{tool.label} unavailable. "
+                f"{tool.error or 'Configure tool path in Settings.'}"
+            )
             action.setEnabled(False)
             action.setToolTip(hint)
             action.setStatusTip(hint)
