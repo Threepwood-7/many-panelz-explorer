@@ -101,21 +101,21 @@ class WindowUiComposer:
             "Align Columns: Current Panel Tabs", self.window
         )
         self.window.align_columns_current_panel_tabs_action.triggered.connect(
-            self.window.panels_coordinator.align_columns_current_panel_tabs
+            self.window.panels_coordinator.column_sync_coordinator.align_columns_current_panel_tabs
         )
 
         self.window.align_columns_all_panels_tabs_action = QAction(
             "Align Columns: All Panels and Tabs", self.window
         )
         self.window.align_columns_all_panels_tabs_action.triggered.connect(
-            self.window.panels_coordinator.align_columns_all_panels_tabs
+            self.window.panels_coordinator.column_sync_coordinator.align_columns_all_panels_tabs
         )
 
         self.window.align_columns_all_windows_action = QAction(
             "Align Columns: All Windows", self.window
         )
         self.window.align_columns_all_windows_action.triggered.connect(
-            self.window.panels_coordinator.align_columns_all_windows
+            self.window.panels_coordinator.column_sync_coordinator.align_columns_all_windows
         )
 
     def _build_operation_actions(self) -> None:

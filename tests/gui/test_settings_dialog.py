@@ -114,7 +114,7 @@ class _ControllerSettingsStub:
         source_tab: object | None = None,
     ) -> None:
         for window in list(self.windows):
-            window.panels_coordinator.apply_column_widths_all_panels(
+            window.panels_coordinator.column_sync_coordinator.apply_column_widths_all_panels(
                 widths,
                 source_panel_id=source_panel_id if window is source_window else None,
                 source_tab=source_tab if window is source_window else None,

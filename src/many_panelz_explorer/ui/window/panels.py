@@ -3,18 +3,16 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QSplitter, QWidget
 
 from ...panel_widget import PanelWidget
 from .layout import WindowLayoutCoordinator
+from .panel_columns import WindowPanelColumnSyncCoordinator
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
-
-    from ...explorer_tab import ExplorerTab
     from ...window import ExplorerWindow
 
 
@@ -131,6 +129,7 @@ class WindowPanelsCoordinator:
     def __init__(self, window: ExplorerWindow) -> None:
         """Initialize the panel coordinator."""
         self.window = window
+        self.column_sync_coordinator = WindowPanelColumnSyncCoordinator(window)
 
     def split_active_panel(self, orientation: Qt.Orientation) -> None:
         """Split the active panel and focus the new pane."""
@@ -275,74 +274,6 @@ class WindowPanelsCoordinator:
         if panel is not None:
             panel.navigation_coordinator.refresh_current_path()
 
-    def align_columns_current_panel_tabs(self) -> None:
-        """Apply current tab widths across the active panel tabs."""
-        panel = self.active_panel()
-        if panel is None:
-            return
-        tab = panel.current_tab()
-        if tab is None:
-            return
-        widths = list(tab.columns.widths)
-        panel.state_coordinator.apply_column_widths_to_panel_tabs(
-            widths,
-            source_tab=tab,
-        )
-        self.window.statusBar().showMessage(
-            "Aligned columns in current panel tabs.",
-            2000,
-        )
-
-    def align_columns_all_panels_tabs(self) -> None:
-        """Apply current tab widths to all panels in the current window."""
-        panel = self.active_panel()
-        if panel is None:
-            return
-        tab = panel.current_tab()
-        if tab is None:
-            return
-        widths = list(tab.columns.widths)
-        self.apply_column_widths_all_panels(widths)
-        self.window.statusBar().showMessage(
-            "Aligned columns in all panels and tabs in the current window.",
-            2000,
-        )
-
-    def align_columns_all_windows(self) -> None:
-        """Apply current tab widths to all panels in every open window."""
-        panel = self.active_panel()
-        if panel is None:
-            return
-        tab = panel.current_tab()
-        if tab is None:
-            return
-        widths: list[object] = list(tab.columns.widths)
-        self.window.controller.broadcast_column_widths(
-            widths,
-            source_window=self.window,
-            source_panel_id=panel.panel_id,
-            source_tab=tab,
-        )
-        self.window.statusBar().showMessage(
-            "Aligned columns in all panels and tabs in all windows.",
-            2000,
-        )
-
-    def panel_widths_sync_callback(
-        self,
-        panel_id: int,
-    ) -> Callable[[object, object], None]:
-        """Build the per-panel column width sync callback."""
-
-        def _callback(widths: object, source_tab: object) -> None:
-            self.on_panel_column_widths_sync_requested(
-                panel_id,
-                cast("list[object]", widths),
-                source_tab,
-            )
-
-        return _callback
-
     def rebuild_from_tree(
         self,
         tabs_state: TabsState,
@@ -400,7 +331,7 @@ class WindowPanelsCoordinator:
             panel.activated.connect(lambda pid=panel_id: self.set_active_panel(pid))
             panel.current_context_changed.connect(self.window.update_pane_visuals)
             panel.column_widths_sync_requested.connect(
-                self.panel_widths_sync_callback(panel_id)
+                self.column_sync_coordinator.panel_widths_sync_callback(panel_id)
             )
             panel.became_empty.connect(lambda pid=panel_id: self.close_panel_by_id(pid))
             panel.state_coordinator.set_column_width_auto_align_mode(
@@ -542,47 +473,3 @@ class WindowPanelsCoordinator:
         else:
             next_index = 0
         _activate_panel_and_focus(self, ordered[next_index])
-
-    def on_panel_column_widths_sync_requested(
-        self,
-        panel_id: int,
-        widths: list[object],
-        source_tab: object,
-    ) -> None:
-        """Apply debounced column width changes using the configured scope."""
-        panel = self.window.panel_widgets.get(panel_id)
-        if panel is None:
-            return
-        mode = panel.column_width_auto_align_mode
-        if mode == panel.COLUMN_ALIGN_MODE_CURRENT_WINDOW_PANELS_TABS:
-            self.apply_column_widths_all_panels(
-                widths,
-                source_panel_id=panel_id,
-                source_tab=source_tab,
-            )
-            return
-        if mode == panel.COLUMN_ALIGN_MODE_ALL_WINDOWS_PANELS_TABS:
-            self.window.controller.broadcast_column_widths(
-                widths,
-                source_window=self.window,
-                source_panel_id=panel_id,
-                source_tab=source_tab,
-            )
-
-    def apply_column_widths_all_panels(
-        self,
-        widths: Sequence[object],
-        *,
-        source_panel_id: int | None = None,
-        source_tab: object | None = None,
-    ) -> None:
-        """Apply a width set to every panel in the window."""
-        for panel_id, panel in self.window.panel_widgets.items():
-            panel.state_coordinator.apply_column_widths_to_panel_tabs(
-                widths,
-                source_tab=(
-                    cast("ExplorerTab | None", source_tab)
-                    if source_panel_id is not None and panel_id == source_panel_id
-                    else None
-                ),
-            )
