@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import tempfile
-import uuid
 from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, cast
@@ -22,7 +20,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QPushButton,
     QScrollArea,
     QSlider,
@@ -36,30 +33,12 @@ from PySide6.QtWidgets import (
 )
 from threep_commons.qt.widget_identity import assign_widget_identity
 
-from .._operations.backend_options import (
-    ExternalCopyMoveBackendOptions,
-    RobocopyBackendOptions,
-    TeraCopyBackendOptions,
-    UnstoppableBackendOptions,
-    resolve_copy_move_backend_args,
-)
-from .._operations.discovery import (
-    discover_single_companion_tool,
-    resolve_companion_tool_paths,
-    resolve_system_command_paths,
-)
-from .._operations.executors import execute_operation_request
-from .._operations.types import (
-    OperationArtifacts,
-    OperationExecutionPreferences,
-    OperationKind,
-    OperationRequest,
-)
 from .._settings import normalize as settings_normalize
 from .settings import (
     FontSizeSpinBox,
     SectionEntry,
     SubsectionEntry,
+    backend_actions,
     backend_cards_external,
     backend_cards_transfer,
     backend_state,
@@ -74,6 +53,13 @@ from .settings import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from .._operations.backend_options import (
+        ExternalCopyMoveBackendOptions,
+        RobocopyBackendOptions,
+        TeraCopyBackendOptions,
+        UnstoppableBackendOptions,
+    )
+    from .._operations.types import OperationKind
     from .._settings.models import UiPreferences
     from ..app_controller import AppController
 
@@ -643,9 +629,9 @@ class SettingsDialog(QDialog):
         find_btn = QPushButton("Find", actions)
         find_btn.setEnabled(bool(enable_find and discover_default_executable))
         reset_btn = QPushButton("Reset", actions)
-        browse_btn.clicked.connect(lambda: self._browse_executable(executable_edit))
+        browse_btn.clicked.connect(lambda: self.browse_executable(executable_edit))
         find_btn.clicked.connect(
-            lambda: self._find_executable(
+            lambda: self.find_executable(
                 executable_edit,
                 default_executable=discover_default_executable,
             )
@@ -991,10 +977,14 @@ class SettingsDialog(QDialog):
         preferences_flow.on_reset_all_everything_stored(self)
 
     def browse_executable(self, edit: QLineEdit) -> None:
-        self._browse_executable(edit)
+        backend_actions.browse_executable(self, edit)
 
     def find_executable(self, edit: QLineEdit, *, default_executable: str) -> None:
-        self._find_executable(edit, default_executable=default_executable)
+        backend_actions.find_executable(
+            self,
+            edit,
+            default_executable=default_executable,
+        )
 
     def reset_command_controls(
         self,
@@ -1004,7 +994,8 @@ class SettingsDialog(QDialog):
         default_executable: str,
         default_args: str,
     ) -> None:
-        self._reset_command_controls(
+        backend_actions.reset_command_controls(
+            self,
             executable_edit,
             args_edit,
             default_executable=default_executable,
@@ -1012,7 +1003,7 @@ class SettingsDialog(QDialog):
         )
 
     def test_backend(self, kind: OperationKind, backend_id: str) -> None:
-        self._test_backend(kind, backend_id)
+        backend_actions.test_backend(self, kind, backend_id)
 
     def update_reset_controls(self) -> None:
         """Refresh the reset-action UI for the active section."""
@@ -1057,163 +1048,6 @@ class SettingsDialog(QDialog):
 
     def serialize_file_open_overrides(self) -> str:
         return self._serialize_file_open_overrides()
-
-    def _browse_executable(self, edit: QLineEdit) -> None:
-        selected, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Executable",
-            str(Path.home()),
-            "Executable Files (*.exe *.cmd *.bat);;All Files (*.*)",
-        )
-        if not selected:
-            return
-        edit.setText(
-            settings_normalize.normalize_windows_path_text(selected, fallback="")
-        )
-        self._on_controls_changed()
-
-    def _find_executable(
-        self,
-        edit: QLineEdit,
-        *,
-        default_executable: str,
-    ) -> None:
-        resolved = discover_single_companion_tool(
-            configured=edit.text().strip(),
-            default_executable=default_executable,
-        )
-        edit.setText(resolved)
-        self._on_controls_changed()
-
-    def _reset_command_controls(
-        self,
-        executable_edit: QLineEdit,
-        args_edit: QLineEdit,
-        *,
-        default_executable: str,
-        default_args: str,
-    ) -> None:
-        executable_edit.setText(default_executable)
-        args_edit.setText(default_args)
-        self._on_controls_changed()
-
-    def _test_backend(self, kind: OperationKind, backend_id: str) -> None:
-        self._on_controls_changed()
-        root = (
-            Path(tempfile.gettempdir())
-            / "many_panelz_explorer_op_tests"
-            / uuid.uuid4().hex
-        )
-        root.mkdir(parents=True, exist_ok=True)
-        sources, target_dir = self._create_test_paths(root, kind=kind)
-        request_kind: OperationKind = "delete" if kind == "delete" else "copy"
-        request = OperationRequest(
-            kind=request_kind,
-            sources=tuple(sources),
-            target_dir=target_dir,
-            backend_id=backend_id,
-            dispatch_mode="run_now_wait",
-            conflict_policy=self._working_preferences.default_operation_conflict_policy,
-            backend_options={},
-            created_by="settings-dialog:test-backend",
-        )
-        artifacts_dir = root / "artifacts"
-        artifacts_dir.mkdir(parents=True, exist_ok=True)
-        artifacts = OperationArtifacts(
-            job_dir=artifacts_dir,
-            metadata_path=artifacts_dir / "job.json",
-            log_path=artifacts_dir / "output.log",
-        )
-        result = execute_operation_request(
-            request,
-            wait=True,
-            preferences=self._operation_execution_preferences_from_working(),
-            artifacts=artifacts,
-        )
-        details = (
-            f"Backend: {backend_id}\n"
-            f"Status: {result.status}\n"
-            f"Message: {result.message}\n"
-            f"Processed: {result.processed_count}\n"
-            f"Test root: {root}\n"
-            f"Artifacts: {artifacts_dir}"
-        )
-        if result.status in {"succeeded", "dispatched"}:
-            QMessageBox.information(self, "Backend Test Result", details)
-        else:
-            QMessageBox.warning(self, "Backend Test Failed", details)
-
-    def _create_test_paths(
-        self, root: Path, *, kind: OperationKind
-    ) -> tuple[list[Path], Path | None]:
-        if kind in {"copy", "move"}:
-            source_root = root / "source"
-            source_root.mkdir(parents=True, exist_ok=True)
-            sample_file = source_root / "sample-file.txt"
-            sample_file.write_text("many-panelz test\n", encoding="utf-8")
-            sample_dir = source_root / "sample-dir"
-            sample_dir.mkdir(parents=True, exist_ok=True)
-            (sample_dir / "nested.txt").write_text("nested\n", encoding="utf-8")
-            target_dir = root / "target"
-            target_dir.mkdir(parents=True, exist_ok=True)
-            return [sample_file, sample_dir], target_dir
-
-        delete_root = root / "delete-source"
-        delete_root.mkdir(parents=True, exist_ok=True)
-        sample_file = delete_root / "to-delete.txt"
-        sample_file.write_text("delete me\n", encoding="utf-8")
-        sample_dir = delete_root / "to-delete-dir"
-        sample_dir.mkdir(parents=True, exist_ok=True)
-        (sample_dir / "nested.txt").write_text("delete nested\n", encoding="utf-8")
-        return [sample_file, sample_dir], None
-
-    def _operation_execution_preferences_from_working(
-        self,
-    ) -> OperationExecutionPreferences:
-        preferences = self._working_preferences
-        resolved_cmd, resolved_robocopy = resolve_system_command_paths()
-        resolved_copy_move = resolve_copy_move_backend_args(
-            robocopy_options=preferences.robocopy_structured_options,
-            teracopy_options=preferences.teracopy_structured_options,
-            unstoppable_options=preferences.unstoppable_structured_options,
-            external_copymove_options=preferences.external_copymove_structured_options,
-        )
-        base = OperationExecutionPreferences(
-            default_copy_move_backend=preferences.default_copy_move_backend,
-            default_delete_backend=preferences.default_delete_backend,
-            default_dispatch_mode=preferences.default_operation_dispatch_mode,
-            default_conflict_policy=preferences.default_operation_conflict_policy,
-            shortcut_behavior=preferences.operation_shortcut_behavior,
-            queue_view_mode=preferences.operation_queue_view_mode,
-            default_editor_executable=preferences.default_editor_executable,
-            default_viewer_executable=preferences.default_viewer_executable,
-            file_open_overrides_json=preferences.file_open_overrides_json,
-            use_extended_paths_robocopy=preferences.use_extended_paths_robocopy,
-            use_extended_paths_teracopy=preferences.use_extended_paths_teracopy,
-            use_extended_paths_unstoppable=preferences.use_extended_paths_unstoppable,
-            use_extended_paths_external_copymove=preferences.use_extended_paths_external_copymove,
-            use_extended_paths_cmd_delete=preferences.use_extended_paths_cmd_delete,
-            use_extended_paths_powershell_delete=preferences.use_extended_paths_powershell_delete,
-            use_extended_paths_rimraf=preferences.use_extended_paths_rimraf,
-            use_extended_paths_external_delete=preferences.use_extended_paths_external_delete,
-            teracopy_executable=preferences.teracopy_executable,
-            teracopy_args_template=resolved_copy_move.teracopy_args_template,
-            unstoppable_executable=preferences.unstoppable_executable,
-            unstoppable_args_template=resolved_copy_move.unstoppable_args_template,
-            generic_copymove_executable=preferences.generic_copymove_executable,
-            generic_copymove_args_template=resolved_copy_move.external_copymove_args_template,
-            generic_delete_executable=preferences.generic_delete_executable,
-            generic_delete_args_template=preferences.generic_delete_args_template,
-            robocopy_copy_args=resolved_copy_move.robocopy_copy_args,
-            robocopy_move_args=resolved_copy_move.robocopy_move_args,
-            cmd_delete_args=preferences.cmd_delete_args,
-            powershell_delete_args=preferences.powershell_delete_args,
-            rimraf_executable=preferences.rimraf_executable,
-            rimraf_args_template=preferences.rimraf_args_template,
-            resolved_cmd_path=resolved_cmd,
-            resolved_robocopy_path=resolved_robocopy,
-        )
-        return resolve_companion_tool_paths(base)
 
     def new_font_family_combo(
         self, *, include_base_option: bool, base_label: str

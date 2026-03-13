@@ -820,7 +820,7 @@ def test_settings_dialog_reset_everything_staged_until_apply(
     dialog.show()
 
     monkeypatch.setattr(
-        "many_panelz_explorer.dialogs.settings_dialog.QMessageBox.warning",
+        "many_panelz_explorer.dialogs.settings.preferences_flow.QMessageBox.warning",
         lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes,
     )
     dialog.reset_all_button.click()
@@ -862,7 +862,7 @@ def test_settings_dialog_reset_everything_cancel_keeps_persisted_values(
     dialog.show()
 
     monkeypatch.setattr(
-        "many_panelz_explorer.dialogs.settings_dialog.QMessageBox.warning",
+        "many_panelz_explorer.dialogs.settings.preferences_flow.QMessageBox.warning",
         lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes,
     )
 
@@ -1057,11 +1057,11 @@ def test_settings_dialog_backend_test_uses_unsaved_values(
         return OperationResult(status="succeeded", message="ok", processed_count=2)
 
     monkeypatch.setattr(
-        "many_panelz_explorer.dialogs.settings_dialog.execute_operation_request",
+        "many_panelz_explorer.dialogs.settings.backend_actions.execute_operation_request",
         _fake_execute,
     )
     monkeypatch.setattr(
-        "many_panelz_explorer.dialogs.settings_dialog.QMessageBox.information",
+        "many_panelz_explorer.dialogs.settings.backend_actions.QMessageBox.information",
         lambda *_args: captured.setdefault("info", True),
     )
 
@@ -1095,14 +1095,14 @@ def test_settings_dialog_browse_normalizes_windows_executable_paths(
     dialog.show()
 
     monkeypatch.setattr(
-        "many_panelz_explorer.dialogs.settings_dialog.QFileDialog.getOpenFileName",
+        "many_panelz_explorer.dialogs.settings.backend_actions.QFileDialog.getOpenFileName",
         lambda *_args, **_kwargs: (
             "C:/bin/roadkil/UnstopCpy_5_2_Win2K_UP.exe",
             "Executable Files (*.exe *.cmd *.bat)",
         ),
     )
 
-    dialog._browse_executable(dialog.unstoppable_executable_edit)
+    dialog.browse_executable(dialog.unstoppable_executable_edit)
 
     assert (
         dialog.unstoppable_executable_edit.text()
