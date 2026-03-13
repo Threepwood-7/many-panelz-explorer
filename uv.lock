@@ -9,6 +9,7 @@ source = { editable = "." }
 dependencies = [
     { name = "pyside6" },
     { name = "send2trash" },
+    { name = "shiboken6" },
     { name = "threep-commons" },
 ]
 
@@ -16,6 +17,7 @@ dependencies = [
 requires-dist = [
     { name = "pyside6", specifier = ">=6.10.2" },
     { name = "send2trash", specifier = ">=2.1.0" },
+    { name = "shiboken6", specifier = ">=6.10.2" },
     { name = "threep-commons", git = "https://github.com/Threepwood-7/threep-commons?rev=v0.3.0" },
 ]
 

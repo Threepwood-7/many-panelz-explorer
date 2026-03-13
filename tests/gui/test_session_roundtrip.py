@@ -69,7 +69,7 @@ def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
     restored.restore_from_settings()
 
     assert len(restored.panel_widgets) == 2
-    assert restored._on_top_action.isChecked() is True
+    assert restored.on_top_action.isChecked() is True
 
     tab_counts = sorted(panel.tab_count() for panel in restored.panel_widgets.values())
     assert tab_counts == [1, 2]

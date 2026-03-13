@@ -76,7 +76,7 @@ def _test_roots_provider(tmp_path: Path) -> Callable[[Path | None], list[Path]]:
 
 
 def _visible_storage_labels(window: ExplorerWindow) -> list[object]:
-    labels = list(getattr(window, "_storage_overview_labels", []))
+    labels = list(getattr(window, "storage_overview_labels", []))
     return [label for label in labels if label.isVisible()]
 
 
@@ -157,11 +157,11 @@ def test_show_hidden_toggle_updates_tabs(qtbot, tmp_path: Path) -> None:
     tab = panel.current_tab()
     assert tab is not None
 
-    window._show_hidden_action.setChecked(False)
+    window.show_hidden_action.setChecked(False)
     assert tab.model.filter() & tab.model.filter().NoDotAndDotDot
     assert not (tab.model.filter() & tab.model.filter().Hidden)
 
-    window._show_hidden_action.setChecked(True)
+    window.show_hidden_action.setChecked(True)
     assert tab.model.filter() & tab.model.filter().Hidden
 
 
@@ -183,14 +183,14 @@ def test_show_widget_map_toggle_updates_existing_and_new_panels(
         not panel.widget_map_enabled() for panel in window.panel_widgets.values()
     )
 
-    window._show_widget_map_action.setChecked(True)
+    window.show_widget_map_action.setChecked(True)
     assert all(panel.widget_map_enabled() for panel in window.panel_widgets.values())
 
-    window._new_vertical_panel_action.trigger()
+    window.new_vertical_panel_action.trigger()
     assert len(window.panel_widgets) == 2
     assert all(panel.widget_map_enabled() for panel in window.panel_widgets.values())
 
-    window._show_widget_map_action.setChecked(False)
+    window.show_widget_map_action.setChecked(False)
     assert all(
         not panel.widget_map_enabled() for panel in window.panel_widgets.values()
     )
@@ -215,14 +215,14 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
     source_tab_count = source_panel.tab_count()
     source_current_index = source_panel.tabs.currentIndex()
 
-    window._clone_vertical_panel_action.trigger()
+    window.clone_vertical_panel_action.trigger()
     assert len(window.panel_widgets) == 2
     cloned_panel_vertical = window.active_panel()
     assert cloned_panel_vertical is not None
     assert cloned_panel_vertical.tab_count() == source_tab_count
     assert cloned_panel_vertical.tabs.currentIndex() == source_current_index
 
-    window._clone_horizontal_panel_action.trigger()
+    window.clone_horizontal_panel_action.trigger()
     assert len(window.panel_widgets) == 4
     cloned_panel_horizontal = window.active_panel()
     assert cloned_panel_horizontal is not None
@@ -243,12 +243,12 @@ def test_set_on_top_direct_call_does_not_emit_toggled(qtbot, tmp_path: Path) -> 
     window.show()
 
     toggled_events: list[bool] = []
-    window._on_top_action.toggled.connect(toggled_events.append)
+    window.on_top_action.toggled.connect(toggled_events.append)
 
     window.set_on_top(True)
 
     assert toggled_events == []
-    assert window._on_top_action.isChecked() is True
+    assert window.on_top_action.isChecked() is True
 
 
 def test_clone_current_window_action(qtbot, tmp_path: Path) -> None:
@@ -268,17 +268,17 @@ def test_clone_current_window_action(qtbot, tmp_path: Path) -> None:
     source.show()
 
     source.new_tab_in_active_panel()
-    source._clone_vertical_panel_action.trigger()
+    source.clone_vertical_panel_action.trigger()
     source.set_on_top(True)
 
-    source._clone_window_action.trigger()
+    source.clone_window_action.trigger()
     assert len(controller.created_windows) == 1
 
     cloned = controller.created_windows[0]
     qtbot.addWidget(cloned)
 
     assert cloned.panel_tree.to_dict() == source.panel_tree.to_dict()
-    assert cloned._on_top_action.isChecked() is True
+    assert cloned.on_top_action.isChecked() is True
 
     source_counts = sorted(panel.tab_count() for panel in source.panel_widgets.values())
     cloned_counts = sorted(panel.tab_count() for panel in cloned.panel_widgets.values())
@@ -301,7 +301,7 @@ def test_close_window_action_closes_and_notifies_controller(
     window.show()
     assert window.isVisible()
 
-    window._close_window_action.trigger()
+    window.close_window_action.trigger()
     qtbot.waitUntil(lambda: not window.isVisible())
 
     assert controller.closed_windows
@@ -357,7 +357,7 @@ def test_apply_ui_preferences_updates_toolbar_visibility_flags(
     )
     qtbot.addWidget(window)
     window.show()
-    window._new_vertical_panel_action.trigger()
+    window.new_vertical_panel_action.trigger()
 
     window.apply_ui_preferences(
         UiPreferences(
@@ -432,7 +432,7 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
         "question",
         lambda *_a, **_k: QMessageBox.StandardButton.Yes,
     )
-    source._save_view_action.trigger()
+    source.save_view_action.trigger()
 
     saved = settings.get_saved_view("My View")
     assert saved is not None
@@ -443,9 +443,9 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     assert len(source.panel_widgets) == 1
 
     monkeypatch.setattr(QInputDialog, "getItem", lambda *_a, **_k: ("My View", True))
-    source._replace_view_action.trigger()
+    source.replace_view_action.trigger()
     assert len(source.panel_widgets) == 2
-    assert source._on_top_action.isChecked() is True
+    assert source.on_top_action.isChecked() is True
 
     monkeypatch.setattr(
         QInputDialog,
@@ -454,9 +454,9 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
             AssertionError("restore should use submenu, not dialog")
         ),
     )
-    source._populate_restore_view_menu()
+    source.populate_restore_view_menu()
     restore_actions = [
-        a for a in source._restore_view_menu.actions() if a.text() == "My View"
+        a for a in source.restore_view_menu.actions() if a.text() == "My View"
     ]
     assert restore_actions
     restore_actions[0].trigger()
@@ -464,7 +464,7 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     restored = controller.created_windows[0]
     qtbot.addWidget(restored)
     assert len(restored.panel_widgets) == 2
-    assert restored._on_top_action.isChecked() is True
+    assert restored.on_top_action.isChecked() is True
 
 
 def test_split_behaviour_uses_full_width_rows(qtbot, tmp_path: Path) -> None:
@@ -481,13 +481,13 @@ def test_split_behaviour_uses_full_width_rows(qtbot, tmp_path: Path) -> None:
 
     assert [len(row) for row in window._layout_rows] == [1]
 
-    window._new_vertical_panel_action.trigger()
+    window.new_vertical_panel_action.trigger()
     assert [len(row) for row in window._layout_rows] == [2]
 
-    window._new_horizontal_panel_action.trigger()
+    window.new_horizontal_panel_action.trigger()
     assert [len(row) for row in window._layout_rows] == [2, 2]
 
-    window._new_vertical_panel_action.trigger()
+    window.new_vertical_panel_action.trigger()
     assert [len(row) for row in window._layout_rows] == [2, 3]
 
 
@@ -510,8 +510,8 @@ def test_copy_to_target_uses_last_active_non_source_panel(
     qtbot.addWidget(window)
     window.show()
 
-    window._new_vertical_panel_action.trigger()
-    window._new_horizontal_panel_action.trigger()
+    window.new_vertical_panel_action.trigger()
+    window.new_horizontal_panel_action.trigger()
     assert len(window.panel_widgets) == 4
 
     ordered_ids = [pid for row in window._layout_rows for pid in row]
@@ -547,7 +547,7 @@ def test_copy_to_target_uses_last_active_non_source_panel(
 
     window._set_active_panel(preferred_target_id)
     window._set_active_panel(source_id)
-    window._copy_to_target_action.trigger()
+    window.copy_to_target_action.trigger()
 
     assert captured == [dst_dir]
     assert source_panel._pane_role == "active"
@@ -572,7 +572,7 @@ def test_status_bar_persistent_source_target_paths_update_with_context_changes(
     qtbot.addWidget(window)
     window.show()
 
-    window._new_vertical_panel_action.trigger()
+    window.new_vertical_panel_action.trigger()
     ordered_ids = [pid for row in window._layout_rows for pid in row]
     assert len(ordered_ids) >= 2
     source_id = ordered_ids[0]
@@ -592,24 +592,24 @@ def test_status_bar_persistent_source_target_paths_update_with_context_changes(
     window._set_active_panel(source_id)
 
     qtbot.waitUntil(
-        lambda: window._source_path_label.text() == f"Source path: {source_dir}"
+        lambda: window.source_path_label.text() == f"Source path: {source_dir}"
     )
-    assert window._target_path_label.text() == f"Target path: {target_dir}"
-    assert window._source_path_label.toolTip() == str(source_dir)
-    assert window._target_path_label.toolTip() == str(target_dir)
+    assert window.target_path_label.text() == f"Target path: {target_dir}"
+    assert window.source_path_label.toolTip() == str(source_dir)
+    assert window.target_path_label.toolTip() == str(target_dir)
 
     window.statusBar().showMessage("Temporary status", 60)
-    assert window._source_path_label.text() == f"Source path: {source_dir}"
-    assert window._target_path_label.text() == f"Target path: {target_dir}"
+    assert window.source_path_label.text() == f"Source path: {source_dir}"
+    assert window.target_path_label.text() == f"Target path: {target_dir}"
     qtbot.wait(90)
-    assert window._source_path_label.text() == f"Source path: {source_dir}"
-    assert window._target_path_label.text() == f"Target path: {target_dir}"
+    assert window.source_path_label.text() == f"Source path: {source_dir}"
+    assert window.target_path_label.text() == f"Target path: {target_dir}"
 
     nested_source = source_dir / "nested"
     nested_source.mkdir()
     source_panel.current_tab().navigation.set_path(nested_source)
     qtbot.waitUntil(
-        lambda: window._source_path_label.text() == f"Source path: {nested_source}"
+        lambda: window.source_path_label.text() == f"Source path: {nested_source}"
     )
 
 
@@ -652,7 +652,7 @@ def test_storage_overview_status_row_visible_and_populated_by_default(
     qtbot.addWidget(window)
     window.show()
 
-    qtbot.waitUntil(lambda: window._storage_overview_row.isVisible() is True)
+    qtbot.waitUntil(lambda: window.storage_overview_row.isVisible() is True)
     qtbot.waitUntil(lambda: len(_visible_storage_labels(window)) == len(entries))
     tooltips = [label.toolTip() for label in _visible_storage_labels(window)]
     assert any("C: System" in tooltip for tooltip in tooltips)
@@ -690,7 +690,7 @@ def test_storage_overview_status_row_hides_when_disabled(
     qtbot.addWidget(window)
     window.show()
 
-    assert window._storage_overview_row.isVisible() is False
+    assert window.storage_overview_row.isVisible() is False
     assert _visible_storage_labels(window) == []
 
 
@@ -715,7 +715,7 @@ def test_storage_overview_status_row_hides_when_no_valid_entries(
     qtbot.addWidget(window)
     window.show()
 
-    assert window._storage_overview_row.isVisible() is False
+    assert window.storage_overview_row.isVisible() is False
     assert _visible_storage_labels(window) == []
 
 
@@ -901,7 +901,7 @@ def test_column_width_sync_stays_within_active_pane_tabs(qtbot, tmp_path: Path) 
     qtbot.addWidget(window)
     window.show()
 
-    window._new_vertical_panel_action.trigger()
+    window.new_vertical_panel_action.trigger()
     ordered_ids = [pid for row in window._layout_rows for pid in row]
     assert len(ordered_ids) >= 2
     first_panel = window.panel_widgets[ordered_ids[0]]
@@ -937,7 +937,7 @@ def test_column_width_auto_align_none_disables_propagation(
     qtbot.addWidget(window)
     window.show()
 
-    window._new_vertical_panel_action.trigger()
+    window.new_vertical_panel_action.trigger()
     ordered_ids = [pid for row in window._layout_rows for pid in row]
     first_panel = window.panel_widgets[ordered_ids[0]]
     second_panel = window.panel_widgets[ordered_ids[1]]
@@ -1020,7 +1020,7 @@ def test_view_align_columns_current_panel_tabs_is_one_shot(
     qtbot.addWidget(window)
     window.show()
 
-    window._new_vertical_panel_action.trigger()
+    window.new_vertical_panel_action.trigger()
     ordered_ids = [pid for row in window._layout_rows for pid in row]
     source_panel = window.panel_widgets[ordered_ids[0]]
     other_panel = window.panel_widgets[ordered_ids[1]]
@@ -1039,7 +1039,7 @@ def test_view_align_columns_current_panel_tabs_is_one_shot(
     other_original = other_tab.view.columnWidth(0)
 
     window._set_active_panel(source_panel.panel_id)
-    window._align_columns_current_panel_tabs_action.trigger()
+    window.align_columns_current_panel_tabs_action.trigger()
     qtbot.waitUntil(lambda: source_secondary.view.columnWidth(0) == 365)
     assert other_tab.view.columnWidth(0) == other_original
     assert settings.column_width_auto_align_mode == "none"
@@ -1072,7 +1072,7 @@ def test_view_align_columns_all_panels_tabs_is_one_shot_across_windows(
     first.show()
     second.show()
 
-    first._new_vertical_panel_action.trigger()
+    first.new_vertical_panel_action.trigger()
     ordered_ids = [pid for row in first._layout_rows for pid in row]
     source_panel = first.panel_widgets[ordered_ids[0]]
     other_panel = first.panel_widgets[ordered_ids[1]]
@@ -1094,7 +1094,7 @@ def test_view_align_columns_all_panels_tabs_is_one_shot_across_windows(
     assert second_tab.view.columnWidth(0) != 355
 
     first._set_active_panel(source_panel.panel_id)
-    first._align_columns_all_panels_tabs_action.trigger()
+    first.align_columns_all_panels_tabs_action.trigger()
     qtbot.waitUntil(lambda: source_secondary.view.columnWidth(0) == 355)
     qtbot.waitUntil(lambda: other_tab.view.columnWidth(0) == 355)
     qtbot.waitUntil(lambda: second_tab.view.columnWidth(0) == 355)

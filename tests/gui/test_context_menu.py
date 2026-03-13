@@ -75,7 +75,7 @@ def test_context_menu_hidden_without_modes(qtbot, tmp_path: Path) -> None:
     panel = window.active_panel()
     assert panel is not None
     panel.current_tab().navigation.set_path(empty_dir)
-    qtbot.waitUntil(lambda: window._menu_context_action.isVisible() is False)
+    qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is False)
 
 
 def test_context_menu_shows_python_mode(qtbot, tmp_path: Path) -> None:
@@ -97,9 +97,9 @@ def test_context_menu_shows_python_mode(qtbot, tmp_path: Path) -> None:
     panel = window.active_panel()
     assert panel is not None
     panel.current_tab().navigation.set_path(py_root)
-    qtbot.waitUntil(lambda: window._menu_context_action.isVisible() is True)
+    qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is True)
 
-    texts = [action.text() for action in window._context_menu.actions()]
+    texts = [action.text() for action in window.context_menu.actions()]
     assert "Python Project" in texts
 
 
@@ -129,9 +129,9 @@ def test_context_menu_tracks_current_and_child_roots(qtbot, tmp_path: Path) -> N
     panel = window.active_panel()
     assert panel is not None
     panel.current_tab().navigation.set_path(root)
-    qtbot.waitUntil(lambda: window._menu_context_action.isVisible() is True)
+    qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is True)
 
-    controller = window._context_menu_controller
+    controller = window.context_menu_controller
     assert controller is not None
     node_states = [key for key in controller._script_menu_states if key[0] == "node"]
     assert len(node_states) == 2
@@ -166,9 +166,9 @@ def test_context_scripts_load_lazily(qtbot, tmp_path: Path, monkeypatch) -> None
     panel = window.active_panel()
     assert panel is not None
     panel.current_tab().navigation.set_path(root)
-    qtbot.waitUntil(lambda: window._menu_context_action.isVisible() is True)
+    qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is True)
 
-    controller = window._context_menu_controller
+    controller = window.context_menu_controller
     assert controller is not None
     node_state_keys = [
         key for key in controller._script_menu_states if key[0] == "node"
@@ -214,9 +214,9 @@ def test_context_menu_rebuilds_on_tab_switch(qtbot, tmp_path: Path) -> None:
     second_tab = panel.add_tab(py_root)
     assert second_tab is not None
     panel.tabs.setCurrentWidget(first_tab)
-    qtbot.waitUntil(lambda: window._menu_context_action.isVisible() is False)
+    qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is False)
     panel.tabs.setCurrentWidget(second_tab)
-    qtbot.waitUntil(lambda: window._menu_context_action.isVisible() is True)
+    qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is True)
 
 
 def test_context_menu_disables_missing_tools_with_hints(
@@ -240,8 +240,8 @@ def test_context_menu_disables_missing_tools_with_hints(
     panel = window.active_panel()
     assert panel is not None
     panel.current_tab().navigation.set_path(root)
-    qtbot.waitUntil(lambda: window._menu_context_action.isVisible() is True)
-    controller = window._context_menu_controller
+    qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is True)
+    controller = window.context_menu_controller
     assert controller is not None
     controller.rebuild()
     monkeypatch.setattr(controller, "rebuild", lambda: None)
@@ -291,9 +291,9 @@ def test_context_menu_rebuilds_on_window_activation(
     panel = window.active_panel()
     assert panel is not None
     panel.current_tab().navigation.set_path(py_root)
-    qtbot.waitUntil(lambda: window._menu_context_action.isVisible() is True)
+    qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is True)
 
-    controller = window._context_menu_controller
+    controller = window.context_menu_controller
     assert controller is not None
     calls = {"count": 0}
     original_rebuild = controller.rebuild

@@ -264,12 +264,12 @@ def test_settings_action_in_view_menu_and_shortcut_trigger(
     )
 
     triggered: list[str] = []
-    window._settings_action.triggered.disconnect()
-    window._settings_action.triggered.connect(lambda: triggered.append("fired"))
+    window.settings_action.triggered.disconnect()
+    window.settings_action.triggered.connect(lambda: triggered.append("fired"))
 
-    window._settings_action.trigger()
+    window.settings_action.trigger()
     assert triggered == ["fired"]
-    assert window._settings_action.shortcut().toString() == "Ctrl+,"
+    assert window.settings_action.shortcut().toString() == "Ctrl+,"
 
 
 def test_settings_search_filters_rows_in_place(
@@ -538,7 +538,7 @@ def test_settings_apply_persists_and_new_window_uses_values(
     )
     reopened_panel = reopened.active_panel()
     assert reopened_panel is not None
-    assert reopened._show_hidden_action.isChecked() is False
+    assert reopened.show_hidden_action.isChecked() is False
     assert reopened_panel.root_combo.isVisible() is True
     assert reopened_panel.refresh_btn.isVisible() is False
     assert reopened_panel.root_buttons_host.isVisible() is False
@@ -547,7 +547,7 @@ def test_settings_apply_persists_and_new_window_uses_values(
     assert reopened_panel.forward_btn.isVisible() is False
     assert reopened_panel.up_btn.isVisible() is False
     assert reopened_panel.root_btn.isVisible() is False
-    assert reopened._storage_overview_row.isVisible() is False
+    assert reopened.storage_overview_row.isVisible() is False
     assert reopened_panel.current_tab().view.font().pointSize() == 14
     assert reopened_panel.address_edit.font().pointSize() == 13
     assert "rgba(168, 182, 196, 127)" in reopened_panel.styleSheet()
@@ -593,8 +593,8 @@ def test_settings_checkbox_changes_sync_existing_windows(
     dialog.file_list_font_size_spin.setValue(15)
     dialog.navigation_use_app_font_checkbox.setChecked(False)
     dialog.navigation_font_size_spin.setValue(12)
-    qtbot.waitUntil(lambda: first._show_hidden_action.isChecked() is False)
-    assert second._show_hidden_action.isChecked() is False
+    qtbot.waitUntil(lambda: first.show_hidden_action.isChecked() is False)
+    assert second.show_hidden_action.isChecked() is False
 
     first_panel = first.active_panel()
     second_panel = second.active_panel()
@@ -610,8 +610,8 @@ def test_settings_checkbox_changes_sync_existing_windows(
     assert second_panel.address_edit.isVisible() is False
     assert first_panel.back_btn.isVisible() is False
     assert second_panel.back_btn.isVisible() is False
-    assert first._storage_overview_row.isVisible() is False
-    assert second._storage_overview_row.isVisible() is False
+    assert first.storage_overview_row.isVisible() is False
+    assert second.storage_overview_row.isVisible() is False
     assert first_panel.current_tab().view.font().pointSize() == 15
     assert second_panel.current_tab().view.font().pointSize() == 15
 

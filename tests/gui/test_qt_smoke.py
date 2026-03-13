@@ -60,26 +60,26 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
     assert panel is not None
     assert panel.tab_count() == 1
 
-    window._new_tab_action.trigger()
+    window.new_tab_action.trigger()
     assert window.active_panel().tab_count() == 2
 
-    assert window._new_tab_action.shortcut().toString() == "Ctrl+T"
-    window._new_tab_action.trigger()
+    assert window.new_tab_action.shortcut().toString() == "Ctrl+T"
+    window.new_tab_action.trigger()
     assert window.active_panel().tab_count() == 3
 
-    window._new_vertical_panel_action.trigger()
+    window.new_vertical_panel_action.trigger()
     assert len(window.panel_widgets) == 2
 
-    assert window._new_horizontal_panel_action.shortcut().toString() == "Ctrl+H"
-    window._new_horizontal_panel_action.trigger()
+    assert window.new_horizontal_panel_action.shortcut().toString() == "Ctrl+H"
+    window.new_horizontal_panel_action.trigger()
     assert len(window.panel_widgets) == 4
 
-    assert window._copy_to_target_action.shortcut().toString() == "F5"
-    assert window._move_to_target_action.shortcut().toString() == "F6"
-    assert window._delete_selection_action.shortcut().toString() == "F8"
+    assert window.copy_to_target_action.shortcut().toString() == "F5"
+    assert window.move_to_target_action.shortcut().toString() == "F6"
+    assert window.delete_selection_action.shortcut().toString() == "F8"
 
-    assert window._close_window_action.shortcut().toString() == "Alt+W"
-    exit_shortcuts = {seq.toString() for seq in window._exit_action.shortcuts()}
+    assert window.close_window_action.shortcut().toString() == "Alt+W"
+    exit_shortcuts = {seq.toString() for seq in window.exit_action.shortcuts()}
     assert {"Ctrl+Q", "Alt+X"} <= exit_shortcuts
 
     menu_titles = [
@@ -149,10 +149,10 @@ def test_hidden_action_updates_model_filter(qtbot, tmp_path: Path) -> None:
     tab = window.active_panel().current_tab()
     assert tab is not None
 
-    window._show_hidden_action.setChecked(False)
+    window.show_hidden_action.setChecked(False)
     assert not (tab.model.filter() & QDir.Hidden)
 
-    window._show_hidden_action.setChecked(True)
+    window.show_hidden_action.setChecked(True)
     assert tab.model.filter() & QDir.Hidden
 
 
@@ -181,7 +181,7 @@ def test_menu_activation_from_view_filter_and_address(qtbot, tmp_path: Path) -> 
     assert file_menu is not None
 
     tab.view.setFocus()
-    window._menu_focus_shortcut.activated.emit()
+    window.menu_focus_shortcut.activated.emit()
     qtbot.waitUntil(
         lambda: file_menu.isVisible() or menu_bar.activeAction() is file_action
     )
@@ -189,14 +189,14 @@ def test_menu_activation_from_view_filter_and_address(qtbot, tmp_path: Path) -> 
 
     panel._show_filter_overlay(seed_text="")
     panel.filter_edit.setFocus()
-    window._menu_focus_shortcut.activated.emit()
+    window.menu_focus_shortcut.activated.emit()
     qtbot.waitUntil(
         lambda: file_menu.isVisible() or menu_bar.activeAction() is file_action
     )
     file_menu.close()
 
     panel.address_edit.setFocus()
-    window._menu_focus_shortcut.activated.emit()
+    window.menu_focus_shortcut.activated.emit()
     qtbot.waitUntil(
         lambda: file_menu.isVisible() or menu_bar.activeAction() is file_action
     )
