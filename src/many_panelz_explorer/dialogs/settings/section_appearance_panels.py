@@ -407,6 +407,19 @@ def build_panel_byte_display_rows(
 ) -> None:
     """Build panel byte-format and status-row formatting rows."""
 
+    build_byte_separator_row(dialog, byte_display_group=byte_display_group)
+    build_file_list_byte_format_row(dialog, byte_display_group=byte_display_group)
+    build_status_bar_byte_format_rows(dialog, byte_display_group=byte_display_group)
+    build_properties_byte_format_row(dialog, byte_display_group=byte_display_group)
+
+
+def build_byte_separator_row(
+    dialog: SettingsDialog,
+    *,
+    byte_display_group: SubsectionEntry,
+) -> None:
+    """Build the global byte-separator settings row."""
+
     dialog.byte_thousands_separator_edit = QLineEdit(dialog)
     dialog.byte_thousands_separator_edit.setMaxLength(1)
     dialog.byte_thousands_separator_edit.setPlaceholderText(",")
@@ -437,6 +450,14 @@ def build_panel_byte_display_rows(
         controls=[byte_separators_controls],
     )
 
+
+def build_file_list_byte_format_row(
+    dialog: SettingsDialog,
+    *,
+    byte_display_group: SubsectionEntry,
+) -> None:
+    """Build the file-list byte formatting row."""
+
     dialog.file_list_byte_format_mode_combo = dialog.new_byte_format_mode_combo()
     dialog.file_list_byte_custom_template_edit = QLineEdit(dialog)
     dialog.file_list_byte_custom_template_edit.setPlaceholderText("{b}")
@@ -455,6 +476,14 @@ def build_panel_byte_display_rows(
             dialog.file_list_byte_custom_template_edit,
         ],
     )
+
+
+def build_status_bar_byte_format_rows(
+    dialog: SettingsDialog,
+    *,
+    byte_display_group: SubsectionEntry,
+) -> None:
+    """Build the status-bar byte formatting and label template rows."""
 
     dialog.status_bar_byte_format_mode_combo = dialog.new_byte_format_mode_combo()
     dialog.status_bar_byte_custom_template_edit = QLineEdit(dialog)
@@ -503,6 +532,14 @@ def build_panel_byte_display_rows(
         ),
         controls=[dialog.status_bar_storage_label_template_edit],
     )
+
+
+def build_properties_byte_format_row(
+    dialog: SettingsDialog,
+    *,
+    byte_display_group: SubsectionEntry,
+) -> None:
+    """Build the Properties-dialog byte formatting row."""
 
     dialog.properties_byte_format_mode_combo = dialog.new_byte_format_mode_combo()
     dialog.properties_byte_custom_template_edit = QLineEdit(dialog)

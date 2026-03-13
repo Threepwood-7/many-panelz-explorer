@@ -54,8 +54,6 @@ from .._operations.discovery import (
 )
 from .._operations.executors import execute_operation_request
 from .._operations.types import (
-    DEFAULT_TERA_COPY_EXE,
-    DEFAULT_UNSTOPPABLE_EXE,
     OperationArtifacts,
     OperationExecutionPreferences,
     OperationKind,
@@ -68,8 +66,11 @@ from .settings import (
     FontSizeSpinBox,
     SectionEntry,
     SubsectionEntry,
+    backend_cards_external,
+    backend_cards_transfer,
     build_sections,
     control_builders,
+    open_overrides_controls,
 )
 
 if TYPE_CHECKING:
@@ -169,6 +170,7 @@ class SettingsDialog(QDialog):
     }
 
     if TYPE_CHECKING:
+        add_override_row_btn: QPushButton
         active_color_button: QPushButton
         active_color_preview: QLabel
         active_intensity_slider: QSlider
@@ -177,6 +179,8 @@ class SettingsDialog(QDialog):
         app_font_size_spin: FontSizeSpinBox
         byte_decimal_separator_edit: QLineEdit
         byte_thousands_separator_edit: QLineEdit
+        browse_override_editor_btn: QPushButton
+        browse_override_viewer_btn: QPushButton
         cmd_delete_args_edit: QLineEdit
         cmd_delete_test_btn: QPushButton
         column_width_auto_align_mode_combo: QComboBox
@@ -191,7 +195,12 @@ class SettingsDialog(QDialog):
         default_dispatch_mode_combo: QComboBox
         default_editor_executable_edit: QLineEdit
         default_viewer_executable_edit: QLineEdit
+        external_copymove_preview_label: QLabel
         external_copymove_reset_backend_btn: QPushButton
+        external_copymove_struct_extra_args_edit: QLineEdit
+        external_copymove_struct_include_operation_checkbox: QCheckBox
+        external_copymove_struct_include_sources_checkbox: QCheckBox
+        external_copymove_struct_include_target_checkbox: QCheckBox
         file_list_byte_custom_template_edit: QLineEdit
         file_list_byte_format_mode_combo: QComboBox
         file_list_font_family_combo: QComboBox
@@ -213,12 +222,26 @@ class SettingsDialog(QDialog):
         powershell_delete_test_btn: QPushButton
         properties_byte_custom_template_edit: QLineEdit
         properties_byte_format_mode_combo: QComboBox
+        remove_override_row_btn: QPushButton
         resolved_cmd_path_label: QLabel
         resolved_robocopy_path_label: QLabel
         rimraf_args_edit: QLineEdit
         rimraf_executable_edit: QLineEdit
         rimraf_test_btn: QPushButton
+        robocopy_preview_label: QLabel
         robocopy_reset_backend_btn: QPushButton
+        robocopy_struct_backup_checkbox: QCheckBox
+        robocopy_struct_extra_args_edit: QLineEdit
+        robocopy_struct_include_subdirs_checkbox: QCheckBox
+        robocopy_struct_list_only_checkbox: QCheckBox
+        robocopy_struct_mirror_checkbox: QCheckBox
+        robocopy_struct_move_checkbox: QCheckBox
+        robocopy_struct_multithread_checkbox: QCheckBox
+        robocopy_struct_multithread_spin: QSpinBox
+        robocopy_struct_quiet_checkbox: QCheckBox
+        robocopy_struct_restartable_checkbox: QCheckBox
+        robocopy_struct_retry_spin: QSpinBox
+        robocopy_struct_wait_spin: QSpinBox
         robocopy_test_btn: QPushButton
         show_address_bar_checkbox: QCheckBox
         show_hidden_checkbox: QCheckBox
@@ -235,10 +258,33 @@ class SettingsDialog(QDialog):
         target_intensity_slider: QSlider
         target_intensity_value: QLabel
         teracopy_executable_edit: QLineEdit
+        teracopy_preview_label: QLabel
         teracopy_reset_backend_btn: QPushButton
+        teracopy_struct_close_checkbox: QCheckBox
+        teracopy_struct_conflict_combo: QComboBox
+        teracopy_struct_extra_args_edit: QLineEdit
+        teracopy_struct_keep_open_checkbox: QCheckBox
+        teracopy_struct_no_sound_checkbox: QCheckBox
+        teracopy_struct_verify_checkbox: QCheckBox
         teracopy_test_btn: QPushButton
         unstoppable_executable_edit: QLineEdit
+        unstoppable_preview_label: QLabel
         unstoppable_reset_backend_btn: QPushButton
+        unstoppable_struct_copy_empty_folders_checkbox: QCheckBox
+        unstoppable_struct_copy_newer_checkbox: QCheckBox
+        unstoppable_struct_defaults_checkbox: QCheckBox
+        unstoppable_struct_eta_checkbox: QCheckBox
+        unstoppable_struct_extra_args_edit: QLineEdit
+        unstoppable_struct_include_subdirs_checkbox: QCheckBox
+        unstoppable_struct_keep_attributes_checkbox: QCheckBox
+        unstoppable_struct_keep_owner_checkbox: QCheckBox
+        unstoppable_struct_keep_time_checkbox: QCheckBox
+        unstoppable_struct_overwrite_checkbox: QCheckBox
+        unstoppable_struct_overwrite_readonly_checkbox: QCheckBox
+        unstoppable_struct_power_down_checkbox: QCheckBox
+        unstoppable_struct_resume_checkbox: QCheckBox
+        unstoppable_struct_skip_damaged_checkbox: QCheckBox
+        unstoppable_struct_undamaged_first_checkbox: QCheckBox
         unstoppable_test_btn: QPushButton
         use_extended_paths_cmd_delete_checkbox: QCheckBox
         use_extended_paths_external_copymove_checkbox: QCheckBox
@@ -573,7 +619,7 @@ class SettingsDialog(QDialog):
             powershell_test_button=powershell_test_button,
         )
 
-    def _build_backend_executable_controls(
+    def build_backend_executable_controls(
         self,
         *,
         executable_edit: QLineEdit,
@@ -614,7 +660,7 @@ class SettingsDialog(QDialog):
         layout.setColumnStretch(1, 1)
         return host
 
-    def _build_preview_label(self) -> QLabel:
+    def build_preview_label(self) -> QLabel:
         label = QLabel(self)
         label.setTextFormat(Qt.TextFormat.PlainText)
         label.setWordWrap(True)
@@ -622,412 +668,24 @@ class SettingsDialog(QDialog):
         return label
 
     def build_robocopy_settings_card(self) -> QWidget:
-        host = QWidget(self)
-        layout = QVBoxLayout(host)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
-
-        grid = QGridLayout()
-        grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(6)
-        self.robocopy_struct_include_subdirs_checkbox = QCheckBox(
-            "Copy subdirectories (/E)", host
-        )
-        self.robocopy_struct_mirror_checkbox = QCheckBox("Mirror target (/MIR)", host)
-        self.robocopy_struct_move_checkbox = QCheckBox(
-            "Move files for move (/MOVE)", host
-        )
-        self.robocopy_struct_restartable_checkbox = QCheckBox(
-            "Restartable mode (/Z)", host
-        )
-        self.robocopy_struct_backup_checkbox = QCheckBox("Backup mode (/B)", host)
-        self.robocopy_struct_list_only_checkbox = QCheckBox(
-            "List only dry-run (/L)", host
-        )
-        self.robocopy_struct_quiet_checkbox = QCheckBox(
-            "Suppress detail logs (/NFL /NDL /NJH /NJS /NP)", host
-        )
-        self.robocopy_struct_retry_spin = QSpinBox(host)
-        self.robocopy_struct_retry_spin.setRange(0, 1_000_000)
-        self.robocopy_struct_wait_spin = QSpinBox(host)
-        self.robocopy_struct_wait_spin.setRange(0, 3_600)
-        self.robocopy_struct_multithread_checkbox = QCheckBox(
-            "Multi-threaded (/MT)", host
-        )
-        self.robocopy_struct_multithread_spin = QSpinBox(host)
-        self.robocopy_struct_multithread_spin.setRange(1, 128)
-        self.robocopy_struct_extra_args_edit = QLineEdit(host)
-        self.robocopy_struct_extra_args_edit.setPlaceholderText("Extra args")
-
-        for widget in [
-            self.robocopy_struct_include_subdirs_checkbox,
-            self.robocopy_struct_mirror_checkbox,
-            self.robocopy_struct_move_checkbox,
-            self.robocopy_struct_restartable_checkbox,
-            self.robocopy_struct_backup_checkbox,
-            self.robocopy_struct_list_only_checkbox,
-            self.robocopy_struct_quiet_checkbox,
-            self.robocopy_struct_multithread_checkbox,
-        ]:
-            widget.toggled.connect(self._on_controls_changed)
-
-        for widget in [
-            self.robocopy_struct_retry_spin,
-            self.robocopy_struct_wait_spin,
-            self.robocopy_struct_multithread_spin,
-        ]:
-            widget.valueChanged.connect(self._on_controls_changed)
-        self.robocopy_struct_extra_args_edit.textChanged.connect(
-            self._on_controls_changed
-        )
-        self.robocopy_struct_multithread_checkbox.toggled.connect(
-            self.robocopy_struct_multithread_spin.setEnabled
-        )
-
-        grid.addWidget(self.robocopy_struct_include_subdirs_checkbox, 0, 0, 1, 2)
-        grid.addWidget(self.robocopy_struct_mirror_checkbox, 1, 0, 1, 2)
-        grid.addWidget(self.robocopy_struct_move_checkbox, 2, 0, 1, 2)
-        grid.addWidget(self.robocopy_struct_restartable_checkbox, 3, 0, 1, 2)
-        grid.addWidget(self.robocopy_struct_backup_checkbox, 4, 0, 1, 2)
-        grid.addWidget(self.robocopy_struct_list_only_checkbox, 5, 0, 1, 2)
-        grid.addWidget(self.robocopy_struct_quiet_checkbox, 6, 0, 1, 2)
-        grid.addWidget(QLabel("Retry count (/R)", host), 7, 0)
-        grid.addWidget(self.robocopy_struct_retry_spin, 7, 1)
-        grid.addWidget(QLabel("Wait seconds (/W)", host), 8, 0)
-        grid.addWidget(self.robocopy_struct_wait_spin, 8, 1)
-        grid.addWidget(self.robocopy_struct_multithread_checkbox, 9, 0)
-        grid.addWidget(self.robocopy_struct_multithread_spin, 9, 1)
-        grid.addWidget(QLabel("Extra args", host), 10, 0)
-        grid.addWidget(self.robocopy_struct_extra_args_edit, 10, 1)
-        grid.addWidget(self.use_extended_paths_robocopy_checkbox, 11, 1)
-        layout.addLayout(grid)
-
-        self.robocopy_preview_label = self._build_preview_label()
-        layout.addWidget(self.robocopy_preview_label)
-
-        actions = QWidget(host)
-        actions_layout = QHBoxLayout(actions)
-        actions_layout.setContentsMargins(0, 0, 0, 0)
-        actions_layout.setSpacing(8)
-        actions_layout.addStretch(1)
-        self.robocopy_reset_backend_btn.clicked.connect(
-            self._reset_robocopy_backend_defaults
-        )
-        self.robocopy_test_btn.clicked.connect(
-            lambda: self._test_backend("copy", "robocopy")
-        )
-        actions_layout.addWidget(self.robocopy_reset_backend_btn)
-        actions_layout.addWidget(self.robocopy_test_btn)
-        layout.addWidget(actions)
-        return host
+        return backend_cards_transfer.build_robocopy_settings_card(self)
 
     def build_teracopy_settings_card(self) -> QWidget:
-        host = QWidget(self)
-        layout = QVBoxLayout(host)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
-        layout.addWidget(
-            self._build_backend_executable_controls(
-                executable_edit=self.teracopy_executable_edit,
-                default_executable=SettingsManager.DEFAULT_TERACOPY_EXECUTABLE,
-                discover_default_executable=DEFAULT_TERA_COPY_EXE,
-            )
-        )
-
-        grid = QGridLayout()
-        grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(6)
-        self.teracopy_struct_close_checkbox = QCheckBox(
-            "Close when done (/Close)", host
-        )
-        self.teracopy_struct_keep_open_checkbox = QCheckBox(
-            "Keep open (/NoClose)", host
-        )
-        self.teracopy_struct_verify_checkbox = QCheckBox(
-            "Verify after copy (/Verify)", host
-        )
-        self.teracopy_struct_no_sound_checkbox = QCheckBox(
-            "Disable sounds (/NoSound)", host
-        )
-        self.teracopy_struct_conflict_combo = QComboBox(host)
-        self.teracopy_struct_conflict_combo.addItem("No explicit override", "")
-        self.teracopy_struct_conflict_combo.addItem("Overwrite All", "/OverwriteAll")
-        self.teracopy_struct_conflict_combo.addItem("Skip All", "/SkipAll")
-        self.teracopy_struct_conflict_combo.addItem("Rename All", "/RenameAll")
-        self.teracopy_struct_conflict_combo.addItem(
-            "Overwrite Older", "/OverwriteOlder"
-        )
-        self.teracopy_struct_conflict_combo.addItem(
-            "Overwrite Different Size", "/OverwriteDiffSize"
-        )
-        self.teracopy_struct_conflict_combo.addItem("Rename Copied", "/RenameCopied")
-        self.teracopy_struct_conflict_combo.addItem(
-            "Rename Destination", "/RenameDestination"
-        )
-        self.teracopy_struct_extra_args_edit = QLineEdit(host)
-        self.teracopy_struct_extra_args_edit.setPlaceholderText("Extra args")
-
-        self.teracopy_struct_close_checkbox.toggled.connect(
-            self._on_teracopy_struct_close_toggled
-        )
-        self.teracopy_struct_keep_open_checkbox.toggled.connect(
-            self._on_teracopy_struct_keep_open_toggled
-        )
-        for widget in [
-            self.teracopy_struct_verify_checkbox,
-            self.teracopy_struct_no_sound_checkbox,
-            self.use_extended_paths_teracopy_checkbox,
-        ]:
-            widget.toggled.connect(self._on_controls_changed)
-        self.teracopy_struct_conflict_combo.currentIndexChanged.connect(
-            self._on_controls_changed
-        )
-        self.teracopy_struct_extra_args_edit.textChanged.connect(
-            self._on_controls_changed
-        )
-
-        grid.addWidget(self.teracopy_struct_close_checkbox, 0, 0, 1, 2)
-        grid.addWidget(self.teracopy_struct_keep_open_checkbox, 1, 0, 1, 2)
-        grid.addWidget(self.teracopy_struct_verify_checkbox, 2, 0, 1, 2)
-        grid.addWidget(self.teracopy_struct_no_sound_checkbox, 3, 0, 1, 2)
-        grid.addWidget(QLabel("Conflict mode", host), 4, 0)
-        grid.addWidget(self.teracopy_struct_conflict_combo, 4, 1)
-        grid.addWidget(QLabel("Extra args", host), 5, 0)
-        grid.addWidget(self.teracopy_struct_extra_args_edit, 5, 1)
-        grid.addWidget(self.use_extended_paths_teracopy_checkbox, 6, 1)
-        grid.setColumnStretch(1, 1)
-        layout.addLayout(grid)
-
-        self.teracopy_preview_label = self._build_preview_label()
-        layout.addWidget(self.teracopy_preview_label)
-
-        actions = QWidget(host)
-        actions_layout = QHBoxLayout(actions)
-        actions_layout.setContentsMargins(0, 0, 0, 0)
-        actions_layout.setSpacing(8)
-        actions_layout.addStretch(1)
-        self.teracopy_reset_backend_btn.clicked.connect(
-            self._reset_teracopy_backend_defaults
-        )
-        self.teracopy_test_btn.clicked.connect(
-            lambda: self._test_backend("copy", "teracopy")
-        )
-        actions_layout.addWidget(self.teracopy_reset_backend_btn)
-        actions_layout.addWidget(self.teracopy_test_btn)
-        layout.addWidget(actions)
-        return host
+        return backend_cards_transfer.build_teracopy_settings_card(self)
 
     def build_unstoppable_settings_card(self) -> QWidget:
-        host = QWidget(self)
-        layout = QVBoxLayout(host)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
-        layout.addWidget(
-            self._build_backend_executable_controls(
-                executable_edit=self.unstoppable_executable_edit,
-                default_executable=SettingsManager.DEFAULT_UNSTOPPABLE_EXECUTABLE,
-                discover_default_executable=DEFAULT_UNSTOPPABLE_EXE,
-            )
-        )
-
-        grid = QGridLayout()
-        grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(6)
-        self.unstoppable_struct_defaults_checkbox = QCheckBox("Use defaults (+d)", host)
-        self.unstoppable_struct_keep_attributes_checkbox = QCheckBox(
-            "Copy attributes (+a)", host
-        )
-        self.unstoppable_struct_keep_owner_checkbox = QCheckBox(
-            "Copy ownership (+o)", host
-        )
-        self.unstoppable_struct_keep_time_checkbox = QCheckBox(
-            "Copy date/time (+t)", host
-        )
-        self.unstoppable_struct_overwrite_checkbox = QCheckBox(
-            "Overwrite existing (+e)", host
-        )
-        self.unstoppable_struct_include_subdirs_checkbox = QCheckBox(
-            "Include subfolders (+i)", host
-        )
-        self.unstoppable_struct_resume_checkbox = QCheckBox(
-            "Recover and resume (+r)", host
-        )
-        self.unstoppable_struct_copy_newer_checkbox = QCheckBox(
-            "Copy newer only (+c)", host
-        )
-        self.unstoppable_struct_skip_damaged_checkbox = QCheckBox(
-            "Auto-skip damaged (+s)", host
-        )
-        self.unstoppable_struct_undamaged_first_checkbox = QCheckBox(
-            "Undamaged first (+u)", host
-        )
-        self.unstoppable_struct_overwrite_readonly_checkbox = QCheckBox(
-            "Overwrite read-only (+w)", host
-        )
-        self.unstoppable_struct_copy_empty_folders_checkbox = QCheckBox(
-            "Copy empty folders (+f)", host
-        )
-        self.unstoppable_struct_eta_checkbox = QCheckBox("Show ETA (+z)", host)
-        self.unstoppable_struct_power_down_checkbox = QCheckBox(
-            "Power down after completion (+p)", host
-        )
-        self.unstoppable_struct_extra_args_edit = QLineEdit(host)
-        self.unstoppable_struct_extra_args_edit.setPlaceholderText("Extra args")
-        self.unstoppable_struct_extra_args_edit.textChanged.connect(
-            self._on_controls_changed
-        )
-        for widget in [
-            self.unstoppable_struct_defaults_checkbox,
-            self.unstoppable_struct_keep_attributes_checkbox,
-            self.unstoppable_struct_keep_owner_checkbox,
-            self.unstoppable_struct_keep_time_checkbox,
-            self.unstoppable_struct_overwrite_checkbox,
-            self.unstoppable_struct_include_subdirs_checkbox,
-            self.unstoppable_struct_resume_checkbox,
-            self.unstoppable_struct_copy_newer_checkbox,
-            self.unstoppable_struct_skip_damaged_checkbox,
-            self.unstoppable_struct_undamaged_first_checkbox,
-            self.unstoppable_struct_overwrite_readonly_checkbox,
-            self.unstoppable_struct_copy_empty_folders_checkbox,
-            self.unstoppable_struct_eta_checkbox,
-            self.unstoppable_struct_power_down_checkbox,
-            self.use_extended_paths_unstoppable_checkbox,
-        ]:
-            widget.toggled.connect(self._on_controls_changed)
-
-        grid.addWidget(self.unstoppable_struct_defaults_checkbox, 0, 0, 1, 2)
-        grid.addWidget(self.unstoppable_struct_keep_attributes_checkbox, 1, 0, 1, 2)
-        grid.addWidget(self.unstoppable_struct_keep_owner_checkbox, 2, 0, 1, 2)
-        grid.addWidget(self.unstoppable_struct_keep_time_checkbox, 3, 0, 1, 2)
-        grid.addWidget(self.unstoppable_struct_overwrite_checkbox, 4, 0, 1, 2)
-        grid.addWidget(self.unstoppable_struct_include_subdirs_checkbox, 5, 0, 1, 2)
-        grid.addWidget(self.unstoppable_struct_resume_checkbox, 6, 0, 1, 2)
-        grid.addWidget(self.unstoppable_struct_copy_newer_checkbox, 7, 0, 1, 2)
-        grid.addWidget(self.unstoppable_struct_skip_damaged_checkbox, 8, 0, 1, 2)
-        grid.addWidget(self.unstoppable_struct_undamaged_first_checkbox, 9, 0, 1, 2)
-        grid.addWidget(self.unstoppable_struct_overwrite_readonly_checkbox, 10, 0, 1, 2)
-        grid.addWidget(self.unstoppable_struct_copy_empty_folders_checkbox, 11, 0, 1, 2)
-        grid.addWidget(self.unstoppable_struct_eta_checkbox, 12, 0, 1, 2)
-        grid.addWidget(self.unstoppable_struct_power_down_checkbox, 13, 0, 1, 2)
-        grid.addWidget(QLabel("Extra args", host), 14, 0)
-        grid.addWidget(self.unstoppable_struct_extra_args_edit, 14, 1)
-        grid.addWidget(self.use_extended_paths_unstoppable_checkbox, 15, 1)
-        grid.setColumnStretch(1, 1)
-        layout.addLayout(grid)
-
-        self.unstoppable_preview_label = self._build_preview_label()
-        layout.addWidget(self.unstoppable_preview_label)
-
-        actions = QWidget(host)
-        actions_layout = QHBoxLayout(actions)
-        actions_layout.setContentsMargins(0, 0, 0, 0)
-        actions_layout.setSpacing(8)
-        actions_layout.addStretch(1)
-        self.unstoppable_reset_backend_btn.clicked.connect(
-            self._reset_unstoppable_backend_defaults
-        )
-        self.unstoppable_test_btn.clicked.connect(
-            lambda: self._test_backend("copy", "unstoppable")
-        )
-        actions_layout.addWidget(self.unstoppable_reset_backend_btn)
-        actions_layout.addWidget(self.unstoppable_test_btn)
-        layout.addWidget(actions)
-        return host
+        return backend_cards_external.build_unstoppable_settings_card(self)
 
     def build_external_copymove_settings_card(self) -> QWidget:
-        host = QWidget(self)
-        layout = QVBoxLayout(host)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
-        layout.addWidget(
-            self._build_backend_executable_controls(
-                executable_edit=self.generic_copymove_executable_edit,
-                default_executable=SettingsManager.DEFAULT_GENERIC_COPYMOVE_EXECUTABLE,
-                discover_default_executable="",
-                enable_find=False,
-            )
-        )
+        return backend_cards_external.build_external_copymove_settings_card(self)
 
-        grid = QGridLayout()
-        grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(6)
-        self.external_copymove_struct_include_operation_checkbox = QCheckBox(
-            "Include {operation} placeholder",
-            host,
-        )
-        self.external_copymove_struct_include_sources_checkbox = QCheckBox(
-            "Include {sources} placeholder",
-            host,
-        )
-        self.external_copymove_struct_include_target_checkbox = QCheckBox(
-            "Include {target} placeholder",
-            host,
-        )
-        self.external_copymove_struct_extra_args_edit = QLineEdit(host)
-        self.external_copymove_struct_extra_args_edit.setPlaceholderText("Extra args")
-        self.external_copymove_struct_extra_args_edit.textChanged.connect(
-            self._on_controls_changed
-        )
-        for widget in [
-            self.external_copymove_struct_include_operation_checkbox,
-            self.external_copymove_struct_include_sources_checkbox,
-            self.external_copymove_struct_include_target_checkbox,
-            self.use_extended_paths_external_copymove_checkbox,
-        ]:
-            widget.toggled.connect(self._on_controls_changed)
-        grid.addWidget(
-            self.external_copymove_struct_include_operation_checkbox,
-            0,
-            0,
-            1,
-            2,
-        )
-        grid.addWidget(
-            self.external_copymove_struct_include_sources_checkbox,
-            1,
-            0,
-            1,
-            2,
-        )
-        grid.addWidget(
-            self.external_copymove_struct_include_target_checkbox,
-            2,
-            0,
-            1,
-            2,
-        )
-        grid.addWidget(QLabel("Extra args", host), 3, 0)
-        grid.addWidget(self.external_copymove_struct_extra_args_edit, 3, 1)
-        grid.addWidget(self.use_extended_paths_external_copymove_checkbox, 4, 1)
-        grid.setColumnStretch(1, 1)
-        layout.addLayout(grid)
-
-        self.external_copymove_preview_label = self._build_preview_label()
-        layout.addWidget(self.external_copymove_preview_label)
-
-        actions = QWidget(host)
-        actions_layout = QHBoxLayout(actions)
-        actions_layout.setContentsMargins(0, 0, 0, 0)
-        actions_layout.setSpacing(8)
-        actions_layout.addStretch(1)
-        self.external_copymove_reset_backend_btn.clicked.connect(
-            self._reset_external_copymove_backend_defaults
-        )
-        self.generic_copymove_test_btn.clicked.connect(
-            lambda: self._test_backend("copy", "external_copymove")
-        )
-        actions_layout.addWidget(self.external_copymove_reset_backend_btn)
-        actions_layout.addWidget(self.generic_copymove_test_btn)
-        layout.addWidget(actions)
-        return host
-
-    def _on_teracopy_struct_close_toggled(self, checked: bool) -> None:
+    def on_teracopy_struct_close_toggled(self, checked: bool) -> None:
         if checked and self.teracopy_struct_keep_open_checkbox.isChecked():
             with QSignalBlocker(self.teracopy_struct_keep_open_checkbox):
                 self.teracopy_struct_keep_open_checkbox.setChecked(False)
         self._on_controls_changed()
 
-    def _on_teracopy_struct_keep_open_toggled(self, checked: bool) -> None:
+    def on_teracopy_struct_keep_open_toggled(self, checked: bool) -> None:
         if checked and self.teracopy_struct_close_checkbox.isChecked():
             with QSignalBlocker(self.teracopy_struct_close_checkbox):
                 self.teracopy_struct_close_checkbox.setChecked(False)
@@ -1167,18 +825,18 @@ class SettingsDialog(QDialog):
         )
         self.external_copymove_struct_extra_args_edit.setText(options.extra_args)
 
-    def _reset_robocopy_backend_defaults(self) -> None:
+    def reset_robocopy_backend_defaults(self) -> None:
         self._apply_robocopy_structured_options_to_controls(RobocopyBackendOptions())
         self._on_controls_changed()
 
-    def _reset_teracopy_backend_defaults(self) -> None:
+    def reset_teracopy_backend_defaults(self) -> None:
         self._apply_teracopy_structured_options_to_controls(TeraCopyBackendOptions())
         self.teracopy_executable_edit.setText(
             SettingsManager.DEFAULT_TERACOPY_EXECUTABLE
         )
         self._on_controls_changed()
 
-    def _reset_unstoppable_backend_defaults(self) -> None:
+    def reset_unstoppable_backend_defaults(self) -> None:
         self._apply_unstoppable_structured_options_to_controls(
             UnstoppableBackendOptions()
         )
@@ -1187,7 +845,7 @@ class SettingsDialog(QDialog):
         )
         self._on_controls_changed()
 
-    def _reset_external_copymove_backend_defaults(self) -> None:
+    def reset_external_copymove_backend_defaults(self) -> None:
         self._apply_external_copymove_structured_options_to_controls(
             ExternalCopyMoveBackendOptions()
         )
@@ -1253,39 +911,9 @@ class SettingsDialog(QDialog):
         )
 
     def build_file_open_overrides_controls(self) -> QWidget:
-        host = QWidget(self)
-        layout = QVBoxLayout(host)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
-        layout.addWidget(self.file_open_overrides_table, 1)
+        return open_overrides_controls.build_file_open_overrides_controls(self)
 
-        actions = QWidget(host)
-        actions_layout = QHBoxLayout(actions)
-        actions_layout.setContentsMargins(0, 0, 0, 0)
-        actions_layout.setSpacing(8)
-        self.add_override_row_btn = QPushButton("Add", actions)
-        self.remove_override_row_btn = QPushButton("Remove", actions)
-        self.browse_override_editor_btn = QPushButton("Browse Editor...", actions)
-        self.browse_override_viewer_btn = QPushButton("Browse Viewer...", actions)
-        self.add_override_row_btn.clicked.connect(self._add_file_open_override_row)
-        self.remove_override_row_btn.clicked.connect(
-            self._remove_file_open_override_row
-        )
-        self.browse_override_editor_btn.clicked.connect(
-            lambda: self._browse_file_open_override_executable(1)
-        )
-        self.browse_override_viewer_btn.clicked.connect(
-            lambda: self._browse_file_open_override_executable(2)
-        )
-        actions_layout.addWidget(self.add_override_row_btn)
-        actions_layout.addWidget(self.remove_override_row_btn)
-        actions_layout.addWidget(self.browse_override_editor_btn)
-        actions_layout.addWidget(self.browse_override_viewer_btn)
-        actions_layout.addStretch(1)
-        layout.addWidget(actions)
-        return host
-
-    def _add_file_open_override_row(self) -> None:
+    def add_file_open_override_row(self) -> None:
         row = self.file_open_overrides_table.rowCount()
         self.file_open_overrides_table.insertRow(row)
         self.file_open_overrides_table.setItem(row, 0, QTableWidgetItem(".ext"))
@@ -1294,14 +922,14 @@ class SettingsDialog(QDialog):
         self.file_open_overrides_table.selectRow(row)
         self._on_controls_changed()
 
-    def _remove_file_open_override_row(self) -> None:
+    def remove_file_open_override_row(self) -> None:
         current = self.file_open_overrides_table.currentRow()
         if current < 0:
             return
         self.file_open_overrides_table.removeRow(current)
         self._on_controls_changed()
 
-    def _browse_file_open_override_executable(self, column: int) -> None:
+    def browse_file_open_override_executable(self, column: int) -> None:
         current = self.file_open_overrides_table.currentRow()
         if current < 0:
             return
