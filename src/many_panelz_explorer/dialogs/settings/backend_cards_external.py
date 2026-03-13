@@ -35,6 +35,19 @@ def build_unstoppable_settings_card(dialog: SettingsDialog) -> QWidget:
             discover_default_executable=DEFAULT_UNSTOPPABLE_EXE,
         )
     )
+    grid = _build_unstoppable_options_grid(dialog, host)
+    layout.addLayout(grid)
+    dialog.unstoppable_preview_label = dialog.build_preview_label()
+    layout.addWidget(dialog.unstoppable_preview_label)
+    layout.addWidget(_build_unstoppable_actions(dialog, host))
+    return host
+
+
+def _build_unstoppable_options_grid(
+    dialog: SettingsDialog,
+    host: QWidget,
+) -> QGridLayout:
+    """Build the Unstoppable Copier options grid."""
 
     grid = QGridLayout()
     grid.setHorizontalSpacing(8)
@@ -146,10 +159,14 @@ def build_unstoppable_settings_card(dialog: SettingsDialog) -> QWidget:
     grid.addWidget(dialog.unstoppable_struct_extra_args_edit, 14, 1)
     grid.addWidget(dialog.use_extended_paths_unstoppable_checkbox, 15, 1)
     grid.setColumnStretch(1, 1)
-    layout.addLayout(grid)
+    return grid
 
-    dialog.unstoppable_preview_label = dialog.build_preview_label()
-    layout.addWidget(dialog.unstoppable_preview_label)
+
+def _build_unstoppable_actions(
+    dialog: SettingsDialog,
+    host: QWidget,
+) -> QWidget:
+    """Build the Unstoppable Copier action row."""
 
     actions = QWidget(host)
     actions_layout = QHBoxLayout(actions)
@@ -164,8 +181,7 @@ def build_unstoppable_settings_card(dialog: SettingsDialog) -> QWidget:
     )
     actions_layout.addWidget(dialog.unstoppable_reset_backend_btn)
     actions_layout.addWidget(dialog.unstoppable_test_btn)
-    layout.addWidget(actions)
-    return host
+    return actions
 
 
 def build_external_copymove_settings_card(dialog: SettingsDialog) -> QWidget:

@@ -41,10 +41,6 @@ from .._operations.backend_options import (
     RobocopyBackendOptions,
     TeraCopyBackendOptions,
     UnstoppableBackendOptions,
-    generate_external_copymove_args_template,
-    generate_robocopy_args,
-    generate_teracopy_args_template,
-    generate_unstoppable_args_template,
     resolve_copy_move_backend_args,
 )
 from .._operations.discovery import (
@@ -60,7 +56,6 @@ from .._operations.types import (
     OperationRequest,
 )
 from .._settings import normalize as settings_normalize
-from .._settings.manager import SettingsManager
 from .._settings.models import UiPreferences
 from .settings import (
     FontSizeSpinBox,
@@ -68,6 +63,7 @@ from .settings import (
     SubsectionEntry,
     backend_cards_external,
     backend_cards_transfer,
+    backend_state,
     build_sections,
     control_builders,
     open_overrides_controls,
@@ -692,223 +688,58 @@ class SettingsDialog(QDialog):
         self._on_controls_changed()
 
     def _robocopy_structured_options_from_controls(self) -> RobocopyBackendOptions:
-        return RobocopyBackendOptions(
-            include_subdirectories=self.robocopy_struct_include_subdirs_checkbox.isChecked(),
-            mirror_target=self.robocopy_struct_mirror_checkbox.isChecked(),
-            move_files_for_move=self.robocopy_struct_move_checkbox.isChecked(),
-            restartable_mode=self.robocopy_struct_restartable_checkbox.isChecked(),
-            backup_mode=self.robocopy_struct_backup_checkbox.isChecked(),
-            list_only=self.robocopy_struct_list_only_checkbox.isChecked(),
-            suppress_logs=self.robocopy_struct_quiet_checkbox.isChecked(),
-            retry_count=self.robocopy_struct_retry_spin.value(),
-            wait_seconds=self.robocopy_struct_wait_spin.value(),
-            use_multithreading=self.robocopy_struct_multithread_checkbox.isChecked(),
-            multithread_count=self.robocopy_struct_multithread_spin.value(),
-            extra_args=self.robocopy_struct_extra_args_edit.text().strip(),
-        )
+        return backend_state.robocopy_structured_options_from_controls(self)
 
     def _teracopy_structured_options_from_controls(self) -> TeraCopyBackendOptions:
-        return TeraCopyBackendOptions(
-            close_on_finish=self.teracopy_struct_close_checkbox.isChecked(),
-            keep_open=self.teracopy_struct_keep_open_checkbox.isChecked(),
-            verify_after_copy=self.teracopy_struct_verify_checkbox.isChecked(),
-            no_sound=self.teracopy_struct_no_sound_checkbox.isChecked(),
-            conflict_mode=str(self.teracopy_struct_conflict_combo.currentData() or ""),
-            extra_args=self.teracopy_struct_extra_args_edit.text().strip(),
-        )
+        return backend_state.teracopy_structured_options_from_controls(self)
 
     def _unstoppable_structured_options_from_controls(
         self,
     ) -> UnstoppableBackendOptions:
-        return UnstoppableBackendOptions(
-            use_defaults=self.unstoppable_struct_defaults_checkbox.isChecked(),
-            keep_attributes=self.unstoppable_struct_keep_attributes_checkbox.isChecked(),
-            keep_owner=self.unstoppable_struct_keep_owner_checkbox.isChecked(),
-            keep_time=self.unstoppable_struct_keep_time_checkbox.isChecked(),
-            overwrite_existing=self.unstoppable_struct_overwrite_checkbox.isChecked(),
-            include_subfolders=self.unstoppable_struct_include_subdirs_checkbox.isChecked(),
-            recover_and_resume=self.unstoppable_struct_resume_checkbox.isChecked(),
-            copy_newer_only=self.unstoppable_struct_copy_newer_checkbox.isChecked(),
-            skip_damaged=self.unstoppable_struct_skip_damaged_checkbox.isChecked(),
-            undamaged_first=self.unstoppable_struct_undamaged_first_checkbox.isChecked(),
-            overwrite_readonly=self.unstoppable_struct_overwrite_readonly_checkbox.isChecked(),
-            copy_empty_folders=self.unstoppable_struct_copy_empty_folders_checkbox.isChecked(),
-            show_eta=self.unstoppable_struct_eta_checkbox.isChecked(),
-            power_down_when_done=self.unstoppable_struct_power_down_checkbox.isChecked(),
-            extra_args=self.unstoppable_struct_extra_args_edit.text().strip(),
-        )
+        return backend_state.unstoppable_structured_options_from_controls(self)
 
     def _external_copymove_structured_options_from_controls(
         self,
     ) -> ExternalCopyMoveBackendOptions:
-        return ExternalCopyMoveBackendOptions(
-            include_operation_token=self.external_copymove_struct_include_operation_checkbox.isChecked(),
-            include_sources=self.external_copymove_struct_include_sources_checkbox.isChecked(),
-            include_target=self.external_copymove_struct_include_target_checkbox.isChecked(),
-            extra_args=self.external_copymove_struct_extra_args_edit.text().strip(),
-        )
+        return backend_state.external_copymove_structured_options_from_controls(self)
 
     def _apply_robocopy_structured_options_to_controls(
         self, options: RobocopyBackendOptions
     ) -> None:
-        self.robocopy_struct_include_subdirs_checkbox.setChecked(
-            options.include_subdirectories
-        )
-        self.robocopy_struct_mirror_checkbox.setChecked(options.mirror_target)
-        self.robocopy_struct_move_checkbox.setChecked(options.move_files_for_move)
-        self.robocopy_struct_restartable_checkbox.setChecked(options.restartable_mode)
-        self.robocopy_struct_backup_checkbox.setChecked(options.backup_mode)
-        self.robocopy_struct_list_only_checkbox.setChecked(options.list_only)
-        self.robocopy_struct_quiet_checkbox.setChecked(options.suppress_logs)
-        self.robocopy_struct_retry_spin.setValue(options.retry_count)
-        self.robocopy_struct_wait_spin.setValue(options.wait_seconds)
-        self.robocopy_struct_multithread_checkbox.setChecked(options.use_multithreading)
-        self.robocopy_struct_multithread_spin.setValue(options.multithread_count)
-        self.robocopy_struct_extra_args_edit.setText(options.extra_args)
+        backend_state.apply_robocopy_structured_options_to_controls(self, options)
 
     def _apply_teracopy_structured_options_to_controls(
         self, options: TeraCopyBackendOptions
     ) -> None:
-        self.teracopy_struct_close_checkbox.setChecked(options.close_on_finish)
-        self.teracopy_struct_keep_open_checkbox.setChecked(options.keep_open)
-        self.teracopy_struct_verify_checkbox.setChecked(options.verify_after_copy)
-        self.teracopy_struct_no_sound_checkbox.setChecked(options.no_sound)
-        self._set_combo_value(
-            self.teracopy_struct_conflict_combo, options.conflict_mode
-        )
-        self.teracopy_struct_extra_args_edit.setText(options.extra_args)
+        backend_state.apply_teracopy_structured_options_to_controls(self, options)
 
     def _apply_unstoppable_structured_options_to_controls(
         self, options: UnstoppableBackendOptions
     ) -> None:
-        self.unstoppable_struct_defaults_checkbox.setChecked(options.use_defaults)
-        self.unstoppable_struct_keep_attributes_checkbox.setChecked(
-            options.keep_attributes
-        )
-        self.unstoppable_struct_keep_owner_checkbox.setChecked(options.keep_owner)
-        self.unstoppable_struct_keep_time_checkbox.setChecked(options.keep_time)
-        self.unstoppable_struct_overwrite_checkbox.setChecked(
-            options.overwrite_existing
-        )
-        self.unstoppable_struct_include_subdirs_checkbox.setChecked(
-            options.include_subfolders
-        )
-        self.unstoppable_struct_resume_checkbox.setChecked(options.recover_and_resume)
-        self.unstoppable_struct_copy_newer_checkbox.setChecked(options.copy_newer_only)
-        self.unstoppable_struct_skip_damaged_checkbox.setChecked(options.skip_damaged)
-        self.unstoppable_struct_undamaged_first_checkbox.setChecked(
-            options.undamaged_first
-        )
-        self.unstoppable_struct_overwrite_readonly_checkbox.setChecked(
-            options.overwrite_readonly
-        )
-        self.unstoppable_struct_copy_empty_folders_checkbox.setChecked(
-            options.copy_empty_folders
-        )
-        self.unstoppable_struct_eta_checkbox.setChecked(options.show_eta)
-        self.unstoppable_struct_power_down_checkbox.setChecked(
-            options.power_down_when_done
-        )
-        self.unstoppable_struct_extra_args_edit.setText(options.extra_args)
+        backend_state.apply_unstoppable_structured_options_to_controls(self, options)
 
     def _apply_external_copymove_structured_options_to_controls(
         self, options: ExternalCopyMoveBackendOptions
     ) -> None:
-        self.external_copymove_struct_include_operation_checkbox.setChecked(
-            options.include_operation_token
+        backend_state.apply_external_copymove_structured_options_to_controls(
+            self,
+            options,
         )
-        self.external_copymove_struct_include_sources_checkbox.setChecked(
-            options.include_sources
-        )
-        self.external_copymove_struct_include_target_checkbox.setChecked(
-            options.include_target
-        )
-        self.external_copymove_struct_extra_args_edit.setText(options.extra_args)
 
     def reset_robocopy_backend_defaults(self) -> None:
-        self._apply_robocopy_structured_options_to_controls(RobocopyBackendOptions())
-        self._on_controls_changed()
+        backend_state.reset_robocopy_backend_defaults(self)
 
     def reset_teracopy_backend_defaults(self) -> None:
-        self._apply_teracopy_structured_options_to_controls(TeraCopyBackendOptions())
-        self.teracopy_executable_edit.setText(
-            SettingsManager.DEFAULT_TERACOPY_EXECUTABLE
-        )
-        self._on_controls_changed()
+        backend_state.reset_teracopy_backend_defaults(self)
 
     def reset_unstoppable_backend_defaults(self) -> None:
-        self._apply_unstoppable_structured_options_to_controls(
-            UnstoppableBackendOptions()
-        )
-        self.unstoppable_executable_edit.setText(
-            SettingsManager.DEFAULT_UNSTOPPABLE_EXECUTABLE
-        )
-        self._on_controls_changed()
+        backend_state.reset_unstoppable_backend_defaults(self)
 
     def reset_external_copymove_backend_defaults(self) -> None:
-        self._apply_external_copymove_structured_options_to_controls(
-            ExternalCopyMoveBackendOptions()
-        )
-        self.generic_copymove_executable_edit.setText(
-            SettingsManager.DEFAULT_GENERIC_COPYMOVE_EXECUTABLE
-        )
-        self._on_controls_changed()
+        backend_state.reset_external_copymove_backend_defaults(self)
 
-    def _update_backend_generated_previews(self) -> None:
-        robocopy_options = self._robocopy_structured_options_from_controls()
-        teracopy_options = self._teracopy_structured_options_from_controls()
-        unstoppable_options = self._unstoppable_structured_options_from_controls()
-        external_options = self._external_copymove_structured_options_from_controls()
-        resolved = resolve_copy_move_backend_args(
-            robocopy_options=robocopy_options,
-            teracopy_options=teracopy_options,
-            unstoppable_options=unstoppable_options,
-            external_copymove_options=external_options,
-        )
-        generated_robocopy_copy = generate_robocopy_args(robocopy_options, kind="copy")
-        generated_robocopy_move = generate_robocopy_args(robocopy_options, kind="move")
-        generated_teracopy = generate_teracopy_args_template(teracopy_options)
-        generated_unstoppable = generate_unstoppable_args_template(unstoppable_options)
-        generated_external = generate_external_copymove_args_template(external_options)
-
-        self.robocopy_preview_label.setText(
-            "Generated copy args: "
-            f"{generated_robocopy_copy or '(empty)'}\n"
-            "Generated move args: "
-            f"{generated_robocopy_move or '(empty)'}\n"
-            "Effective copy args: "
-            f"{resolved.robocopy_copy_args}\n"
-            "Effective move args: "
-            f"{resolved.robocopy_move_args}"
-        )
-        self.teracopy_preview_label.setText(
-            "Generated args template: "
-            f"{generated_teracopy or '(empty)'}\n"
-            "Effective args template: "
-            f"{resolved.teracopy_args_template}"
-        )
-        generated_unstoppable_preview = (
-            f"{generated_unstoppable} {{job_file}}\n"
-            if generated_unstoppable
-            else "{job_file}\n"
-        )
-        effective_unstoppable_preview = (
-            f"{resolved.unstoppable_args_template} {{job_file}}"
-            if resolved.unstoppable_args_template
-            else "{job_file}"
-        )
-        self.unstoppable_preview_label.setText(
-            "Generated args template: "
-            f"{generated_unstoppable_preview}"
-            "Effective args template: "
-            f"{effective_unstoppable_preview}"
-        )
-        self.external_copymove_preview_label.setText(
-            "Generated args template: "
-            f"{generated_external or '(empty)'}\n"
-            "Effective args template: "
-            f"{resolved.external_copymove_args_template}"
-        )
+    def update_backend_generated_previews(self) -> None:
+        backend_state.update_backend_generated_previews(self)
 
     def build_file_open_overrides_controls(self) -> QWidget:
         return open_overrides_controls.build_file_open_overrides_controls(self)
@@ -1461,7 +1292,7 @@ class SettingsDialog(QDialog):
             self._load_typography_preferences(preferences)
             self._sync_font_override_controls()
             self._sync_byte_format_controls()
-            self._update_backend_generated_previews()
+            self.update_backend_generated_previews()
             self._sync_slider_value_labels()
             self._update_reset_controls()
         finally:
@@ -1475,6 +1306,9 @@ class SettingsDialog(QDialog):
         target.setStyleSheet(f"background: {color_hex}; border: 1px solid #777;")
         target.setText(color_hex)
         target.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    def set_combo_value(self, combo: QComboBox, value: str) -> None:
+        self._set_combo_value(combo, value)
 
     def _set_combo_value(self, combo: QComboBox, value: str) -> None:
         for index in range(combo.count()):
@@ -1576,7 +1410,7 @@ class SettingsDialog(QDialog):
             target_panel_tint_color_hex=self._target_color_hex,
             target_panel_tint_intensity_percent=self.target_intensity_slider.value(),
         )
-        self._update_backend_generated_previews()
+        self.update_backend_generated_previews()
         self._pending_live_preview = True
         self._live_preview_timer.start(self.LIVE_PREVIEW_DEBOUNCE_MS)
 
