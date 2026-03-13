@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 from PySide6.QtWidgets import QInputDialog, QMenu, QMessageBox
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ...window import ExplorerWindow
 
 
@@ -86,9 +88,7 @@ class WindowViewsCoordinator:
 
         for view_name in names:
             action = menu.addAction(view_name.replace("&", "&&"))
-            action.triggered.connect(
-                lambda _checked=False, name=view_name: self.restore_view_named(name)
-            )
+            action.triggered.connect(self._restore_view_named_callback(view_name))
 
     def _restore_view_state(self, view_state: SavedViewState) -> None:
         """Create a clone window and hydrate it from saved state."""
@@ -130,3 +130,11 @@ class WindowViewsCoordinator:
             )
             return None
         return payload
+
+    def _restore_view_named_callback(self, view_name: str) -> Callable[[bool], None]:
+        """Build a callback that restores a fixed saved view name."""
+
+        def _handle_triggered(_checked: bool = False) -> None:
+            self.restore_view_named(view_name)
+
+        return _handle_triggered

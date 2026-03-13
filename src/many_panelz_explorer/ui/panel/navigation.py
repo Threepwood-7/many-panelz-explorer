@@ -21,6 +21,7 @@ from threep_commons.fs_paths import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from ...explorer_tab import ExplorerTab
     from ...panel_widget import PanelWidget
 
 
@@ -75,9 +76,7 @@ class PanelNavigationCoordinator:
             button.setChecked(
                 current_path is not None and is_path_under_root(current_path, root_path)
             )
-            button.clicked.connect(
-                lambda _checked=False, p=root_path: self.navigate_to_root(p)
-            )
+            button.clicked.connect(self._navigate_to_root_callback(root_path))
             button.installEventFilter(self.panel.focus_watcher)
             self.panel.root_buttons_layout.addWidget(button)
             self.panel.root_buttons.append(button)
@@ -350,9 +349,7 @@ class PanelNavigationCoordinator:
             action.setToolTip(display_path_text(entry))
             action.setCheckable(True)
             action.setChecked(index == current_index)
-            action.triggered.connect(
-                lambda _checked=False, i=index: tab.navigation.go_to_history_index(i)
-            )
+            action.triggered.connect(self._history_index_callback(tab, index))
 
         self.panel.set_history_menu(menu)
         menu.popup(
@@ -360,3 +357,23 @@ class PanelNavigationCoordinator:
                 self.panel.address_edit.rect().bottomLeft()
             )
         )
+
+    def _navigate_to_root_callback(self, root_path: Path) -> Callable[[bool], None]:
+        """Build a callback that navigates the active tab to a root path."""
+
+        def _handle_clicked(_checked: bool = False) -> None:
+            self.navigate_to_root(root_path)
+
+        return _handle_clicked
+
+    def _history_index_callback(
+        self,
+        tab: ExplorerTab,
+        index: int,
+    ) -> Callable[[bool], None]:
+        """Build a callback that navigates to a fixed history index."""
+
+        def _handle_triggered(_checked: bool = False) -> None:
+            tab.navigation.go_to_history_index(index)
+
+        return _handle_triggered
