@@ -13,6 +13,8 @@ from .layout import WindowLayoutCoordinator
 from .panel_columns import WindowPanelColumnSyncCoordinator
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ...window import ExplorerWindow
 
 
@@ -328,12 +330,12 @@ class WindowPanelsCoordinator:
                 roots_provider=self.window.roots_provider,
                 parent=self.window,
             )
-            panel.activated.connect(lambda pid=panel_id: self.set_active_panel(pid))
+            panel.activated.connect(self._panel_activated_callback(panel_id))
             panel.current_context_changed.connect(self.window.update_pane_visuals)
             panel.column_widths_sync_requested.connect(
                 self.column_sync_coordinator.panel_widths_sync_callback(panel_id)
             )
-            panel.became_empty.connect(lambda pid=panel_id: self.close_panel_by_id(pid))
+            panel.became_empty.connect(self._panel_empty_callback(panel_id))
             panel.state_coordinator.set_column_width_auto_align_mode(
                 self.window.preferences_coordinator.column_width_auto_align_mode
             )
@@ -473,3 +475,19 @@ class WindowPanelsCoordinator:
         else:
             next_index = 0
         _activate_panel_and_focus(self, ordered[next_index])
+
+    def _panel_activated_callback(self, panel_id: int) -> Callable[[], None]:
+        """Build the callback used when a panel becomes active."""
+
+        def _handle_activated() -> None:
+            self.set_active_panel(panel_id)
+
+        return _handle_activated
+
+    def _panel_empty_callback(self, panel_id: int) -> Callable[[], None]:
+        """Build the callback used when a panel loses its last tab."""
+
+        def _handle_empty() -> None:
+            self.close_panel_by_id(panel_id)
+
+        return _handle_empty

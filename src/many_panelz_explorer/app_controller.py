@@ -95,10 +95,8 @@ class AppController:
             initial_path=initial_path,
             roots_provider=roots_provider,
         )
-        window.request_new_window.connect(
-            lambda w=window: self.new_window(from_window=w)
-        )
-        window.window_activated.connect(lambda w=window: self._on_window_activated(w))
+        window.request_new_window.connect(self._new_window_request_callback(window))
+        window.window_activated.connect(self._window_activated_callback(window))
 
         if from_window is not None:
             geo = from_window.geometry()
@@ -261,6 +259,28 @@ class AppController:
     def _on_queue_window_destroyed(self, window: QMainWindow) -> None:
         if window in self._queue_windows:
             self._queue_windows.remove(window)
+
+    def _new_window_request_callback(
+        self,
+        window: ExplorerWindow,
+    ) -> Callable[[], None]:
+        """Build a callback that clones window creation context."""
+
+        def _handle_request() -> None:
+            self.new_window(from_window=window)
+
+        return _handle_request
+
+    def _window_activated_callback(
+        self,
+        window: ExplorerWindow,
+    ) -> Callable[[], None]:
+        """Build a callback that reports the activated window."""
+
+        def _handle_activation() -> None:
+            self._on_window_activated(window)
+
+        return _handle_activation
 
     def _preferences_to_operation_execution(
         self,

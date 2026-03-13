@@ -16,6 +16,8 @@ from ... import widget_naming
 from ...operation_queue_widgets import OperationQueuePanel
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ...window import ExplorerWindow
 
 
@@ -46,9 +48,7 @@ class WindowUiComposer:
         )
         self.window.new_vertical_panel_action.setShortcut(QKeySequence("Ctrl+P"))
         self.window.new_vertical_panel_action.triggered.connect(
-            lambda: self.window.panels_coordinator.split_active_panel(
-                Qt.Orientation.Horizontal
-            )
+            self._split_panel_callback(Qt.Orientation.Horizontal)
         )
 
         self.window.new_horizontal_panel_action = QAction(
@@ -56,27 +56,21 @@ class WindowUiComposer:
         )
         self.window.new_horizontal_panel_action.setShortcut(QKeySequence("Ctrl+H"))
         self.window.new_horizontal_panel_action.triggered.connect(
-            lambda: self.window.panels_coordinator.split_active_panel(
-                Qt.Orientation.Vertical
-            )
+            self._split_panel_callback(Qt.Orientation.Vertical)
         )
 
         self.window.clone_vertical_panel_action = QAction(
             "Clone Current Panel (Ver&tical)", self.window
         )
         self.window.clone_vertical_panel_action.triggered.connect(
-            lambda: self.window.panels_coordinator.clone_active_panel(
-                Qt.Orientation.Horizontal
-            )
+            self._clone_panel_callback(Qt.Orientation.Horizontal)
         )
 
         self.window.clone_horizontal_panel_action = QAction(
             "Clone Current Panel (Hori&zontal)", self.window
         )
         self.window.clone_horizontal_panel_action.triggered.connect(
-            lambda: self.window.panels_coordinator.clone_active_panel(
-                Qt.Orientation.Vertical
-            )
+            self._clone_panel_callback(Qt.Orientation.Vertical)
         )
 
         self.window.close_tab_action = QAction("Close Ta&b", self.window)
@@ -122,37 +116,27 @@ class WindowUiComposer:
         self.window.copy_to_target_action = QAction("&Copy to Target Pane", self.window)
         self.window.copy_to_target_action.setShortcut(QKeySequence("F5"))
         self.window.copy_to_target_action.triggered.connect(
-            lambda: self.window.operations_coordinator.transfer_selected_to_target(
-                move=False
-            )
+            self._transfer_selected_to_target_callback(move=False, configure=False)
         )
 
         self.window.copy_to_target_configure_action = QAction(
             "Copy to Target Pane (Configure...)", self.window
         )
         self.window.copy_to_target_configure_action.triggered.connect(
-            lambda: self.window.operations_coordinator.transfer_selected_to_target(
-                move=False,
-                configure=True,
-            )
+            self._transfer_selected_to_target_callback(move=False, configure=True)
         )
 
         self.window.move_to_target_action = QAction("&Move to Target Pane", self.window)
         self.window.move_to_target_action.setShortcut(QKeySequence("F6"))
         self.window.move_to_target_action.triggered.connect(
-            lambda: self.window.operations_coordinator.transfer_selected_to_target(
-                move=True
-            )
+            self._transfer_selected_to_target_callback(move=True, configure=False)
         )
 
         self.window.move_to_target_configure_action = QAction(
             "Move to Target Pane (Configure...)", self.window
         )
         self.window.move_to_target_configure_action.triggered.connect(
-            lambda: self.window.operations_coordinator.transfer_selected_to_target(
-                move=True,
-                configure=True,
-            )
+            self._transfer_selected_to_target_callback(move=True, configure=True)
         )
 
         self.window.delete_selection_action = QAction("&Delete Selection", self.window)
@@ -165,9 +149,7 @@ class WindowUiComposer:
             "Delete Selection (Configure...)", self.window
         )
         self.window.delete_selection_configure_action.triggered.connect(
-            lambda: self.window.operations_coordinator.delete_selected_items(
-                configure=True
-            )
+            self._delete_selected_items_callback(configure=True)
         )
 
     def _build_window_actions(self) -> None:
@@ -413,3 +395,49 @@ class WindowUiComposer:
         self.window.views_coordinator.populate_restore_view_menu(
             self.window.restore_view_menu
         )
+
+    def _split_panel_callback(self, orientation: Qt.Orientation) -> Callable[[], None]:
+        """Build a split-panel action callback for the given orientation."""
+
+        def _handle_triggered() -> None:
+            self.window.panels_coordinator.split_active_panel(orientation)
+
+        return _handle_triggered
+
+    def _clone_panel_callback(self, orientation: Qt.Orientation) -> Callable[[], None]:
+        """Build a clone-panel action callback for the given orientation."""
+
+        def _handle_triggered() -> None:
+            self.window.panels_coordinator.clone_active_panel(orientation)
+
+        return _handle_triggered
+
+    def _transfer_selected_to_target_callback(
+        self,
+        *,
+        move: bool,
+        configure: bool,
+    ) -> Callable[[], None]:
+        """Build a transfer action callback with fixed execution flags."""
+
+        def _handle_triggered() -> None:
+            self.window.operations_coordinator.transfer_selected_to_target(
+                move=move,
+                configure=configure,
+            )
+
+        return _handle_triggered
+
+    def _delete_selected_items_callback(
+        self,
+        *,
+        configure: bool,
+    ) -> Callable[[], None]:
+        """Build a delete action callback with fixed execution flags."""
+
+        def _handle_triggered() -> None:
+            self.window.operations_coordinator.delete_selected_items(
+                configure=configure
+            )
+
+        return _handle_triggered
