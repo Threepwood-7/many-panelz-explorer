@@ -1,3 +1,5 @@
+"""Preferences dialog for UI and operation backend settings."""
+
 from __future__ import annotations
 
 import json
@@ -178,6 +180,8 @@ class _FontSizeSpinBox(QSpinBox):
 
 
 class SettingsDialog(QDialog):
+    """Edit persisted UI, panel, and operation preferences."""
+
     LIVE_PREVIEW_DEBOUNCE_MS = 140
     RESETTABLE_FIELDS_BY_SECTION: ClassVar[dict[str, tuple[str, ...]]] = {
         "appearance": (
@@ -406,6 +410,56 @@ class SettingsDialog(QDialog):
         root.addWidget(self._button_box)
 
     def _build_sections(self) -> None:
+        """Build all settings sections, subsections, and rows."""
+
+        self._build_top_level_sections()
+        appearance_panel_tint_group, appearance_typography_group = (
+            self._build_appearance_subsections()
+        )
+        behavior_context_defaults_group, behavior_scan_limits_group = (
+            self._build_behavior_subsections()
+        )
+        (
+            panels_visibility_group,
+            panels_file_list_layout_group,
+            panels_byte_display_group,
+        ) = self._build_panels_subsections()
+        (
+            operations_defaults_queue_group,
+            operations_open_tools_group,
+            operations_backend_commands_group,
+            operations_backend_args_group,
+            operations_diagnostics_group,
+        ) = self._build_operations_subsections()
+        about_application_info_group = self._build_about_subsections()
+
+        self._build_appearance_rows(
+            panel_tint_group=appearance_panel_tint_group,
+            typography_group=appearance_typography_group,
+        )
+        self._build_behavior_rows(
+            context_defaults_group=behavior_context_defaults_group,
+            scan_limits_group=behavior_scan_limits_group,
+        )
+        self._build_panels_rows(
+            visibility_group=panels_visibility_group,
+            file_list_layout_group=panels_file_list_layout_group,
+            byte_display_group=panels_byte_display_group,
+        )
+        self._build_operations_rows(
+            defaults_queue_group=operations_defaults_queue_group,
+            open_tools_group=operations_open_tools_group,
+            backend_commands_group=operations_backend_commands_group,
+            backend_args_group=operations_backend_args_group,
+            diagnostics_group=operations_diagnostics_group,
+        )
+        self._build_about_rows(application_info_group=about_application_info_group)
+        self._expand_all_section_items()
+        self._scroll_layout.addStretch(1)
+
+    def _build_top_level_sections(self) -> None:
+        """Create the top-level sections shown in the settings tree."""
+
         self._add_section(
             key="appearance",
             title="Appearance",
@@ -432,6 +486,11 @@ class SettingsDialog(QDialog):
             terms="about",
         )
 
+    def _build_appearance_subsections(
+        self,
+    ) -> tuple[_SubsectionEntry, _SubsectionEntry]:
+        """Create the appearance-related subsection groups."""
+
         appearance_panel_tint_group = self._add_subsection(
             section_key="appearance",
             key="appearance/panel_tint",
@@ -444,6 +503,13 @@ class SettingsDialog(QDialog):
             title="Typography",
             terms="font typography app file list navigation",
         )
+        return appearance_panel_tint_group, appearance_typography_group
+
+    def _build_behavior_subsections(
+        self,
+    ) -> tuple[_SubsectionEntry, _SubsectionEntry]:
+        """Create the behavior-related subsection groups."""
+
         behavior_context_defaults_group = self._add_subsection(
             section_key="behavior",
             key="behavior/context_defaults",
@@ -456,6 +522,13 @@ class SettingsDialog(QDialog):
             title="Scan Limits",
             terms="scan limits context detection child cap",
         )
+        return behavior_context_defaults_group, behavior_scan_limits_group
+
+    def _build_panels_subsections(
+        self,
+    ) -> tuple[_SubsectionEntry, _SubsectionEntry, _SubsectionEntry]:
+        """Create the panel-related subsection groups."""
+
         panels_visibility_group = self._add_subsection(
             section_key="panels",
             key="panels/visibility",
@@ -477,6 +550,23 @@ class SettingsDialog(QDialog):
             title="Byte Display",
             terms="bytes byte format separators file list status bar properties",
         )
+        return (
+            panels_visibility_group,
+            panels_file_list_layout_group,
+            panels_byte_display_group,
+        )
+
+    def _build_operations_subsections(
+        self,
+    ) -> tuple[
+        _SubsectionEntry,
+        _SubsectionEntry,
+        _SubsectionEntry,
+        _SubsectionEntry,
+        _SubsectionEntry,
+    ]:
+        """Create the operations-related subsection groups."""
+
         operations_defaults_queue_group = self._add_subsection(
             section_key="operations",
             key="operations/defaults_queue",
@@ -507,18 +597,42 @@ class SettingsDialog(QDialog):
             title="Diagnostics",
             terms="diagnostics resolved system commands path cmd robocopy",
         )
+        return (
+            operations_defaults_queue_group,
+            operations_open_tools_group,
+            operations_backend_commands_group,
+            operations_backend_args_group,
+            operations_diagnostics_group,
+        )
+
+    def _build_about_subsections(self) -> _SubsectionEntry:
+        """Create the about subsection group."""
+
         about_application_info_group = self._add_subsection(
             section_key="about",
             key="about/application_info",
             title="Application Info",
             terms="application info about version settings file path",
         )
+        return about_application_info_group
 
-        appearance_group = appearance_panel_tint_group
-        behavior_group = behavior_context_defaults_group
-        panels_group = panels_visibility_group
-        operations_group = operations_defaults_queue_group
-        about_group = about_application_info_group
+    def _build_appearance_rows(
+        self,
+        *,
+        panel_tint_group: _SubsectionEntry,
+        typography_group: _SubsectionEntry,
+    ) -> None:
+        """Build appearance rows for panel tint and typography."""
+
+        self._build_panel_tint_rows(panel_tint_group=panel_tint_group)
+        self._build_typography_rows(typography_group=typography_group)
+
+    def _build_panel_tint_rows(
+        self,
+        *,
+        panel_tint_group: _SubsectionEntry,
+    ) -> None:
+        """Build panel tint color and intensity rows."""
 
         self.active_color_button = QPushButton("Choose Color", self)
         self.active_color_button.clicked.connect(self._choose_active_color)
@@ -526,7 +640,7 @@ class SettingsDialog(QDialog):
         self.active_color_preview.setFixedWidth(44)
         self.active_color_preview.setMinimumHeight(22)
         self._add_row(
-            section=appearance_group,
+            section=panel_tint_group,
             key="active_color",
             title="Active Panel Tint Color",
             description="Base color used for active panel tint.",
@@ -540,7 +654,7 @@ class SettingsDialog(QDialog):
         self.active_intensity_value = QLabel(self)
         self.active_intensity_value.setMinimumWidth(44)
         self._add_row(
-            section=appearance_group,
+            section=panel_tint_group,
             key="active_intensity",
             title="Active Panel Tint Intensity",
             description="Opacity percentage for the active panel tint.",
@@ -554,7 +668,7 @@ class SettingsDialog(QDialog):
         self.target_color_preview.setFixedWidth(44)
         self.target_color_preview.setMinimumHeight(22)
         self._add_row(
-            section=appearance_group,
+            section=panel_tint_group,
             key="target_color",
             title="Target Panel Tint Color",
             description="Base color used for target panel tint.",
@@ -568,13 +682,20 @@ class SettingsDialog(QDialog):
         self.target_intensity_value = QLabel(self)
         self.target_intensity_value.setMinimumWidth(44)
         self._add_row(
-            section=appearance_group,
+            section=panel_tint_group,
             key="target_intensity",
             title="Target Panel Tint Intensity",
             description="Opacity percentage for the target panel tint.",
             terms="target panel tint intensity opacity slider",
             controls=[self.target_intensity_slider, self.target_intensity_value],
         )
+
+    def _build_typography_rows(
+        self,
+        *,
+        typography_group: _SubsectionEntry,
+    ) -> None:
+        """Build app, file-list, and navigation typography rows."""
 
         self.app_font_family_combo = self._new_font_family_combo(
             include_base_option=True,
@@ -589,7 +710,7 @@ class SettingsDialog(QDialog):
         self.app_font_size_spin.setSpecialValueText("System")
         self.app_font_size_spin.valueChanged.connect(self._on_controls_changed)
         self._add_row(
-            section=appearance_typography_group,
+            section=typography_group,
             key="app_font",
             title="App Font",
             description="Base font family and size used throughout the app.",
@@ -613,7 +734,7 @@ class SettingsDialog(QDialog):
         )
         self.file_list_font_size_spin.valueChanged.connect(self._on_controls_changed)
         self._add_row(
-            section=appearance_typography_group,
+            section=typography_group,
             key="file_list_font",
             title="File List Font",
             description="Override the file list (tree view) font family and size.",
@@ -641,7 +762,7 @@ class SettingsDialog(QDialog):
         )
         self.navigation_font_size_spin.valueChanged.connect(self._on_controls_changed)
         self._add_row(
-            section=appearance_typography_group,
+            section=typography_group,
             key="navigation_font",
             title="Navigation Toolbar Font",
             description="Override panel toolbar controls font family and size.",
@@ -653,12 +774,20 @@ class SettingsDialog(QDialog):
             ],
         )
 
+    def _build_behavior_rows(
+        self,
+        *,
+        context_defaults_group: _SubsectionEntry,
+        scan_limits_group: _SubsectionEntry,
+    ) -> None:
+        """Build behavior rows for context defaults and scan limits."""
+
         self.new_context_combo = QComboBox(self)
         for mode in ["clone_active_path", "home", "cwd"]:
             self.new_context_combo.addItem(_mode_label(mode), mode)
         self.new_context_combo.currentIndexChanged.connect(self._on_controls_changed)
         self._add_row(
-            section=behavior_group,
+            section=context_defaults_group,
             key="new_context_mode",
             title="New Context Mode",
             description="How new tabs/panels choose their starting path.",
@@ -670,7 +799,7 @@ class SettingsDialog(QDialog):
         self.context_scan_cap_spin.setRange(1, 10_000)
         self.context_scan_cap_spin.valueChanged.connect(self._on_controls_changed)
         self._add_row(
-            section=behavior_scan_limits_group,
+            section=scan_limits_group,
             key="context_scan_cap",
             title="Context Child Scan Cap",
             description=(
@@ -681,10 +810,32 @@ class SettingsDialog(QDialog):
             controls=[self.context_scan_cap_spin],
         )
 
+    def _build_panels_rows(
+        self,
+        *,
+        visibility_group: _SubsectionEntry,
+        file_list_layout_group: _SubsectionEntry,
+        byte_display_group: _SubsectionEntry,
+    ) -> None:
+        """Build panel visibility, layout, and byte-display rows."""
+
+        self._build_panel_visibility_rows(visibility_group=visibility_group)
+        self._build_panel_layout_rows(
+            file_list_layout_group=file_list_layout_group,
+        )
+        self._build_panel_byte_display_rows(byte_display_group=byte_display_group)
+
+    def _build_panel_visibility_rows(
+        self,
+        *,
+        visibility_group: _SubsectionEntry,
+    ) -> None:
+        """Build panel visibility and toolbar control rows."""
+
         self.show_hidden_checkbox = QCheckBox("Show hidden files by default", self)
         self.show_hidden_checkbox.toggled.connect(self._on_controls_changed)
         self._add_row(
-            section=panels_group,
+            section=visibility_group,
             key="show_hidden_default",
             title="Show Hidden Files",
             description="Enable hidden/system entries by default for all panels.",
@@ -697,7 +848,7 @@ class SettingsDialog(QDialog):
         )
         self.show_root_dropdown_checkbox.toggled.connect(self._on_controls_changed)
         self._add_row(
-            section=panels_group,
+            section=visibility_group,
             key="show_root_dropdown",
             title="Root Dropdown",
             description="Display a root selector dropdown in panel toolbars.",
@@ -705,32 +856,12 @@ class SettingsDialog(QDialog):
             controls=[self.show_root_dropdown_checkbox],
         )
 
-        self.column_width_auto_align_mode_combo = QComboBox(self)
-        self.column_width_auto_align_mode_combo.addItem(
-            "All panels and tabs", "all_panels_tabs"
-        )
-        self.column_width_auto_align_mode_combo.addItem(
-            "Current panel tabs", "current_panel_tabs"
-        )
-        self.column_width_auto_align_mode_combo.addItem("No alignment", "none")
-        self.column_width_auto_align_mode_combo.currentIndexChanged.connect(
-            self._on_controls_changed
-        )
-        self._add_row(
-            section=panels_file_list_layout_group,
-            key="column_width_auto_align_mode",
-            title="Auto-Align Column Widths",
-            description="Choose how file-list column width changes propagate.",
-            terms="column width align auto-align tabs panels",
-            controls=[self.column_width_auto_align_mode_combo],
-        )
-
         self.show_refresh_button_checkbox = QCheckBox(
             "Show refresh button in each panel", self
         )
         self.show_refresh_button_checkbox.toggled.connect(self._on_controls_changed)
         self._add_row(
-            section=panels_group,
+            section=visibility_group,
             key="show_refresh_button",
             title="Refresh Button",
             description="Display the refresh button in panel toolbars.",
@@ -743,7 +874,7 @@ class SettingsDialog(QDialog):
         )
         self.show_root_buttons_checkbox.toggled.connect(self._on_controls_changed)
         self._add_row(
-            section=panels_group,
+            section=visibility_group,
             key="show_root_buttons",
             title="Root Buttons Strip",
             description="Display root/drive quick buttons in panel toolbars.",
@@ -756,7 +887,7 @@ class SettingsDialog(QDialog):
         )
         self.show_address_bar_checkbox.toggled.connect(self._on_controls_changed)
         self._add_row(
-            section=panels_group,
+            section=visibility_group,
             key="show_address_bar",
             title="Address Textbox",
             description="Display the address bar in panel toolbars.",
@@ -769,7 +900,7 @@ class SettingsDialog(QDialog):
         )
         self.show_navigation_buttons_checkbox.toggled.connect(self._on_controls_changed)
         self._add_row(
-            section=panels_group,
+            section=visibility_group,
             key="show_navigation_buttons",
             title="Navigation Buttons Group",
             description=(
@@ -786,7 +917,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=panels_group,
+            section=visibility_group,
             key="show_storage_overview_status_row",
             title="Storage Overview Status Row",
             description=(
@@ -795,6 +926,40 @@ class SettingsDialog(QDialog):
             terms="storage overview status row disk usage free total mount points",
             controls=[self.show_storage_overview_status_row_checkbox],
         )
+
+    def _build_panel_layout_rows(
+        self,
+        *,
+        file_list_layout_group: _SubsectionEntry,
+    ) -> None:
+        """Build panel file-list layout rows."""
+
+        self.column_width_auto_align_mode_combo = QComboBox(self)
+        self.column_width_auto_align_mode_combo.addItem(
+            "All panels and tabs", "all_panels_tabs"
+        )
+        self.column_width_auto_align_mode_combo.addItem(
+            "Current panel tabs", "current_panel_tabs"
+        )
+        self.column_width_auto_align_mode_combo.addItem("No alignment", "none")
+        self.column_width_auto_align_mode_combo.currentIndexChanged.connect(
+            self._on_controls_changed
+        )
+        self._add_row(
+            section=file_list_layout_group,
+            key="column_width_auto_align_mode",
+            title="Auto-Align Column Widths",
+            description="Choose how file-list column width changes propagate.",
+            terms="column width align auto-align tabs panels",
+            controls=[self.column_width_auto_align_mode_combo],
+        )
+
+    def _build_panel_byte_display_rows(
+        self,
+        *,
+        byte_display_group: _SubsectionEntry,
+    ) -> None:
+        """Build panel byte-format and status-row formatting rows."""
 
         self.byte_thousands_separator_edit = QLineEdit(self)
         self.byte_thousands_separator_edit.setMaxLength(1)
@@ -819,7 +984,7 @@ class SettingsDialog(QDialog):
             second_edit=self.byte_decimal_separator_edit,
         )
         self._add_row(
-            section=panels_byte_display_group,
+            section=byte_display_group,
             key="byte_separators",
             title="Byte Number Separators",
             description="Global separators applied to all byte display contexts.",
@@ -834,7 +999,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=panels_byte_display_group,
+            section=byte_display_group,
             key="file_list_byte_format",
             title="File List Size Format",
             description="How the file-list Size column displays byte values.",
@@ -852,7 +1017,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=panels_byte_display_group,
+            section=byte_display_group,
             key="status_bar_byte_format",
             title="Status Bar Storage Format",
             description="How status-bar storage used/total values are displayed.",
@@ -877,7 +1042,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=panels_byte_display_group,
+            section=byte_display_group,
             key="status_bar_storage_label_template",
             title="Status Bar Disk Label Template",
             description=(
@@ -899,7 +1064,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=panels_byte_display_group,
+            section=byte_display_group,
             key="properties_byte_format",
             title="Properties Size Format",
             description="How file/folder size is shown in the Properties dialog.",
@@ -909,6 +1074,46 @@ class SettingsDialog(QDialog):
                 self.properties_byte_custom_template_edit,
             ],
         )
+
+    def _build_operations_rows(
+        self,
+        *,
+        defaults_queue_group: _SubsectionEntry,
+        open_tools_group: _SubsectionEntry,
+        backend_commands_group: _SubsectionEntry,
+        backend_args_group: _SubsectionEntry,
+        diagnostics_group: _SubsectionEntry,
+    ) -> None:
+        """Build operation backend, tools, and diagnostics rows."""
+
+        self._build_operation_defaults_rows(defaults_queue_group=defaults_queue_group)
+        self._build_operation_open_tools_rows(open_tools_group=open_tools_group)
+        self._build_operation_backend_rows(
+            backend_commands_group=backend_commands_group,
+            backend_args_group=backend_args_group,
+        )
+        self._build_operation_diagnostics_rows(diagnostics_group=diagnostics_group)
+
+    def _build_operation_defaults_rows(
+        self,
+        *,
+        defaults_queue_group: _SubsectionEntry,
+    ) -> None:
+        """Build default backend, dispatch, and queue preference rows."""
+
+        self._build_operation_backend_default_rows(
+            defaults_queue_group=defaults_queue_group,
+        )
+        self._build_operation_dispatch_rows(
+            defaults_queue_group=defaults_queue_group,
+        )
+
+    def _build_operation_backend_default_rows(
+        self,
+        *,
+        defaults_queue_group: _SubsectionEntry,
+    ) -> None:
+        """Build default backend selector rows for copy/move and delete."""
 
         self.default_copy_move_backend_combo = QComboBox(self)
         self.default_copy_move_backend_combo.addItem(
@@ -929,7 +1134,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=operations_group,
+            section=defaults_queue_group,
             key="default_copy_move_backend",
             title="Default Copy/Move Backend",
             description=(
@@ -957,7 +1162,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=operations_group,
+            section=defaults_queue_group,
             key="default_delete_backend",
             title="Default Delete Backend",
             description=(
@@ -970,6 +1175,13 @@ class SettingsDialog(QDialog):
             controls=[self.default_delete_backend_combo],
         )
 
+    def _build_operation_dispatch_rows(
+        self,
+        *,
+        defaults_queue_group: _SubsectionEntry,
+    ) -> None:
+        """Build dispatch, conflict, shortcut, and queue view rows."""
+
         self.default_dispatch_mode_combo = QComboBox(self)
         self.default_dispatch_mode_combo.addItem("Queue", "queue")
         self.default_dispatch_mode_combo.addItem(
@@ -980,7 +1192,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=operations_group,
+            section=defaults_queue_group,
             key="default_operation_dispatch_mode",
             title="Default Dispatch Mode",
             description=(
@@ -1000,7 +1212,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=operations_group,
+            section=defaults_queue_group,
             key="default_operation_conflict_policy",
             title="Default Conflict Policy",
             description="Default name-conflict behavior for non-interactive copy/move.",
@@ -1019,7 +1231,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=operations_group,
+            section=defaults_queue_group,
             key="operation_shortcut_behavior",
             title="Shortcut Behavior",
             description=(
@@ -1040,7 +1252,7 @@ class SettingsDialog(QDialog):
             self._on_controls_changed
         )
         self._add_row(
-            section=operations_group,
+            section=defaults_queue_group,
             key="operation_queue_view_mode",
             title="Queue View Mode",
             description="Default queue presentation mode at runtime.",
@@ -1048,13 +1260,20 @@ class SettingsDialog(QDialog):
             controls=[self.operation_queue_view_mode_combo],
         )
 
+    def _build_operation_open_tools_rows(
+        self,
+        *,
+        open_tools_group: _SubsectionEntry,
+    ) -> None:
+        """Build default open-tool and extension-override rows."""
+
         self.default_editor_executable_edit = QLineEdit(self)
         default_editor_controls = self._build_path_controls(
             executable_edit=self.default_editor_executable_edit,
             default_executable=SettingsManager.DEFAULT_DEFAULT_EDITOR_EXECUTABLE,
         )
         self._add_row(
-            section=operations_open_tools_group,
+            section=open_tools_group,
             key="default_editor_executable",
             title="Default Editor",
             description=(
@@ -1070,7 +1289,7 @@ class SettingsDialog(QDialog):
             default_executable=SettingsManager.DEFAULT_DEFAULT_VIEWER_EXECUTABLE,
         )
         self._add_row(
-            section=operations_open_tools_group,
+            section=open_tools_group,
             key="default_viewer_executable",
             title="Default Viewer",
             description=(
@@ -1092,7 +1311,7 @@ class SettingsDialog(QDialog):
             enable_find=False,
         )
         self._add_row(
-            section=operations_open_tools_group,
+            section=open_tools_group,
             key="context_code_editor_tool",
             title="Context Tool: Code Editor",
             description=(
@@ -1113,7 +1332,7 @@ class SettingsDialog(QDialog):
             enable_find=False,
         )
         self._add_row(
-            section=operations_open_tools_group,
+            section=open_tools_group,
             key="context_git_gui_tool",
             title="Context Tool: Git GUI",
             description=(
@@ -1143,7 +1362,7 @@ class SettingsDialog(QDialog):
         self.file_open_overrides_table.setMinimumHeight(150)
         overrides_controls = self._build_file_open_overrides_controls()
         self._add_row(
-            section=operations_open_tools_group,
+            section=open_tools_group,
             key="file_open_overrides",
             title="Per-Extension Open Overrides",
             description=(
@@ -1153,6 +1372,27 @@ class SettingsDialog(QDialog):
             terms="extension override editor viewer open file",
             controls=[overrides_controls],
         )
+
+    def _build_operation_backend_rows(
+        self,
+        *,
+        backend_commands_group: _SubsectionEntry,
+        backend_args_group: _SubsectionEntry,
+    ) -> None:
+        """Build backend command, args, and extended-path rows."""
+
+        self._build_backend_extended_path_checkboxes()
+        self._build_copy_move_backend_rows(
+            backend_commands_group=backend_commands_group,
+            backend_args_group=backend_args_group,
+        )
+        self._build_delete_backend_rows(
+            backend_commands_group=backend_commands_group,
+            backend_args_group=backend_args_group,
+        )
+
+    def _build_backend_extended_path_checkboxes(self) -> None:
+        """Create shared extended-path checkboxes for backend controls."""
 
         # Per-backend extended-path toggles are shown alongside each backend
         # configuration panel.
@@ -1200,12 +1440,20 @@ class SettingsDialog(QDialog):
         ]:
             checkbox.toggled.connect(self._on_controls_changed)
 
+    def _build_copy_move_backend_rows(
+        self,
+        *,
+        backend_commands_group: _SubsectionEntry,
+        backend_args_group: _SubsectionEntry,
+    ) -> None:
+        """Build copy/move backend command and robocopy rows."""
+
         self.teracopy_executable_edit = QLineEdit(self)
         self.teracopy_test_btn = QPushButton("Test", self)
         self.teracopy_reset_backend_btn = QPushButton("Reset Backend Defaults", self)
         teracopy_controls = self._build_teracopy_settings_card()
         self._add_row(
-            section=operations_backend_commands_group,
+            section=backend_commands_group,
             key="teracopy_command",
             title="TeraCopy Command",
             description=(
@@ -1224,7 +1472,7 @@ class SettingsDialog(QDialog):
         self.unstoppable_reset_backend_btn = QPushButton("Reset Backend Defaults", self)
         unstoppable_controls = self._build_unstoppable_settings_card()
         self._add_row(
-            section=operations_backend_commands_group,
+            section=backend_commands_group,
             key="unstoppable_command",
             title="Unstoppable Copier Command",
             description=(
@@ -1247,7 +1495,7 @@ class SettingsDialog(QDialog):
         )
         generic_copymove_controls = self._build_external_copymove_settings_card()
         self._add_row(
-            section=operations_backend_commands_group,
+            section=backend_commands_group,
             key="generic_copymove_command",
             title="Generic Copy/Move Command",
             description=(
@@ -1261,6 +1509,32 @@ class SettingsDialog(QDialog):
             ),
             controls=[generic_copymove_controls],
         )
+
+        self.robocopy_test_btn = QPushButton("Test", self)
+        self.robocopy_reset_backend_btn = QPushButton("Reset Backend Defaults", self)
+        robocopy_args_controls = self._build_robocopy_settings_card()
+        self._add_row(
+            section=backend_args_group,
+            key="robocopy_args",
+            title="Robocopy Configuration",
+            description=(
+                "Structured Robocopy options with checkboxes/spinners and generated "
+                "copy/move preview."
+            ),
+            terms=(
+                "robocopy checkboxes spinners retry wait multithread suppress logs "
+                "generated preview extra args test long path extended"
+            ),
+            controls=[robocopy_args_controls],
+        )
+
+    def _build_delete_backend_rows(
+        self,
+        *,
+        backend_commands_group: _SubsectionEntry,
+        backend_args_group: _SubsectionEntry,
+    ) -> None:
+        """Build delete backend command and shell-args rows."""
 
         self.generic_delete_executable_edit = QLineEdit(self)
         self.generic_delete_args_edit = QLineEdit(self)
@@ -1277,7 +1551,7 @@ class SettingsDialog(QDialog):
             on_test=lambda: self._test_backend("delete", "external_delete"),
         )
         self._add_row(
-            section=operations_backend_commands_group,
+            section=backend_commands_group,
             key="generic_delete_command",
             title="Generic Delete Command",
             description="Executable and args template. Tokens: {operation} {sources}",
@@ -1286,24 +1560,6 @@ class SettingsDialog(QDialog):
                 "path extended"
             ),
             controls=[generic_delete_controls],
-        )
-
-        self.robocopy_test_btn = QPushButton("Test", self)
-        self.robocopy_reset_backend_btn = QPushButton("Reset Backend Defaults", self)
-        robocopy_args_controls = self._build_robocopy_settings_card()
-        self._add_row(
-            section=operations_backend_args_group,
-            key="robocopy_args",
-            title="Robocopy Configuration",
-            description=(
-                "Structured Robocopy options with checkboxes/spinners and generated "
-                "copy/move preview."
-            ),
-            terms=(
-                "robocopy checkboxes spinners retry wait multithread suppress logs "
-                "generated preview extra args test long path extended"
-            ),
-            controls=[robocopy_args_controls],
         )
 
         self.cmd_delete_args_edit = QLineEdit(self)
@@ -1323,7 +1579,7 @@ class SettingsDialog(QDialog):
             powershell_test_button=self.powershell_delete_test_btn,
         )
         self._add_row(
-            section=operations_backend_args_group,
+            section=backend_args_group,
             key="delete_shell_args",
             title="Shell Delete Args",
             description="Args for cmd delete and PowerShell delete backends.",
@@ -1345,7 +1601,7 @@ class SettingsDialog(QDialog):
             on_test=lambda: self._test_backend("delete", "rimraf"),
         )
         self._add_row(
-            section=operations_backend_commands_group,
+            section=backend_commands_group,
             key="rimraf_command",
             title="rimraf Command",
             description="Executable and extra args. Tokens: {sources}",
@@ -1353,10 +1609,17 @@ class SettingsDialog(QDialog):
             controls=[rimraf_controls],
         )
 
+    def _build_operation_diagnostics_rows(
+        self,
+        *,
+        diagnostics_group: _SubsectionEntry,
+    ) -> None:
+        """Build read-only diagnostics rows for resolved tool paths."""
+
         self.resolved_cmd_path_label = QLabel(self)
         self.resolved_robocopy_path_label = QLabel(self)
         self._add_row(
-            section=operations_diagnostics_group,
+            section=diagnostics_group,
             key="resolved_system_paths",
             title="Resolved System Commands",
             description="Runtime resolved command paths for shell and robocopy.",
@@ -1364,9 +1627,12 @@ class SettingsDialog(QDialog):
             controls=[self.resolved_cmd_path_label, self.resolved_robocopy_path_label],
         )
 
+    def _build_about_rows(self, *, application_info_group: _SubsectionEntry) -> None:
+        """Build about rows for static application metadata."""
+
         settings_path = Path(str(self.controller.settings.settings_path))
         self._add_row(
-            section=about_group,
+            section=application_info_group,
             key="about_name",
             title="Application",
             description=APP_DISPLAY_NAME,
@@ -1374,7 +1640,7 @@ class SettingsDialog(QDialog):
             controls=[QLabel(APP_DISPLAY_NAME, self)],
         )
         self._add_row(
-            section=about_group,
+            section=application_info_group,
             key="about_version",
             title="Version",
             description=APP_VERSION,
@@ -1382,7 +1648,7 @@ class SettingsDialog(QDialog):
             controls=[QLabel(APP_VERSION, self)],
         )
         self._add_row(
-            section=about_group,
+            section=application_info_group,
             key="about_settings_path",
             title="Settings File",
             description=str(settings_path),
@@ -1390,10 +1656,11 @@ class SettingsDialog(QDialog):
             controls=[QLabel(str(settings_path), self)],
         )
 
+    def _expand_all_section_items(self) -> None:
+        """Expand all tree items after section construction completes."""
+
         for item in self._section_tree_items.values():
             item.setExpanded(True)
-
-        self._scroll_layout.addStretch(1)
 
     def _add_section(self, *, key: str, title: str, terms: str) -> _SectionEntry:
         entry = _SectionEntry(
@@ -2669,189 +2936,201 @@ class SettingsDialog(QDialog):
             str(self.properties_byte_format_mode_combo.currentData()) == "custom"
         )
 
+    def _load_panel_tint_preferences(self, preferences: UiPreferences) -> None:
+        """Load active and target panel tint preferences into controls."""
+
+        self.active_intensity_slider.setValue(
+            preferences.active_panel_tint_intensity_percent
+        )
+        self.target_intensity_slider.setValue(
+            preferences.target_panel_tint_intensity_percent
+        )
+
+        self._active_color_hex = preferences.active_panel_tint_color_hex
+        self._target_color_hex = preferences.target_panel_tint_color_hex
+        self._sync_color_preview(self.active_color_preview, self._active_color_hex)
+        self._sync_color_preview(self.target_color_preview, self._target_color_hex)
+
+    def _load_panel_preferences(self, preferences: UiPreferences) -> None:
+        """Load panel behavior and byte-display preferences into controls."""
+
+        self._set_combo_value(self.new_context_combo, preferences.new_context_mode)
+        self.context_scan_cap_spin.setValue(
+            preferences.context_immediate_child_scan_cap
+        )
+        self.show_hidden_checkbox.setChecked(preferences.show_hidden_default)
+        self.show_root_dropdown_checkbox.setChecked(preferences.show_root_dropdown)
+        self._set_combo_value(
+            self.column_width_auto_align_mode_combo,
+            preferences.column_width_auto_align_mode,
+        )
+        self.show_refresh_button_checkbox.setChecked(preferences.show_refresh_button)
+        self.show_root_buttons_checkbox.setChecked(preferences.show_root_buttons)
+        self.show_address_bar_checkbox.setChecked(preferences.show_address_bar)
+        self.show_navigation_buttons_checkbox.setChecked(
+            preferences.show_navigation_buttons
+        )
+        self.show_storage_overview_status_row_checkbox.setChecked(
+            preferences.show_storage_overview_status_row
+        )
+        self.byte_thousands_separator_edit.setText(preferences.byte_thousands_separator)
+        self.byte_decimal_separator_edit.setText(preferences.byte_decimal_separator)
+        self._set_combo_value(
+            self.file_list_byte_format_mode_combo,
+            preferences.file_list_byte_format_mode,
+        )
+        self.file_list_byte_custom_template_edit.setText(
+            preferences.file_list_byte_custom_template
+        )
+        self._set_combo_value(
+            self.status_bar_byte_format_mode_combo,
+            preferences.status_bar_byte_format_mode,
+        )
+        self.status_bar_byte_custom_template_edit.setText(
+            preferences.status_bar_byte_custom_template
+        )
+        self.status_bar_storage_label_template_edit.setText(
+            preferences.status_bar_storage_label_template
+        )
+        self._set_combo_value(
+            self.properties_byte_format_mode_combo,
+            preferences.properties_byte_format_mode,
+        )
+        self.properties_byte_custom_template_edit.setText(
+            preferences.properties_byte_custom_template
+        )
+
+    def _load_operations_preferences(self, preferences: UiPreferences) -> None:
+        """Load operation backend, queue, and diagnostics preferences."""
+
+        self._set_combo_value(
+            self.default_copy_move_backend_combo,
+            preferences.default_copy_move_backend,
+        )
+        self._set_combo_value(
+            self.default_delete_backend_combo,
+            preferences.default_delete_backend,
+        )
+        self._set_combo_value(
+            self.default_dispatch_mode_combo,
+            preferences.default_operation_dispatch_mode,
+        )
+        self._set_combo_value(
+            self.default_conflict_policy_combo,
+            preferences.default_operation_conflict_policy,
+        )
+        self._set_combo_value(
+            self.operation_shortcut_behavior_combo,
+            preferences.operation_shortcut_behavior,
+        )
+        self._set_combo_value(
+            self.operation_queue_view_mode_combo,
+            preferences.operation_queue_view_mode,
+        )
+        self.default_editor_executable_edit.setText(
+            preferences.default_editor_executable
+        )
+        self.default_viewer_executable_edit.setText(
+            preferences.default_viewer_executable
+        )
+        self.context_code_editor_executable_edit.setText(
+            preferences.context_tool_code_editor_exe_path
+        )
+        self.context_code_editor_args_edit.setText(
+            preferences.context_tool_code_editor_args_template
+        )
+        self.context_git_gui_executable_edit.setText(
+            preferences.context_tool_git_gui_exe_path
+        )
+        self.context_git_gui_args_edit.setText(
+            preferences.context_tool_git_gui_args_template
+        )
+        self._load_file_open_overrides(preferences.file_open_overrides_json)
+        self.use_extended_paths_robocopy_checkbox.setChecked(
+            preferences.use_extended_paths_robocopy
+        )
+        self.use_extended_paths_teracopy_checkbox.setChecked(
+            preferences.use_extended_paths_teracopy
+        )
+        self.use_extended_paths_unstoppable_checkbox.setChecked(
+            preferences.use_extended_paths_unstoppable
+        )
+        self.use_extended_paths_external_copymove_checkbox.setChecked(
+            preferences.use_extended_paths_external_copymove
+        )
+        self.use_extended_paths_cmd_delete_checkbox.setChecked(
+            preferences.use_extended_paths_cmd_delete
+        )
+        self.use_extended_paths_powershell_delete_checkbox.setChecked(
+            preferences.use_extended_paths_powershell_delete
+        )
+        self.use_extended_paths_rimraf_checkbox.setChecked(
+            preferences.use_extended_paths_rimraf
+        )
+        self.use_extended_paths_external_delete_checkbox.setChecked(
+            preferences.use_extended_paths_external_delete
+        )
+        self.teracopy_executable_edit.setText(preferences.teracopy_executable)
+        self.unstoppable_executable_edit.setText(preferences.unstoppable_executable)
+        self.generic_copymove_executable_edit.setText(
+            preferences.generic_copymove_executable
+        )
+        self.generic_delete_executable_edit.setText(
+            preferences.generic_delete_executable
+        )
+        self.generic_delete_args_edit.setText(preferences.generic_delete_args_template)
+        self._apply_robocopy_structured_options_to_controls(
+            preferences.robocopy_structured_options
+        )
+        self._apply_teracopy_structured_options_to_controls(
+            preferences.teracopy_structured_options
+        )
+        self._apply_unstoppable_structured_options_to_controls(
+            preferences.unstoppable_structured_options
+        )
+        self._apply_external_copymove_structured_options_to_controls(
+            preferences.external_copymove_structured_options
+        )
+        self.cmd_delete_args_edit.setText(preferences.cmd_delete_args)
+        self.powershell_delete_args_edit.setText(preferences.powershell_delete_args)
+        self.rimraf_executable_edit.setText(preferences.rimraf_executable)
+        self.rimraf_args_edit.setText(preferences.rimraf_args_template)
+        resolved_cmd, resolved_robocopy = resolve_system_command_paths()
+        self.resolved_cmd_path_label.setText(f"ComSpec: {resolved_cmd}")
+        self.resolved_robocopy_path_label.setText(f"Robocopy: {resolved_robocopy}")
+        self.resolved_cmd_path_label.setToolTip(resolved_cmd)
+        self.resolved_robocopy_path_label.setToolTip(resolved_robocopy)
+
+    def _load_typography_preferences(self, preferences: UiPreferences) -> None:
+        """Load app and panel font preferences into controls."""
+
+        self._set_combo_value(self.app_font_family_combo, preferences.app_font_family)
+        self.app_font_size_spin.setValue(preferences.app_font_size_pt)
+        self.file_list_use_app_font_checkbox.setChecked(
+            preferences.file_list_use_app_font
+        )
+        self._set_combo_value(
+            self.file_list_font_family_combo, preferences.file_list_font_family
+        )
+        self.file_list_font_size_spin.setValue(preferences.file_list_font_size_pt)
+        self.navigation_use_app_font_checkbox.setChecked(
+            preferences.navigation_use_app_font
+        )
+        self._set_combo_value(
+            self.navigation_font_family_combo, preferences.navigation_font_family
+        )
+        self.navigation_font_size_spin.setValue(preferences.navigation_font_size_pt)
+
     def _load_preferences_into_controls(self, preferences: UiPreferences) -> None:
+        """Populate dialog controls from the current UI preferences."""
+
         self._loading_ui = True
         try:
             self._working_preferences = replace(preferences)
-
-            self.active_intensity_slider.setValue(
-                preferences.active_panel_tint_intensity_percent
-            )
-            self.target_intensity_slider.setValue(
-                preferences.target_panel_tint_intensity_percent
-            )
-
-            self._active_color_hex = preferences.active_panel_tint_color_hex
-            self._target_color_hex = preferences.target_panel_tint_color_hex
-            self._sync_color_preview(self.active_color_preview, self._active_color_hex)
-            self._sync_color_preview(self.target_color_preview, self._target_color_hex)
-
-            self._set_combo_value(self.new_context_combo, preferences.new_context_mode)
-            self.context_scan_cap_spin.setValue(
-                preferences.context_immediate_child_scan_cap
-            )
-            self.show_hidden_checkbox.setChecked(preferences.show_hidden_default)
-            self.show_root_dropdown_checkbox.setChecked(preferences.show_root_dropdown)
-            self._set_combo_value(
-                self.column_width_auto_align_mode_combo,
-                preferences.column_width_auto_align_mode,
-            )
-            self.show_refresh_button_checkbox.setChecked(
-                preferences.show_refresh_button
-            )
-            self.show_root_buttons_checkbox.setChecked(preferences.show_root_buttons)
-            self.show_address_bar_checkbox.setChecked(preferences.show_address_bar)
-            self.show_navigation_buttons_checkbox.setChecked(
-                preferences.show_navigation_buttons
-            )
-            self.show_storage_overview_status_row_checkbox.setChecked(
-                preferences.show_storage_overview_status_row
-            )
-            self.byte_thousands_separator_edit.setText(
-                preferences.byte_thousands_separator
-            )
-            self.byte_decimal_separator_edit.setText(preferences.byte_decimal_separator)
-            self._set_combo_value(
-                self.file_list_byte_format_mode_combo,
-                preferences.file_list_byte_format_mode,
-            )
-            self.file_list_byte_custom_template_edit.setText(
-                preferences.file_list_byte_custom_template
-            )
-            self._set_combo_value(
-                self.status_bar_byte_format_mode_combo,
-                preferences.status_bar_byte_format_mode,
-            )
-            self.status_bar_byte_custom_template_edit.setText(
-                preferences.status_bar_byte_custom_template
-            )
-            self.status_bar_storage_label_template_edit.setText(
-                preferences.status_bar_storage_label_template
-            )
-            self._set_combo_value(
-                self.properties_byte_format_mode_combo,
-                preferences.properties_byte_format_mode,
-            )
-            self.properties_byte_custom_template_edit.setText(
-                preferences.properties_byte_custom_template
-            )
-            self._set_combo_value(
-                self.default_copy_move_backend_combo,
-                preferences.default_copy_move_backend,
-            )
-            self._set_combo_value(
-                self.default_delete_backend_combo,
-                preferences.default_delete_backend,
-            )
-            self._set_combo_value(
-                self.default_dispatch_mode_combo,
-                preferences.default_operation_dispatch_mode,
-            )
-            self._set_combo_value(
-                self.default_conflict_policy_combo,
-                preferences.default_operation_conflict_policy,
-            )
-            self._set_combo_value(
-                self.operation_shortcut_behavior_combo,
-                preferences.operation_shortcut_behavior,
-            )
-            self._set_combo_value(
-                self.operation_queue_view_mode_combo,
-                preferences.operation_queue_view_mode,
-            )
-            self.default_editor_executable_edit.setText(
-                preferences.default_editor_executable
-            )
-            self.default_viewer_executable_edit.setText(
-                preferences.default_viewer_executable
-            )
-            self.context_code_editor_executable_edit.setText(
-                preferences.context_tool_code_editor_exe_path
-            )
-            self.context_code_editor_args_edit.setText(
-                preferences.context_tool_code_editor_args_template
-            )
-            self.context_git_gui_executable_edit.setText(
-                preferences.context_tool_git_gui_exe_path
-            )
-            self.context_git_gui_args_edit.setText(
-                preferences.context_tool_git_gui_args_template
-            )
-            self._load_file_open_overrides(preferences.file_open_overrides_json)
-            self.use_extended_paths_robocopy_checkbox.setChecked(
-                preferences.use_extended_paths_robocopy
-            )
-            self.use_extended_paths_teracopy_checkbox.setChecked(
-                preferences.use_extended_paths_teracopy
-            )
-            self.use_extended_paths_unstoppable_checkbox.setChecked(
-                preferences.use_extended_paths_unstoppable
-            )
-            self.use_extended_paths_external_copymove_checkbox.setChecked(
-                preferences.use_extended_paths_external_copymove
-            )
-            self.use_extended_paths_cmd_delete_checkbox.setChecked(
-                preferences.use_extended_paths_cmd_delete
-            )
-            self.use_extended_paths_powershell_delete_checkbox.setChecked(
-                preferences.use_extended_paths_powershell_delete
-            )
-            self.use_extended_paths_rimraf_checkbox.setChecked(
-                preferences.use_extended_paths_rimraf
-            )
-            self.use_extended_paths_external_delete_checkbox.setChecked(
-                preferences.use_extended_paths_external_delete
-            )
-            self.teracopy_executable_edit.setText(preferences.teracopy_executable)
-            self.unstoppable_executable_edit.setText(preferences.unstoppable_executable)
-            self.generic_copymove_executable_edit.setText(
-                preferences.generic_copymove_executable
-            )
-            self.generic_delete_executable_edit.setText(
-                preferences.generic_delete_executable
-            )
-            self.generic_delete_args_edit.setText(
-                preferences.generic_delete_args_template
-            )
-            self._apply_robocopy_structured_options_to_controls(
-                preferences.robocopy_structured_options
-            )
-            self._apply_teracopy_structured_options_to_controls(
-                preferences.teracopy_structured_options
-            )
-            self._apply_unstoppable_structured_options_to_controls(
-                preferences.unstoppable_structured_options
-            )
-            self._apply_external_copymove_structured_options_to_controls(
-                preferences.external_copymove_structured_options
-            )
-            self.cmd_delete_args_edit.setText(preferences.cmd_delete_args)
-            self.powershell_delete_args_edit.setText(preferences.powershell_delete_args)
-            self.rimraf_executable_edit.setText(preferences.rimraf_executable)
-            self.rimraf_args_edit.setText(preferences.rimraf_args_template)
-            resolved_cmd, resolved_robocopy = resolve_system_command_paths()
-            self.resolved_cmd_path_label.setText(f"ComSpec: {resolved_cmd}")
-            self.resolved_robocopy_path_label.setText(f"Robocopy: {resolved_robocopy}")
-            self.resolved_cmd_path_label.setToolTip(resolved_cmd)
-            self.resolved_robocopy_path_label.setToolTip(resolved_robocopy)
-            self._set_combo_value(
-                self.app_font_family_combo, preferences.app_font_family
-            )
-            self.app_font_size_spin.setValue(preferences.app_font_size_pt)
-            self.file_list_use_app_font_checkbox.setChecked(
-                preferences.file_list_use_app_font
-            )
-            self._set_combo_value(
-                self.file_list_font_family_combo, preferences.file_list_font_family
-            )
-            self.file_list_font_size_spin.setValue(preferences.file_list_font_size_pt)
-            self.navigation_use_app_font_checkbox.setChecked(
-                preferences.navigation_use_app_font
-            )
-            self._set_combo_value(
-                self.navigation_font_family_combo, preferences.navigation_font_family
-            )
-            self.navigation_font_size_spin.setValue(preferences.navigation_font_size_pt)
+            self._load_panel_tint_preferences(preferences)
+            self._load_panel_preferences(preferences)
+            self._load_operations_preferences(preferences)
+            self._load_typography_preferences(preferences)
             self._sync_font_override_controls()
             self._sync_byte_format_controls()
             self._update_backend_generated_previews()

@@ -1,3 +1,5 @@
+"""Settings manager facade for UI, operation, and session preferences."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -10,9 +12,11 @@ from threep_commons.settings import (
 
 from many_panelz_explorer.constants import APP_IDENTITY
 
-from .domains import OpsSettingsDomain, SessionSettingsDomain, UiSettingsDomain
 from .models import UiPreferences
+from .ops_domain import OpsSettingsDomain
 from .registry import SettingsRegistry
+from .session_domain import SessionSettingsDomain
+from .ui_domain import UiSettingsDomain
 
 
 class SettingsManager(SettingsManagerBase, SettingsRegistry):

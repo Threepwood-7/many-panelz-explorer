@@ -1,3 +1,5 @@
+"""Navigation history and selection restoration for explorer tabs."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,6 +16,8 @@ if TYPE_CHECKING:
 
 
 class ExplorerTabNavigation(QObject):
+    """Manage path history, filters, and selection restore for a tab."""
+
     changed = Signal()
 
     _SELECTION_RESTORE_INTERVAL_MS = 25

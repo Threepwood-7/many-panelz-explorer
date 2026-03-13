@@ -180,19 +180,27 @@ def test_show_widget_map_toggle_updates_existing_and_new_panels(
     window.show()
 
     assert all(
-        not panel.widget_map_enabled() for panel in window.panel_widgets.values()
+        not panel.widget_map_coordinator.enabled()
+        for panel in window.panel_widgets.values()
     )
 
     window.show_widget_map_action.setChecked(True)
-    assert all(panel.widget_map_enabled() for panel in window.panel_widgets.values())
+    assert all(
+        panel.widget_map_coordinator.enabled()
+        for panel in window.panel_widgets.values()
+    )
 
     window.new_vertical_panel_action.trigger()
     assert len(window.panel_widgets) == 2
-    assert all(panel.widget_map_enabled() for panel in window.panel_widgets.values())
+    assert all(
+        panel.widget_map_coordinator.enabled()
+        for panel in window.panel_widgets.values()
+    )
 
     window.show_widget_map_action.setChecked(False)
     assert all(
-        not panel.widget_map_enabled() for panel in window.panel_widgets.values()
+        not panel.widget_map_coordinator.enabled()
+        for panel in window.panel_widgets.values()
     )
 
 
@@ -361,7 +369,7 @@ def test_apply_ui_preferences_updates_toolbar_visibility_flags(
     window.show()
     window.new_vertical_panel_action.trigger()
 
-    window.apply_ui_preferences(
+    window.preferences_coordinator.apply_ui_preferences(
         UiPreferences(
             new_context_mode="clone_active_path",
             show_hidden_default=True,
@@ -456,7 +464,7 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
             AssertionError("restore should use submenu, not dialog")
         ),
     )
-    source.populate_restore_view_menu()
+    source.views_coordinator.populate_restore_view_menu(source.restore_view_menu)
     restore_actions = [
         a for a in source.restore_view_menu.actions() if a.text() == "My View"
     ]
@@ -481,16 +489,16 @@ def test_split_behaviour_uses_full_width_rows(qtbot, tmp_path: Path) -> None:
     qtbot.addWidget(window)
     window.show()
 
-    assert [len(row) for row in window._layout_rows] == [1]
+    assert [len(row) for row in window.layout_rows] == [1]
 
     window.new_vertical_panel_action.trigger()
-    assert [len(row) for row in window._layout_rows] == [2]
+    assert [len(row) for row in window.layout_rows] == [2]
 
     window.new_horizontal_panel_action.trigger()
-    assert [len(row) for row in window._layout_rows] == [2, 2]
+    assert [len(row) for row in window.layout_rows] == [2, 2]
 
     window.new_vertical_panel_action.trigger()
-    assert [len(row) for row in window._layout_rows] == [2, 3]
+    assert [len(row) for row in window.layout_rows] == [2, 3]
 
 
 def test_copy_to_target_uses_last_active_non_source_panel(
@@ -516,7 +524,7 @@ def test_copy_to_target_uses_last_active_non_source_panel(
     window.new_horizontal_panel_action.trigger()
     assert len(window.panel_widgets) == 4
 
-    ordered_ids = [pid for row in window._layout_rows for pid in row]
+    ordered_ids = [pid for row in window.layout_rows for pid in row]
     source_id = ordered_ids[0]
     preferred_target_id = ordered_ids[-1]
     source_panel = window.panel_widgets[source_id]
@@ -552,8 +560,8 @@ def test_copy_to_target_uses_last_active_non_source_panel(
     window.copy_to_target_action.trigger()
 
     assert captured == [dst_dir]
-    assert source_panel._pane_role == "active"
-    assert target_panel._pane_role == "target"
+    assert source_panel.pane_role == "active"
+    assert target_panel.pane_role == "target"
     assert "border: none" in source_panel.styleSheet()
     assert "background-color: rgba(168, 182, 196, 61)" in source_panel.styleSheet()
     assert "border: none" in target_panel.styleSheet()
@@ -575,7 +583,7 @@ def test_status_bar_persistent_source_target_paths_update_with_context_changes(
     window.show()
 
     window.new_vertical_panel_action.trigger()
-    ordered_ids = [pid for row in window._layout_rows for pid in row]
+    ordered_ids = [pid for row in window.layout_rows for pid in row]
     assert len(ordered_ids) >= 2
     source_id = ordered_ids[0]
     target_id = ordered_ids[1]
@@ -753,7 +761,7 @@ def test_storage_overview_status_row_elides_with_full_tooltip(
     qtbot.addWidget(window)
     window.resize(380, window.height())
     window.show()
-    window._status_coordinator.refresh_storage_overview_status()
+    window.status_coordinator.refresh_storage_overview_status()
 
     qtbot.waitUntil(lambda: len(_visible_storage_labels(window)) == len(entries))
     assert any(label.toolTip() for label in _visible_storage_labels(window))
@@ -801,7 +809,7 @@ def test_storage_overview_status_row_uses_configured_byte_format(
     )
     qtbot.addWidget(window)
     window.show()
-    window._status_coordinator.refresh_storage_overview_status()
+    window.status_coordinator.refresh_storage_overview_status()
 
     qtbot.waitUntil(lambda: len(_visible_storage_labels(window)) == len(entries))
     labels = _visible_storage_labels(window)
@@ -914,7 +922,7 @@ def test_column_width_sync_stays_within_active_pane_tabs(qtbot, tmp_path: Path) 
     window.show()
 
     window.new_vertical_panel_action.trigger()
-    ordered_ids = [pid for row in window._layout_rows for pid in row]
+    ordered_ids = [pid for row in window.layout_rows for pid in row]
     assert len(ordered_ids) >= 2
     first_panel = window.panel_widgets[ordered_ids[0]]
     second_panel = window.panel_widgets[ordered_ids[1]]
@@ -950,7 +958,7 @@ def test_column_width_auto_align_none_disables_propagation(
     window.show()
 
     window.new_vertical_panel_action.trigger()
-    ordered_ids = [pid for row in window._layout_rows for pid in row]
+    ordered_ids = [pid for row in window.layout_rows for pid in row]
     first_panel = window.panel_widgets[ordered_ids[0]]
     second_panel = window.panel_widgets[ordered_ids[1]]
 
@@ -1033,7 +1041,7 @@ def test_view_align_columns_current_panel_tabs_is_one_shot(
     window.show()
 
     window.new_vertical_panel_action.trigger()
-    ordered_ids = [pid for row in window._layout_rows for pid in row]
+    ordered_ids = [pid for row in window.layout_rows for pid in row]
     source_panel = window.panel_widgets[ordered_ids[0]]
     other_panel = window.panel_widgets[ordered_ids[1]]
 
@@ -1085,7 +1093,7 @@ def test_view_align_columns_all_panels_tabs_is_one_shot_across_windows(
     second.show()
 
     first.new_vertical_panel_action.trigger()
-    ordered_ids = [pid for row in first._layout_rows for pid in row]
+    ordered_ids = [pid for row in first.layout_rows for pid in row]
     source_panel = first.panel_widgets[ordered_ids[0]]
     other_panel = first.panel_widgets[ordered_ids[1]]
 

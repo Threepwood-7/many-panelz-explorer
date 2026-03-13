@@ -1,3 +1,5 @@
+"""Window-level coordination for copy, move, and delete actions."""
+
 from __future__ import annotations
 
 import shutil
@@ -21,7 +23,10 @@ type ConflictChoice = Literal["overwrite", "skip", "rename", "cancel"]
 
 
 class WindowOperationsCoordinator:
+    """Coordinate file operations initiated from an explorer window."""
+
     def __init__(self, window: ExplorerWindow) -> None:
+        """Store the owning window reference."""
         self.window = window
 
     def delete_selected_items(self, configure: bool = False) -> None:
@@ -114,7 +119,8 @@ class WindowOperationsCoordinator:
     ) -> OperationRequest | None:
         ui_preferences = self.window.settings.ui_preferences()
         use_dialog = bool(configure) or (
-            self.window.operation_shortcut_behavior == SHORTCUT_BEHAVIOR_DIALOG
+            self.window.preferences_coordinator.operation_shortcut_behavior
+            == SHORTCUT_BEHAVIOR_DIALOG
         )
         if use_dialog:
             from ...dialogs.operation_dialog import OperationDialog
@@ -136,17 +142,17 @@ class WindowOperationsCoordinator:
             )
 
         backend_id = (
-            self.window.default_delete_backend
+            self.window.preferences_coordinator.default_delete_backend
             if kind == "delete"
-            else self.window.default_copy_move_backend
+            else self.window.preferences_coordinator.default_copy_move_backend
         )
         return OperationRequest(
             kind=kind,
             sources=tuple(sources),
             target_dir=target_dir,
             backend_id=backend_id,
-            dispatch_mode=self.window.default_operation_dispatch_mode,
-            conflict_policy=self.window.default_operation_conflict_policy,
+            dispatch_mode=self.window.preferences_coordinator.default_operation_dispatch_mode,
+            conflict_policy=self.window.preferences_coordinator.default_operation_conflict_policy,
             created_by=f"window:{self.window.window_id}",
         )
 

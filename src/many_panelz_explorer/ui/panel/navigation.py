@@ -1,3 +1,5 @@
+"""Navigation coordination for a single explorer panel."""
+
 from __future__ import annotations
 
 import os
@@ -34,6 +36,8 @@ def _navigation_root_text(path: Path | str) -> str:
 
 
 class PanelNavigationCoordinator:
+    """Drive root selection, history movement, and address-bar flow."""
+
     def __init__(
         self,
         panel: PanelWidget,

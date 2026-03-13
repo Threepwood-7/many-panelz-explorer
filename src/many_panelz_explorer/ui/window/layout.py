@@ -1,3 +1,5 @@
+"""Layout state helpers for translating between rows and panel trees."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -21,6 +23,8 @@ type PanelRows = list[list[int]]
 
 
 class WindowLayoutCoordinator:
+    """Build and normalize panel layout state for an explorer window."""
+
     def __init__(self, window: ExplorerWindow) -> None:
         self.window = window
 

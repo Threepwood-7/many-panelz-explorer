@@ -1,3 +1,5 @@
+"""Generate a deterministic widget-map snapshot for diagnostics and docs."""
+
 from __future__ import annotations
 
 import os
@@ -51,6 +53,8 @@ def generate_widget_map_image(
     source_root: Path | None = None,
     size: tuple[int, int] = (1280, 760),
 ) -> Path:
+    """Render the widget-map overlay to an image file."""
+
     app_instance = QApplication.instance()
     owns_app = app_instance is None
     app = (
@@ -83,8 +87,8 @@ def generate_widget_map_image(
         if tab is None:
             raise RuntimeError("No active tab available for snapshot generation.")
 
-        panel.show_filter_overlay(seed_text="map")
-        window.toggle_show_widget_map(True)
+        panel.inline_filter_coordinator.show_overlay(seed_text="map")
+        window.preferences_coordinator.set_show_widget_map(True)
         _pump_events(app, 0.2)
 
         output = Path(output_path)
@@ -101,6 +105,8 @@ def generate_widget_map_image(
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the widget-map snapshot CLI entry point."""
+
     args = list(argv) if argv is not None else sys.argv[1:]
     output = Path(args[0]) if args else Path("docs") / "images" / "ui-04-widget-map.png"
     source_root = Path(args[1]) if len(args) > 1 else Path.cwd()

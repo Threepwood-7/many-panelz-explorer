@@ -1,3 +1,5 @@
+"""Normalize and render structured backend option payloads."""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, replace
@@ -34,6 +36,8 @@ def _string_object_mapping(value: Any) -> dict[str, Any] | None:
 
 @dataclass(frozen=True)
 class RobocopyBackendOptions:
+    """Structured Robocopy options stored in settings and dialogs."""
+
     include_subdirectories: bool = True
     mirror_target: bool = False
     move_files_for_move: bool = True
@@ -50,6 +54,8 @@ class RobocopyBackendOptions:
 
 @dataclass(frozen=True)
 class TeraCopyBackendOptions:
+    """Structured TeraCopy options stored in settings and dialogs."""
+
     close_on_finish: bool = False
     keep_open: bool = False
     verify_after_copy: bool = False
@@ -60,6 +66,8 @@ class TeraCopyBackendOptions:
 
 @dataclass(frozen=True)
 class UnstoppableBackendOptions:
+    """Structured Unstoppable Copier options stored in settings and dialogs."""
+
     use_defaults: bool = True
     keep_attributes: bool = True
     keep_owner: bool = True
@@ -96,6 +104,8 @@ _UNSTOPPABLE_DEFAULT_FLAG_STATES: tuple[tuple[str, bool, str], ...] = (
 
 @dataclass(frozen=True)
 class ExternalCopyMoveBackendOptions:
+    """Structured generic external copy/move command options."""
+
     include_operation_token: bool = True
     include_sources: bool = True
     include_target: bool = True
@@ -104,6 +114,8 @@ class ExternalCopyMoveBackendOptions:
 
 @dataclass(frozen=True)
 class ResolvedCopyMoveBackendArgs:
+    """Resolved command-line templates derived from structured options."""
+
     robocopy_copy_args: str
     robocopy_move_args: str
     teracopy_args_template: str
@@ -153,24 +165,29 @@ def _normalize_conflict_mode(raw: Any) -> str:
 
 
 def robocopy_options_payload(options: RobocopyBackendOptions) -> dict[str, Any]:
+    """Serialize Robocopy options into a settings-friendly mapping."""
     return asdict(options)
 
 
 def teracopy_options_payload(options: TeraCopyBackendOptions) -> dict[str, Any]:
+    """Serialize TeraCopy options into a settings-friendly mapping."""
     return asdict(options)
 
 
 def unstoppable_options_payload(options: UnstoppableBackendOptions) -> dict[str, Any]:
+    """Serialize Unstoppable Copier options into a settings-friendly mapping."""
     return asdict(options)
 
 
 def external_copymove_options_payload(
     options: ExternalCopyMoveBackendOptions,
 ) -> dict[str, Any]:
+    """Serialize external copy/move options into a settings-friendly mapping."""
     return asdict(options)
 
 
 def normalize_robocopy_options(raw: Any) -> RobocopyBackendOptions:
+    """Normalize stored or UI-provided Robocopy option payloads."""
     raw_map = _string_object_mapping(raw)
     if raw_map is None:
         return RobocopyBackendOptions()
@@ -233,6 +250,7 @@ def normalize_robocopy_options(raw: Any) -> RobocopyBackendOptions:
 
 
 def normalize_teracopy_options(raw: Any) -> TeraCopyBackendOptions:
+    """Normalize stored or UI-provided TeraCopy option payloads."""
     raw_map = _string_object_mapping(raw)
     if raw_map is None:
         return TeraCopyBackendOptions()
@@ -262,6 +280,7 @@ def normalize_teracopy_options(raw: Any) -> TeraCopyBackendOptions:
 
 
 def normalize_unstoppable_options(raw: Any) -> UnstoppableBackendOptions:
+    """Normalize stored or UI-provided Unstoppable Copier payloads."""
     raw_map = _string_object_mapping(raw)
     if raw_map is None:
         return UnstoppableBackendOptions()
@@ -327,6 +346,7 @@ def normalize_unstoppable_options(raw: Any) -> UnstoppableBackendOptions:
 
 
 def normalize_external_copymove_options(raw: Any) -> ExternalCopyMoveBackendOptions:
+    """Normalize stored or UI-provided external command option payloads."""
     raw_map = _string_object_mapping(raw)
     if raw_map is None:
         return ExternalCopyMoveBackendOptions()
@@ -360,6 +380,7 @@ def normalize_external_copymove_options(raw: Any) -> ExternalCopyMoveBackendOpti
 
 
 def generate_robocopy_args(options: RobocopyBackendOptions, *, kind: str) -> str:
+    """Render Robocopy options into a command-line argument string."""
     parts: list[str] = []
     if options.include_subdirectories:
         parts.append("/E")
@@ -386,6 +407,7 @@ def generate_robocopy_args(options: RobocopyBackendOptions, *, kind: str) -> str
 
 
 def generate_teracopy_args_template(options: TeraCopyBackendOptions) -> str:
+    """Render TeraCopy options into an argument template string."""
     parts = ["{operation}", "{sources}", "{target}"]
     if options.close_on_finish:
         parts.append("/Close")
@@ -407,6 +429,7 @@ def generate_teracopy_args_template(options: TeraCopyBackendOptions) -> str:
 def generate_unstoppable_switch_args(
     options: UnstoppableBackendOptions,
 ) -> list[str]:
+    """Render Unstoppable Copier switches as grouped plus/minus tokens."""
     plus_letters: list[str] = []
     minus_letters: list[str] = []
     if options.use_defaults:
@@ -429,6 +452,7 @@ def generate_unstoppable_switch_args(
 
 
 def generate_unstoppable_args_template(options: UnstoppableBackendOptions) -> str:
+    """Render Unstoppable Copier options into an argument template string."""
     parts = generate_unstoppable_switch_args(options)
     extra = _normalize_text(options.extra_args, fallback="")
     if extra:
@@ -439,6 +463,7 @@ def generate_unstoppable_args_template(options: UnstoppableBackendOptions) -> st
 def generate_external_copymove_args_template(
     options: ExternalCopyMoveBackendOptions,
 ) -> str:
+    """Render external command options into an argument template string."""
     parts: list[str] = []
     if options.include_operation_token:
         parts.append("{operation}")
@@ -468,6 +493,7 @@ def resolve_copy_move_backend_args(
     unstoppable_options: UnstoppableBackendOptions,
     external_copymove_options: ExternalCopyMoveBackendOptions,
 ) -> ResolvedCopyMoveBackendArgs:
+    """Resolve structured backend options into executable argument templates."""
     generated_robocopy_copy = generate_robocopy_args(robocopy_options, kind="copy")
     generated_robocopy_move = generate_robocopy_args(robocopy_options, kind="move")
     generated_teracopy = generate_teracopy_args_template(teracopy_options)

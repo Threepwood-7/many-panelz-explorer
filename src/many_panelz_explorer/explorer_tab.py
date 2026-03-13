@@ -1,3 +1,5 @@
+"""Explorer tab widget hosting the file tree and tab navigation state."""
+
 from __future__ import annotations
 
 import uuid
@@ -18,6 +20,8 @@ if TYPE_CHECKING:
 
 
 class ExplorerTab(QWidget):
+    """Combine directory model, view, actions, and navigation for one tab."""
+
     def __init__(
         self,
         initial_path: Path,

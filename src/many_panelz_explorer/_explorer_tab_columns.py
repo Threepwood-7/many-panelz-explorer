@@ -1,3 +1,5 @@
+"""Column width synchronization helpers for explorer tab views."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -13,6 +15,8 @@ if TYPE_CHECKING:
 
 
 class ExplorerTabColumns(QObject):
+    """Track and restore file-list column widths for a tab."""
+
     changed = Signal(object)
 
     def __init__(

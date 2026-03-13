@@ -1,29 +1,20 @@
+"""Panel widget that hosts navigation controls and explorer tabs."""
+
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 from PySide6.QtCore import (
     QEvent,
     QObject,
-    QPoint,
-    QRect,
     QStringListModel,
     Qt,
     QTimer,
     Signal,
 )
-from PySide6.QtGui import (
-    QColor,
-    QFont,
-    QKeyEvent,
-    QPainter,
-    QPaintEvent,
-    QPen,
-    QShortcut,
-)
+from PySide6.QtGui import QColor, QFont, QKeyEvent, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -44,10 +35,16 @@ from threep_commons.qt.widget_identity import assign_widget_identity
 from . import widget_naming
 from .explorer_tab import ExplorerTab
 from .mounts import list_roots_for_navigation
-from .ui.panel import PanelNavigationCoordinator
+from .ui.panel import (
+    PanelInlineFilterCoordinator,
+    PanelNavigationCoordinator,
+    PanelPresentationCoordinator,
+    PanelStateCoordinator,
+    PanelWidgetMapCoordinator,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable
 
 
 def _tab_label(path: Path) -> str:
@@ -80,75 +77,262 @@ class _FocusWatcher(QObject):
         return super().eventFilter(obj, event)
 
 
-@dataclass(frozen=True)
-class _WidgetMapEntry:
-    widget: QWidget
-    alias: str
-    widget_id: str
+def _build_panel_toolbar(panel: PanelWidget, root: QVBoxLayout) -> None:
+    """Create the toolbar widgets and add them to the panel layout."""
+
+    toolbar = QHBoxLayout()
+
+    panel.refresh_btn = QPushButton("Refresh")
+    panel.refresh_btn.setMinimumWidth(0)
+    panel.refresh_btn.setSizePolicy(
+        QSizePolicy.Policy.Ignored,
+        QSizePolicy.Policy.Fixed,
+    )
+    panel.refresh_btn.clicked.connect(panel.navigation_coordinator.refresh_current_path)
+    toolbar.addWidget(panel.refresh_btn)
+
+    panel.root_buttons_host = QWidget()
+    panel.root_buttons_host.setMinimumWidth(0)
+    panel.root_buttons_host.setSizePolicy(
+        QSizePolicy.Policy.Ignored,
+        QSizePolicy.Policy.Fixed,
+    )
+    panel.root_buttons_layout = QHBoxLayout(panel.root_buttons_host)
+    panel.root_buttons_layout.setContentsMargins(0, 0, 0, 0)
+    panel.root_buttons_layout.setSpacing(4)
+    toolbar.addWidget(panel.root_buttons_host, 1)
+
+    panel.root_combo = QComboBox()
+    panel.root_combo.activated.connect(panel.navigation_coordinator.on_root_selected)
+    panel.root_combo.setVisible(panel.show_root_dropdown)
+    panel.root_combo.setMinimumWidth(panel.ROOT_COMBO_MIN_WIDTH)
+    panel.root_combo.setSizePolicy(
+        QSizePolicy.Policy.Preferred,
+        QSizePolicy.Policy.Fixed,
+    )
+    toolbar.addWidget(panel.root_combo)
+
+    panel.address_edit = QLineEdit()
+    panel.address_edit.returnPressed.connect(
+        panel.navigation_coordinator.on_address_submitted
+    )
+    panel.address_edit.setMinimumWidth(0)
+    panel.address_edit.setSizePolicy(
+        QSizePolicy.Policy.Ignored,
+        QSizePolicy.Policy.Fixed,
+    )
+    toolbar.addWidget(panel.address_edit, 1)
+    panel.address_completion_model = QStringListModel(panel)
+    panel.address_completer = QCompleter(panel.address_completion_model, panel)
+    panel.address_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+    panel.address_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+    panel.address_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+    panel.address_completer.setMaxVisibleItems(14)
+    panel.address_completer.activated.connect(panel.handle_address_completion_activated)
+    panel.address_edit.setCompleter(panel.address_completer)
+    panel.address_edit.textEdited.connect(
+        panel.navigation_coordinator.schedule_address_completion_update
+    )
+
+    panel.back_btn = QPushButton("<")
+    panel.back_btn.setMinimumWidth(28)
+    panel.back_btn.setSizePolicy(
+        QSizePolicy.Policy.Fixed,
+        QSizePolicy.Policy.Fixed,
+    )
+    panel.back_btn.clicked.connect(panel.navigation_coordinator.go_back)
+    toolbar.addWidget(panel.back_btn)
+
+    panel.forward_btn = QPushButton(">")
+    panel.forward_btn.setMinimumWidth(28)
+    panel.forward_btn.setSizePolicy(
+        QSizePolicy.Policy.Fixed,
+        QSizePolicy.Policy.Fixed,
+    )
+    panel.forward_btn.clicked.connect(panel.navigation_coordinator.go_forward)
+    toolbar.addWidget(panel.forward_btn)
+
+    panel.up_btn = QPushButton("..")
+    panel.up_btn.setMinimumWidth(32)
+    panel.up_btn.setSizePolicy(
+        QSizePolicy.Policy.Fixed,
+        QSizePolicy.Policy.Fixed,
+    )
+    panel.up_btn.clicked.connect(panel.navigation_coordinator.go_up)
+    toolbar.addWidget(panel.up_btn)
+
+    panel.root_btn = QPushButton("\\")
+    panel.root_btn.setMinimumWidth(28)
+    panel.root_btn.setSizePolicy(
+        QSizePolicy.Policy.Fixed,
+        QSizePolicy.Policy.Fixed,
+    )
+    panel.root_btn.clicked.connect(panel.navigation_coordinator.go_root)
+    toolbar.addWidget(panel.root_btn)
+    panel.navigation_buttons = [
+        panel.back_btn,
+        panel.forward_btn,
+        panel.up_btn,
+        panel.root_btn,
+    ]
+
+    root.addLayout(toolbar)
 
 
-class _WidgetMapOverlay(QWidget):
-    def __init__(self, owner: PanelWidget) -> None:
-        super().__init__(owner)
-        self._owner = owner
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.hide()
+def _build_panel_tabs(panel: PanelWidget, root: QVBoxLayout) -> None:
+    """Create the tab host and connect tab lifecycle signals."""
 
-    def refresh(self) -> None:
-        parent = self.parentWidget()
-        if parent is None:
-            return
-        self.setGeometry(parent.rect())
-        self.raise_()
-        self.update()
+    panel.tabs = QTabWidget()
+    panel.tabs.setMinimumWidth(0)
+    panel.tabs.setSizePolicy(
+        QSizePolicy.Policy.Ignored,
+        QSizePolicy.Policy.Expanding,
+    )
+    panel.tabs.setTabsClosable(True)
+    panel.tabs.currentChanged.connect(panel.state_coordinator.on_current_changed)
+    panel.tabs.tabCloseRequested.connect(panel.state_coordinator.close_tab_at)
+    panel.tabs.installEventFilter(panel.focus_watcher)
+    panel.tabs.installEventFilter(panel)
+    tab_bar = panel.tabs.tabBar()
+    tab_bar.setElideMode(Qt.TextElideMode.ElideRight)
+    tab_bar.setExpanding(True)
+    tab_bar.setUsesScrollButtons(False)
+    tab_bar.setMinimumWidth(0)
+    root.addWidget(panel.tabs)
 
-    def paintEvent(self, event: QPaintEvent) -> None:
-        _ = event
-        entries = self._owner.widget_map_entries()
-        if not entries:
-            return
 
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        text_flags = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+def _build_panel_filter(panel: PanelWidget) -> None:
+    """Create the inline filter control used by the active pane."""
 
-        for entry in entries:
-            widget = entry.widget
-            if not widget.isVisible():
-                continue
-            top_left = widget.mapTo(self, QPoint(0, 0))
-            rect = QRect(top_left, widget.size()).adjusted(0, 0, -1, -1)
-            if rect.width() <= 2 or rect.height() <= 2:
-                continue
+    panel.filter_edit = QLineEdit(panel)
+    panel.filter_edit.setPlaceholderText("Filter active pane...")
+    panel.filter_edit.setVisible(False)
+    panel.filter_edit.setMinimumWidth(0)
+    panel.filter_edit.setSizePolicy(
+        QSizePolicy.Policy.Ignored,
+        QSizePolicy.Policy.Fixed,
+    )
+    panel.filter_edit.textChanged.connect(
+        panel.inline_filter_coordinator.on_text_changed
+    )
+    panel.filter_edit.installEventFilter(panel)
+    panel.installEventFilter(panel)
 
-            color = QColor("#22c55e")
-            painter.setPen(QPen(color, 2))
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawRect(rect)
 
-            label = f"{entry.alias}"
-            metrics = painter.fontMetrics()
-            text_width = metrics.horizontalAdvance(label) + 12
-            text_height = metrics.height() + 8
+def _assign_panel_control_identities(panel: PanelWidget) -> None:
+    """Assign stable widget identities to the panel controls."""
 
-            label_x = rect.left() + 2
-            label_y = rect.top() - text_height - 2
-            if label_y < 2:
-                label_y = rect.top() + 2
-            if label_x + text_width > self.width() - 2:
-                label_x = max(2, self.width() - text_width - 2)
+    panel.assign_identity(
+        panel.refresh_btn,
+        widget_naming.panel_control_widget_id(panel.panel_id, "refresh"),
+        widget_naming.panel_control_alias(panel.panel_id, "refresh"),
+    )
+    panel.assign_identity(
+        panel.address_edit,
+        widget_naming.panel_control_widget_id(panel.panel_id, "address"),
+        widget_naming.panel_control_alias(panel.panel_id, "address"),
+    )
+    panel.assign_identity(
+        panel.back_btn,
+        widget_naming.panel_control_widget_id(panel.panel_id, "back"),
+        widget_naming.panel_control_alias(panel.panel_id, "back"),
+    )
+    panel.assign_identity(
+        panel.forward_btn,
+        widget_naming.panel_control_widget_id(panel.panel_id, "forward"),
+        widget_naming.panel_control_alias(panel.panel_id, "forward"),
+    )
+    panel.assign_identity(
+        panel.up_btn,
+        widget_naming.panel_control_widget_id(panel.panel_id, "up"),
+        widget_naming.panel_control_alias(panel.panel_id, "up"),
+    )
+    panel.assign_identity(
+        panel.root_btn,
+        widget_naming.panel_control_widget_id(panel.panel_id, "root"),
+        widget_naming.panel_control_alias(panel.panel_id, "root"),
+    )
+    panel.assign_identity(
+        panel.tabs,
+        widget_naming.panel_control_widget_id(panel.panel_id, "tabs"),
+        widget_naming.panel_control_alias(panel.panel_id, "tabs"),
+    )
+    panel.assign_identity(
+        panel.tabs.tabBar(),
+        widget_naming.panel_control_widget_id(panel.panel_id, "tab_bar"),
+        widget_naming.panel_control_alias(panel.panel_id, "tab_bar"),
+    )
+    panel.assign_identity(
+        panel.filter_edit,
+        widget_naming.panel_control_widget_id(panel.panel_id, "filter"),
+        widget_naming.panel_control_alias(panel.panel_id, "filter"),
+    )
 
-            label_rect = QRect(label_x, label_y, text_width, text_height)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QColor(0, 0, 0, 190))
-            painter.drawRoundedRect(label_rect, 4, 4)
-            painter.setPen(QColor("#f8fafc"))
-            painter.drawText(label_rect.adjusted(6, 0, -6, 0), int(text_flags), label)
+
+def _install_panel_focus_watchers(panel: PanelWidget) -> None:
+    """Install the focus watcher on toolbar and tab controls."""
+
+    panel.back_btn.installEventFilter(panel.focus_watcher)
+    panel.forward_btn.installEventFilter(panel.focus_watcher)
+    panel.up_btn.installEventFilter(panel.focus_watcher)
+    panel.root_btn.installEventFilter(panel.focus_watcher)
+    panel.refresh_btn.installEventFilter(panel.focus_watcher)
+    panel.root_buttons_host.installEventFilter(panel.focus_watcher)
+    panel.root_combo.installEventFilter(panel.focus_watcher)
+    panel.address_edit.installEventFilter(panel.focus_watcher)
+    panel.address_edit.installEventFilter(panel)
+
+
+def _configure_panel_shortcuts_and_timers(panel: PanelWidget) -> None:
+    """Create shortcuts and timers used by the panel chrome."""
+
+    panel.alt_down_shortcut = QShortcut("Alt+Down", panel)
+    panel.alt_down_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+    panel.alt_down_shortcut.activated.connect(
+        panel.navigation_coordinator.show_history_menu
+    )
+    panel.ctrl_f_shortcut = QShortcut("Ctrl+F", panel)
+    panel.ctrl_f_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+    panel.ctrl_f_shortcut.activated.connect(
+        lambda: panel.inline_filter_coordinator.show_overlay(seed_text="")
+    )
+    panel.column_sync_timer = QTimer(panel)
+    panel.column_sync_timer.setSingleShot(True)
+    panel.column_sync_timer.timeout.connect(
+        panel.state_coordinator.flush_pending_column_width_sync
+    )
+    panel.address_completion_timer = QTimer(panel)
+    panel.address_completion_timer.setSingleShot(True)
+    panel.address_completion_timer.timeout.connect(
+        panel.navigation_coordinator.refresh_address_completions
+    )
+
+
+def _finalize_panel_ui(panel: PanelWidget) -> None:
+    """Apply presentation defaults after the chrome is constructed."""
+
+    panel.presentation_coordinator.sync_toolbar_for_current_tab()
+    panel.presentation_coordinator.apply_toolbar_visibility(
+        show_refresh_button=panel.show_refresh_button,
+        show_root_buttons=panel.show_root_buttons,
+        show_root_dropdown=panel.show_root_dropdown,
+        show_address_bar=panel.show_address_bar,
+        show_navigation_buttons=panel.show_navigation_buttons,
+    )
+    panel.presentation_coordinator.apply_font_preferences(
+        file_list_font=panel.file_list_font_value,
+        navigation_font=panel.navigation_font_value,
+    )
+    panel.presentation_coordinator.set_role_visual_state(
+        is_active=False,
+        is_target=False,
+    )
+    panel.widget_map_coordinator.sync_overlay()
 
 
 class PanelWidget(QWidget):
+    """Own one pane of tabs, navigation widgets, and focus state."""
+
     COLUMN_SYNC_DEBOUNCE_MS = 120
     ADDRESS_COMPLETION_DEBOUNCE_MS = 140
     ROOT_COMBO_MIN_WIDTH = 108
@@ -160,6 +344,25 @@ class PanelWidget(QWidget):
     current_context_changed = Signal()
     column_widths_sync_requested = Signal(list, object)
     became_empty = Signal()
+    focus_watcher: _FocusWatcher
+    refresh_btn: QPushButton
+    root_buttons_host: QWidget
+    root_buttons_layout: QHBoxLayout
+    root_combo: QComboBox
+    address_edit: QLineEdit
+    back_btn: QPushButton
+    forward_btn: QPushButton
+    up_btn: QPushButton
+    root_btn: QPushButton
+    navigation_buttons: list[QPushButton]
+    tabs: QTabWidget
+    filter_edit: QLineEdit
+    column_sync_timer: QTimer
+    address_completion_model: QStringListModel
+    address_completer: QCompleter
+    alt_down_shortcut: QShortcut
+    ctrl_f_shortcut: QShortcut
+    address_completion_timer: QTimer
 
     def __init__(
         self,
@@ -176,41 +379,44 @@ class PanelWidget(QWidget):
         super().__init__(parent)
         self.panel_id = panel_id
         self._show_hidden = show_hidden
-        self._show_root_dropdown = bool(show_root_dropdown)
-        self._default_path = Path(default_path)
+        self.show_root_dropdown = bool(show_root_dropdown)
+        self.default_path = Path(default_path)
         self._roots_provider = roots_provider or list_roots_for_navigation
         self._root_paths: list[Path] = []
-        self._column_widths: list[int] = []
-        self._syncing_column_widths = False
-        self._pending_column_widths_sync: list[int] = []
-        self._pending_column_widths_source_tab: ExplorerTab | None = None
-        self._restoring_state = False
-        self._column_width_auto_align_mode = self.COLUMN_ALIGN_MODE_CURRENT_PANEL_TABS
+        self.column_widths: list[int] = []
+        self.syncing_column_widths = False
+        self.pending_column_widths_sync: list[int] = []
+        self.pending_column_widths_source_tab: ExplorerTab | None = None
+        self.restoring_state = False
+        self.column_width_auto_align_mode = self.COLUMN_ALIGN_MODE_CURRENT_PANEL_TABS
         self.root_buttons: list[QPushButton] = []
         self._history_menu: QMenu | None = None
-        self._pane_role = "normal"
-        self._show_widget_map = False
+        self.pane_role = "normal"
         self._address_completions_enabled = True
-        self._active_role_color = QColor("#A8B6C4")
-        self._active_role_intensity_percent = 24
-        self._target_role_color = QColor("#D2CCAA")
-        self._target_role_intensity_percent = 28
-        self._show_refresh_button = True
-        self._show_root_buttons = True
-        self._show_address_bar = True
-        self._show_navigation_buttons = True
-        self._file_list_font = QFont(self.font())
-        self._navigation_font = QFont(self.font())
-        self._file_list_size_formatter = (
-            file_list_size_formatter or self._default_file_list_size_formatter
+        self.active_role_color = QColor("#A8B6C4")
+        self.active_role_intensity_percent = 24
+        self.target_role_color = QColor("#D2CCAA")
+        self.target_role_intensity_percent = 28
+        self.show_refresh_button = True
+        self.show_root_buttons = True
+        self.show_address_bar = True
+        self.show_navigation_buttons = True
+        self.file_list_font_value = QFont(self.font())
+        self.navigation_font_value = QFont(self.font())
+        self.file_list_size_formatter = (
+            file_list_size_formatter or self.default_file_list_size_formatter
         )
-        self._properties_size_formatter = (
-            properties_size_formatter or self._default_properties_size_formatter
+        self.properties_size_formatter = (
+            properties_size_formatter or self.default_properties_size_formatter
         )
         self.navigation_coordinator = PanelNavigationCoordinator(
             self,
             is_hidden_or_system_entry=_is_hidden_or_system_entry,
         )
+        self.inline_filter_coordinator = PanelInlineFilterCoordinator(self)
+        self.presentation_coordinator = PanelPresentationCoordinator(self)
+        self.state_coordinator = PanelStateCoordinator(self)
+        self.widget_map_coordinator = PanelWidgetMapCoordinator(self)
 
         self._panel_widget_id = widget_naming.panel_widget_id(self.panel_id)
         assign_widget_identity(
@@ -228,209 +434,13 @@ class PanelWidget(QWidget):
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
-
-        toolbar = QHBoxLayout()
-
-        self.refresh_btn = QPushButton("Refresh")
-        self.refresh_btn.setMinimumWidth(0)
-        self.refresh_btn.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
-        )
-        self.refresh_btn.clicked.connect(
-            self.navigation_coordinator.refresh_current_path
-        )
-        toolbar.addWidget(self.refresh_btn)
-
-        self.root_buttons_host = QWidget()
-        self.root_buttons_host.setMinimumWidth(0)
-        self.root_buttons_host.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
-        )
-        self.root_buttons_layout = QHBoxLayout(self.root_buttons_host)
-        self.root_buttons_layout.setContentsMargins(0, 0, 0, 0)
-        self.root_buttons_layout.setSpacing(4)
-        toolbar.addWidget(self.root_buttons_host, 1)
-
-        self.root_combo = QComboBox()
-        self.root_combo.activated.connect(self.navigation_coordinator.on_root_selected)
-        self.root_combo.setVisible(self._show_root_dropdown)
-        self.root_combo.setMinimumWidth(self.ROOT_COMBO_MIN_WIDTH)
-        self.root_combo.setSizePolicy(
-            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
-        )
-        toolbar.addWidget(self.root_combo)
-
-        self.address_edit = QLineEdit()
-        self.address_edit.returnPressed.connect(
-            self.navigation_coordinator.on_address_submitted
-        )
-        self.address_edit.setMinimumWidth(0)
-        self.address_edit.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
-        )
-        toolbar.addWidget(self.address_edit, 1)
-        self._address_completion_model = QStringListModel(self)
-        self._address_completer = QCompleter(self._address_completion_model, self)
-        self._address_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self._address_completer.setFilterMode(Qt.MatchFlag.MatchContains)
-        self._address_completer.setCompletionMode(
-            QCompleter.CompletionMode.PopupCompletion
-        )
-        self._address_completer.setMaxVisibleItems(14)
-        self._address_completer.activated.connect(
-            self._handle_address_completion_activated
-        )
-        self.address_edit.setCompleter(self._address_completer)
-        self.address_edit.textEdited.connect(
-            self.navigation_coordinator.schedule_address_completion_update
-        )
-
-        self.back_btn = QPushButton("<")
-        self.back_btn.setMinimumWidth(28)
-        self.back_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.back_btn.clicked.connect(self.navigation_coordinator.go_back)
-        toolbar.addWidget(self.back_btn)
-
-        self.forward_btn = QPushButton(">")
-        self.forward_btn.setMinimumWidth(28)
-        self.forward_btn.setSizePolicy(
-            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
-        )
-        self.forward_btn.clicked.connect(self.navigation_coordinator.go_forward)
-        toolbar.addWidget(self.forward_btn)
-
-        self.up_btn = QPushButton("..")
-        self.up_btn.setMinimumWidth(32)
-        self.up_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.up_btn.clicked.connect(self.navigation_coordinator.go_up)
-        toolbar.addWidget(self.up_btn)
-
-        self.root_btn = QPushButton("\\")
-        self.root_btn.setMinimumWidth(28)
-        self.root_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.root_btn.clicked.connect(self.navigation_coordinator.go_root)
-        toolbar.addWidget(self.root_btn)
-        self._navigation_buttons = [
-            self.back_btn,
-            self.forward_btn,
-            self.up_btn,
-            self.root_btn,
-        ]
-
-        root.addLayout(toolbar)
-
-        self.tabs = QTabWidget()
-        self.tabs.setMinimumWidth(0)
-        self.tabs.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding
-        )
-        self.tabs.setTabsClosable(True)
-        self.tabs.currentChanged.connect(self._on_current_changed)
-        self.tabs.tabCloseRequested.connect(self._close_tab_at)
-        self.tabs.installEventFilter(self.focus_watcher)
-        self.tabs.installEventFilter(self)
-        tab_bar = self.tabs.tabBar()
-        tab_bar.setElideMode(Qt.TextElideMode.ElideRight)
-        tab_bar.setExpanding(True)
-        tab_bar.setUsesScrollButtons(False)
-        tab_bar.setMinimumWidth(0)
-
-        root.addWidget(self.tabs)
-
-        self.filter_edit = QLineEdit(self)
-        self.filter_edit.setPlaceholderText("Filter active pane...")
-        self.filter_edit.setVisible(False)
-        self.filter_edit.setMinimumWidth(0)
-        self.filter_edit.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
-        )
-        self.filter_edit.textChanged.connect(self._on_filter_text_changed)
-        self.filter_edit.installEventFilter(self)
-        self.installEventFilter(self)
-        self._assign_identity(
-            self.refresh_btn,
-            widget_naming.panel_control_widget_id(self.panel_id, "refresh"),
-            widget_naming.panel_control_alias(self.panel_id, "refresh"),
-        )
-        self._assign_identity(
-            self.address_edit,
-            widget_naming.panel_control_widget_id(self.panel_id, "address"),
-            widget_naming.panel_control_alias(self.panel_id, "address"),
-        )
-        self._assign_identity(
-            self.back_btn,
-            widget_naming.panel_control_widget_id(self.panel_id, "back"),
-            widget_naming.panel_control_alias(self.panel_id, "back"),
-        )
-        self._assign_identity(
-            self.forward_btn,
-            widget_naming.panel_control_widget_id(self.panel_id, "forward"),
-            widget_naming.panel_control_alias(self.panel_id, "forward"),
-        )
-        self._assign_identity(
-            self.up_btn,
-            widget_naming.panel_control_widget_id(self.panel_id, "up"),
-            widget_naming.panel_control_alias(self.panel_id, "up"),
-        )
-        self._assign_identity(
-            self.root_btn,
-            widget_naming.panel_control_widget_id(self.panel_id, "root"),
-            widget_naming.panel_control_alias(self.panel_id, "root"),
-        )
-        self._assign_identity(
-            self.tabs,
-            widget_naming.panel_control_widget_id(self.panel_id, "tabs"),
-            widget_naming.panel_control_alias(self.panel_id, "tabs"),
-        )
-        self._assign_identity(
-            self.tabs.tabBar(),
-            widget_naming.panel_control_widget_id(self.panel_id, "tab_bar"),
-            widget_naming.panel_control_alias(self.panel_id, "tab_bar"),
-        )
-        self._assign_identity(
-            self.filter_edit,
-            widget_naming.panel_control_widget_id(self.panel_id, "filter"),
-            widget_naming.panel_control_alias(self.panel_id, "filter"),
-        )
-
-        self._widget_map_overlay = _WidgetMapOverlay(self)
-
-        self.back_btn.installEventFilter(self.focus_watcher)
-        self.forward_btn.installEventFilter(self.focus_watcher)
-        self.up_btn.installEventFilter(self.focus_watcher)
-        self.root_btn.installEventFilter(self.focus_watcher)
-        self.refresh_btn.installEventFilter(self.focus_watcher)
-        self.root_buttons_host.installEventFilter(self.focus_watcher)
-        self.root_combo.installEventFilter(self.focus_watcher)
-        self.address_edit.installEventFilter(self.focus_watcher)
-        self.address_edit.installEventFilter(self)
-
-        self._alt_down_shortcut = QShortcut("Alt+Down", self)
-        self._alt_down_shortcut.setContext(
-            Qt.ShortcutContext.WidgetWithChildrenShortcut
-        )
-        self._alt_down_shortcut.activated.connect(
-            self.navigation_coordinator.show_history_menu
-        )
-        self._ctrl_f_shortcut = QShortcut("Ctrl+F", self)
-        self._ctrl_f_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-        self._ctrl_f_shortcut.activated.connect(
-            lambda: self.show_filter_overlay(seed_text="")
-        )
-        self._column_sync_timer = QTimer(self)
-        self._column_sync_timer.setSingleShot(True)
-        self._column_sync_timer.timeout.connect(self._flush_pending_column_width_sync)
-        self._address_completion_timer = QTimer(self)
-        self._address_completion_timer.setSingleShot(True)
-        self._address_completion_timer.timeout.connect(
-            self.navigation_coordinator.refresh_address_completions
-        )
-
-        self._sync_toolbar_for_current_tab()
-        self._sync_toolbar_visibility()
-        self._apply_toolbar_font()
-        self._apply_visual_role()
-        self._sync_widget_map_overlay()
+        _build_panel_toolbar(self, root)
+        _build_panel_tabs(self, root)
+        _build_panel_filter(self)
+        _assign_panel_control_identities(self)
+        _install_panel_focus_watchers(self)
+        _configure_panel_shortcuts_and_timers(self)
+        _finalize_panel_ui(self)
 
     def add_tab(self, path: Path) -> ExplorerTab:
         source_tab = self.current_tab()
@@ -440,21 +450,21 @@ class PanelWidget(QWidget):
         tab = ExplorerTab(
             path,
             show_hidden=self._show_hidden,
-            file_list_size_formatter=self._file_list_size_formatter,
-            properties_size_formatter=self._properties_size_formatter,
+            file_list_size_formatter=self.file_list_size_formatter,
+            properties_size_formatter=self.properties_size_formatter,
             parent=self,
         )
-        self._assign_tab_identity(tab)
+        self.widget_map_coordinator.assign_tab_identity(tab)
 
         def _on_navigation_changed(t: ExplorerTab = tab) -> None:
-            self._on_tab_navigation_changed(t)
+            self.state_coordinator.on_tab_navigation_changed(t)
 
         def _on_widths_changed(widths: object, t: ExplorerTab = tab) -> None:
-            self._on_tab_column_widths_changed(t, widths)
+            self.state_coordinator.on_tab_column_widths_changed(t, widths)
 
         tab.navigation.changed.connect(_on_navigation_changed)
         tab.columns.changed.connect(_on_widths_changed)
-        tab.view.setFont(self._file_list_font)
+        tab.view.setFont(self.file_list_font_value)
 
         tab.installEventFilter(self.focus_watcher)
         tab.view.installEventFilter(self.focus_watcher)
@@ -463,30 +473,21 @@ class PanelWidget(QWidget):
 
         self.tabs.addTab(tab, _tab_label(path))
         self.tabs.setCurrentWidget(tab)
-        self._retitle_tab(tab)
-        if (
-            self._column_width_auto_align_mode != self.COLUMN_ALIGN_MODE_NONE
-            and source_widths
-            and not self._restoring_state
-        ):
-            self._column_widths = self._coerce_column_widths(source_widths)
-        if (
-            self._column_width_auto_align_mode != self.COLUMN_ALIGN_MODE_NONE
-            and self._column_widths
-        ):
-            tab.columns.set_widths(self._column_widths)
-        else:
-            self._column_widths = list(tab.columns.widths)
-        self._sync_toolbar_for_current_tab()
+        self.retitle_tab(tab)
+        self.state_coordinator.initialize_new_tab_column_widths(
+            tab=tab,
+            source_widths=source_widths,
+        )
+        self.presentation_coordinator.sync_toolbar_for_current_tab()
         self.activated.emit()
-        self._sync_widget_map_overlay()
+        self.widget_map_coordinator.sync_overlay()
         return tab
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
         if event.type() == QEvent.Type.Resize and (
             obj is self or self._is_active_files_list_source(obj)
         ):
-            self._position_filter_overlay()
+            self.inline_filter_coordinator.position_overlay()
             return super().eventFilter(obj, event)
         if event.type() == QEvent.Type.KeyPress:
             key_event = cast("QKeyEvent", event)
@@ -496,8 +497,8 @@ class PanelWidget(QWidget):
                 int(Qt.Key.Key_Enter),
             }:
                 if key_event.key() == int(Qt.Key.Key_Escape):
-                    self.clear_inline_filter()
-                self._hide_filter_overlay()
+                    self.inline_filter_coordinator.clear()
+                self.inline_filter_coordinator.hide_overlay()
                 self._focus_current_view()
                 return True
             if (
@@ -508,8 +509,8 @@ class PanelWidget(QWidget):
                 return True
             if self._is_active_files_list_source(
                 obj
-            ) and self._should_start_inline_filter(key_event):
-                self.show_filter_overlay(seed_text=key_event.text())
+            ) and self.inline_filter_coordinator.should_start_from_key(key_event):
+                self.inline_filter_coordinator.show_overlay(seed_text=key_event.text())
                 return True
         return super().eventFilter(obj, event)
 
@@ -517,11 +518,11 @@ class PanelWidget(QWidget):
         index = self.tabs.currentIndex()
         if index < 0:
             return
-        self._close_tab_at(index)
+        self.state_coordinator.close_tab_at(index)
 
     def current_path(self) -> Path:
         tab = self.current_tab()
-        return tab.navigation.path if tab else self._default_path
+        return tab.navigation.path if tab else self.default_path
 
     def current_tab(self) -> ExplorerTab | None:
         widget = self.tabs.currentWidget()
@@ -529,11 +530,11 @@ class PanelWidget(QWidget):
 
     @property
     def navigation_font(self) -> QFont:
-        return QFont(self._navigation_font)
+        return QFont(self.navigation_font_value)
 
     @property
     def show_root_dropdown_enabled(self) -> bool:
-        return self._show_root_dropdown
+        return self.show_root_dropdown
 
     @property
     def show_hidden_enabled(self) -> bool:
@@ -557,22 +558,20 @@ class PanelWidget(QWidget):
         self._address_completions_enabled = bool(enabled)
 
     def stop_address_completion_timer(self) -> None:
-        self._address_completion_timer.stop()
+        self.address_completion_timer.stop()
 
     def start_address_completion_timer(self, interval_ms: int) -> None:
-        self._address_completion_timer.start(int(interval_ms))
+        self.address_completion_timer.start(int(interval_ms))
 
     def set_address_completion_suggestions(self, suggestions: list[str]) -> None:
-        self._address_completion_model.setStringList(
-            [str(item) for item in suggestions]
-        )
+        self.address_completion_model.setStringList([str(item) for item in suggestions])
 
     def show_address_completion_popup(self) -> None:
-        self._address_completer.setCompletionPrefix("")
-        self._address_completer.complete(self.address_edit.rect())
+        self.address_completer.setCompletionPrefix("")
+        self.address_completer.complete(self.address_edit.rect())
 
     def completion_popup(self) -> QAbstractItemView | None:
-        return self._address_completer.popup()
+        return self.address_completer.popup()
 
     def take_history_menu(self) -> QMenu | None:
         menu = self._history_menu
@@ -597,473 +596,31 @@ class PanelWidget(QWidget):
             )
 
     def set_show_root_dropdown(self, enabled: bool) -> None:
-        self.apply_toolbar_visibility(
-            show_refresh_button=self._show_refresh_button,
-            show_root_buttons=self._show_root_buttons,
+        self.presentation_coordinator.apply_toolbar_visibility(
+            show_refresh_button=self.show_refresh_button,
+            show_root_buttons=self.show_root_buttons,
             show_root_dropdown=enabled,
-            show_address_bar=self._show_address_bar,
-            show_navigation_buttons=self._show_navigation_buttons,
+            show_address_bar=self.show_address_bar,
+            show_navigation_buttons=self.show_navigation_buttons,
         )
 
-    def set_column_width_auto_align_mode(self, mode: str) -> None:
-        self._column_width_auto_align_mode = self._normalize_column_width_mode(mode)
-
-    def apply_column_widths_to_panel_tabs(
-        self,
-        widths: Sequence[object],
-        *,
-        source_tab: ExplorerTab | None = None,
-    ) -> None:
-        normalized = self._coerce_column_widths(widths)
-        if not normalized:
-            return
-        self._column_widths = list(normalized)
-        self._apply_column_widths_to_all_tabs(normalized, source_tab=source_tab)
-
-    def apply_toolbar_visibility(
-        self,
-        *,
-        show_refresh_button: bool,
-        show_root_buttons: bool,
-        show_root_dropdown: bool,
-        show_address_bar: bool,
-        show_navigation_buttons: bool,
-    ) -> None:
-        dropdown_changed = self._show_root_dropdown != bool(show_root_dropdown)
-        self._show_refresh_button = bool(show_refresh_button)
-        self._show_root_buttons = bool(show_root_buttons)
-        self._show_root_dropdown = bool(show_root_dropdown)
-        self._show_address_bar = bool(show_address_bar)
-        self._show_navigation_buttons = bool(show_navigation_buttons)
-        if dropdown_changed:
-            self.navigation_coordinator.rebuild_root_controls(self.current_path())
-        self._sync_toolbar_visibility()
-        self._sync_widget_map_overlay()
-
-    def apply_font_preferences(
-        self, *, file_list_font: QFont, navigation_font: QFont
-    ) -> None:
-        self._file_list_font = QFont(file_list_font)
-        self._navigation_font = QFont(navigation_font)
-        self._apply_toolbar_font()
-        self._apply_file_list_font()
-        self._sync_widget_map_overlay()
-
-    def apply_size_formatters(
-        self,
-        *,
-        file_list_size_formatter: Callable[[int], str] | None,
-        properties_size_formatter: Callable[[int], str] | None,
-    ) -> None:
-        self._file_list_size_formatter = (
-            file_list_size_formatter or self._default_file_list_size_formatter
-        )
-        self._properties_size_formatter = (
-            properties_size_formatter or self._default_properties_size_formatter
-        )
-        self._apply_size_formatters_to_tabs()
-
-    def set_role_visual_preferences(
-        self,
-        *,
-        active_color_hex: str,
-        active_intensity_percent: int,
-        target_color_hex: str,
-        target_intensity_percent: int,
-    ) -> None:
-        active_color = QColor(str(active_color_hex))
-        target_color = QColor(str(target_color_hex))
-        if active_color.isValid():
-            self._active_role_color = active_color
-        if target_color.isValid():
-            self._target_role_color = target_color
-        self._active_role_intensity_percent = self._normalize_percent(
-            active_intensity_percent
-        )
-        self._target_role_intensity_percent = self._normalize_percent(
-            target_intensity_percent
-        )
-        self._apply_visual_role()
-        self._sync_widget_map_overlay()
-
-    def set_widget_map_enabled(self, enabled: bool) -> None:
-        self._show_widget_map = bool(enabled)
-        self._sync_widget_map_overlay()
-
-    def widget_map_enabled(self) -> bool:
-        return self._show_widget_map
-
-    def widget_map_entries(self) -> list[_WidgetMapEntry]:
-        widgets: list[QWidget] = [
-            self.tabs,
-            self.tabs.tabBar(),
-            self.address_edit,
-            self.refresh_btn,
-            self.back_btn,
-            self.forward_btn,
-            self.up_btn,
-            self.root_btn,
-            self.filter_edit,
-        ]
-        tab = self.current_tab()
-        if tab is not None:
-            widgets.extend([tab, tab.view])
-
-        entries: list[_WidgetMapEntry] = []
-        for widget in widgets:
-            entry = self._entry_for_widget(widget)
-            if entry is not None:
-                entries.append(entry)
-        return entries
-
-    def _assign_identity(self, widget: QWidget, widget_id: str, alias: str) -> None:
+    def assign_identity(self, widget: QWidget, widget_id: str, alias: str) -> None:
         assign_widget_identity(widget, widget_id=widget_id, widget_alias=alias)
 
-    def _assign_tab_identity(self, tab: ExplorerTab) -> None:
-        tab_id = widget_naming.tab_widget_id(self.panel_id, tab.tab_uuid)
-        tab_alias = widget_naming.tab_alias(self.panel_id, tab.tab_uuid)
-        self._assign_identity(tab, tab_id, tab_alias)
-        self._assign_identity(
-            tab.view,
-            widget_naming.file_list_widget_id(self.panel_id, tab.tab_uuid),
-            widget_naming.file_list_alias(self.panel_id, tab.tab_uuid),
-        )
-
-    def _entry_for_widget(self, widget: QWidget) -> _WidgetMapEntry | None:
-        widget_id = str(widget.property("widget_id") or "").strip()
-        alias = str(widget.property("widget_alias") or "").strip()
-        if not widget_id or not alias:
-            return None
-        return _WidgetMapEntry(widget=widget, alias=alias, widget_id=widget_id)
-
-    def _sync_widget_map_overlay(self) -> None:
-        if not self._show_widget_map:
-            self._widget_map_overlay.hide()
-            return
-        self._widget_map_overlay.show()
-        self._widget_map_overlay.refresh()
-
-    def serialize_state(self) -> dict[str, object]:
-        tabs: list[dict[str, str]] = []
-        for i in range(self.tabs.count()):
-            widget = self.tabs.widget(i)
-            if isinstance(widget, ExplorerTab):
-                tabs.append(widget.serialize_state())
-
-        return {
-            "panel_id": self.panel_id,
-            "current_index": self.tabs.currentIndex(),
-            "tabs": tabs,
-            "column_widths": list(self._column_widths),
-        }
-
-    def restore_state(self, state: dict[str, Any]) -> None:
-        raw_widths = state.get("column_widths", [])
-        if isinstance(raw_widths, list):
-            self._column_widths = self._coerce_column_widths(
-                cast("list[object]", raw_widths)
-            )
-
-        self._restoring_state = True
-        try:
-            tabs = state.get("tabs", [])
-            if not isinstance(tabs, list) or not tabs:
-                self.add_tab(self._default_path)
-                if self._column_widths:
-                    self._apply_column_widths_to_all_tabs(self._column_widths)
-                return
-
-            for tab_state_raw in cast("list[Any]", tabs):
-                if not isinstance(tab_state_raw, dict):
-                    continue
-                tab_state = cast("dict[str, Any]", tab_state_raw)
-                path_value = tab_state.get("path", str(self._default_path))
-                path = Path(str(path_value))
-                self.add_tab(path)
-
-            current_index_raw = state.get("current_index", 0)
-            try:
-                current_index = int(current_index_raw)
-            except (TypeError, ValueError):
-                current_index = 0
-            current_index = max(0, min(current_index, self.tabs.count() - 1))
-            self.tabs.setCurrentIndex(current_index)
-            if self._column_widths:
-                self._apply_column_widths_to_all_tabs(self._column_widths)
-            self._sync_toolbar_for_current_tab()
-        finally:
-            self._restoring_state = False
-
-    def _close_tab_at(self, index: int) -> None:
-        widget = self.tabs.widget(index)
-        self.tabs.removeTab(index)
-        if widget is not None:
-            widget.deleteLater()
-        if self.tabs.count() == 0:
-            self.became_empty.emit()
-            return
-        self._sync_toolbar_for_current_tab()
-        self._sync_widget_map_overlay()
-
-    def _retitle_tab(self, tab: ExplorerTab) -> None:
+    def retitle_tab(self, tab: ExplorerTab) -> None:
         index = self.tabs.indexOf(tab)
         if index == -1:
             return
         self.tabs.setTabText(index, _tab_label(tab.navigation.path))
 
-    def _on_current_changed(self, index: int) -> None:
-        if index >= 0:
-            self.activated.emit()
-            tab = self.current_tab()
-            if (
-                tab is not None
-                and self._column_widths
-                and self._column_width_auto_align_mode != self.COLUMN_ALIGN_MODE_NONE
-            ):
-                tab.columns.set_widths(self._column_widths)
-            if tab is not None and self.filter_edit.isVisible():
-                tab.navigation.set_inline_filter(self.filter_edit.text())
-            self.current_context_changed.emit()
-        self._sync_toolbar_for_current_tab()
-        self._sync_widget_map_overlay()
-
-    def _on_tab_navigation_changed(self, tab: ExplorerTab) -> None:
-        self._retitle_tab(tab)
-        if tab is self.current_tab():
-            self._sync_toolbar_for_current_tab()
-            self.current_context_changed.emit()
-
-    def _on_tab_column_widths_changed(self, tab: ExplorerTab, widths: object) -> None:
-        if self._syncing_column_widths or self._restoring_state:
-            return
-        if not isinstance(widths, tuple) or not widths:
-            return
-
-        normalized = self._coerce_column_widths(
-            list(cast("tuple[object, ...]", widths))
-        )
-        if not normalized:
-            return
-        if normalized == self._column_widths:
-            return
-        self._column_widths = normalized
-        self._pending_column_widths_sync = list(normalized)
-        self._pending_column_widths_source_tab = tab
-        self._column_sync_timer.start(self.COLUMN_SYNC_DEBOUNCE_MS)
-
-    def _flush_pending_column_width_sync(self) -> None:
-        if not self._pending_column_widths_sync:
-            return
-        source_tab = self._pending_column_widths_source_tab
-        widths = list(self._pending_column_widths_sync)
-        self._pending_column_widths_sync = []
-        self._pending_column_widths_source_tab = None
-        if self._column_width_auto_align_mode == self.COLUMN_ALIGN_MODE_NONE:
-            return
-        if (
-            self._column_width_auto_align_mode
-            == self.COLUMN_ALIGN_MODE_CURRENT_PANEL_TABS
-        ):
-            self._apply_column_widths_to_all_tabs(widths, source_tab=source_tab)
-            return
-        self.column_widths_sync_requested.emit(widths, source_tab)
-
-    def _apply_column_widths_to_all_tabs(
-        self,
-        widths: list[int],
-        *,
-        source_tab: ExplorerTab | None = None,
-    ) -> None:
-        self._syncing_column_widths = True
-        try:
-            for index in range(self.tabs.count()):
-                widget = self.tabs.widget(index)
-                if not isinstance(widget, ExplorerTab):
-                    continue
-                if source_tab is not None and widget is source_tab:
-                    continue
-                widget.columns.set_widths(widths)
-        finally:
-            self._syncing_column_widths = False
-
-    def _coerce_column_widths(self, widths: Sequence[object]) -> list[int]:
-        normalized: list[int] = []
-        for width in widths:
-            if isinstance(width, bool):
-                value = int(width)
-            elif isinstance(width, int):
-                value = width
-            elif isinstance(width, float):
-                value = int(width)
-            elif isinstance(width, str):
-                try:
-                    value = int(width)
-                except ValueError:
-                    continue
-            else:
-                continue
-            if value > 0:
-                normalized.append(value)
-        return normalized
-
-    def _normalize_column_width_mode(self, mode: str) -> str:
-        normalized = str(mode).strip().lower()
-        if normalized in {
-            self.COLUMN_ALIGN_MODE_ALL_PANELS_TABS,
-            self.COLUMN_ALIGN_MODE_CURRENT_PANEL_TABS,
-            self.COLUMN_ALIGN_MODE_NONE,
-        }:
-            return normalized
-        return self.COLUMN_ALIGN_MODE_CURRENT_PANEL_TABS
-
-    def _sync_toolbar_for_current_tab(self) -> None:
-        tab = self.current_tab()
-        if tab is None:
-            self.back_btn.setEnabled(False)
-            self.forward_btn.setEnabled(False)
-            self.up_btn.setEnabled(False)
-            self.root_btn.setEnabled(False)
-            self.refresh_btn.setEnabled(False)
-            self.navigation_coordinator.set_address_text_programmatically("")
-            self.navigation_coordinator.rebuild_root_controls(None)
-            self._sync_widget_map_overlay()
-            return
-
-        self.back_btn.setEnabled(tab.navigation.can_go_back)
-        self.forward_btn.setEnabled(tab.navigation.can_go_forward)
-        self.up_btn.setEnabled(True)
-        self.root_btn.setEnabled(True)
-        self.refresh_btn.setEnabled(True)
-        self.navigation_coordinator.set_address_text_programmatically(
-            display_path_text(tab.navigation.path)
-        )
-        self.navigation_coordinator.rebuild_root_controls(tab.navigation.path)
-        if self.filter_edit.isVisible():
-            tab.navigation.set_inline_filter(self.filter_edit.text())
-        self._sync_widget_map_overlay()
-
-    def _sync_toolbar_visibility(self) -> None:
-        self.refresh_btn.setVisible(self._show_refresh_button)
-        self.root_buttons_host.setVisible(self._show_root_buttons)
-        self.root_combo.setVisible(self._show_root_dropdown)
-        self.address_edit.setVisible(self._show_address_bar)
-        for nav_button in self._navigation_buttons:
-            nav_button.setVisible(self._show_navigation_buttons)
-
-    def _apply_toolbar_font(self) -> None:
-        toolbar_widgets: list[QWidget] = [
-            self.refresh_btn,
-            self.root_combo,
-            self.address_edit,
-            *self._navigation_buttons,
-        ]
-        for widget in toolbar_widgets:
-            widget.setFont(self._navigation_font)
-        for button in self.root_buttons:
-            button.setFont(self._navigation_font)
-
-    def _apply_file_list_font(self) -> None:
-        for index in range(self.tabs.count()):
-            widget = self.tabs.widget(index)
-            if isinstance(widget, ExplorerTab):
-                widget.view.setFont(self._file_list_font)
-
-    def _apply_size_formatters_to_tabs(self) -> None:
-        for index in range(self.tabs.count()):
-            widget = self.tabs.widget(index)
-            if isinstance(widget, ExplorerTab):
-                widget.set_file_size_formatter(self._file_list_size_formatter)
-                widget.set_properties_size_formatter(self._properties_size_formatter)
-
-    def _default_file_list_size_formatter(self, value: int) -> str:
+    def default_file_list_size_formatter(self, value: int) -> str:
         return f"{int(value):,}"
 
-    def _default_properties_size_formatter(self, value: int) -> str:
+    def default_properties_size_formatter(self, value: int) -> str:
         return f"{int(value):,}"
 
-    def _handle_address_completion_activated(self, path_text: object) -> None:
+    def handle_address_completion_activated(self, path_text: object) -> None:
         self.navigation_coordinator.on_address_completion_activated(str(path_text))
-
-    def set_role_visual_state(self, *, is_active: bool, is_target: bool) -> None:
-        if is_active:
-            self._pane_role = "active"
-        elif is_target:
-            self._pane_role = "target"
-        else:
-            self._pane_role = "normal"
-        self._apply_visual_role()
-        self._sync_widget_map_overlay()
-
-    def clear_inline_filter(self) -> None:
-        self.filter_edit.blockSignals(True)
-        self.filter_edit.setText("")
-        self.filter_edit.blockSignals(False)
-        tab = self.current_tab()
-        if tab is not None:
-            tab.navigation.clear_inline_filter()
-
-    def _position_filter_overlay(self) -> None:
-        margin = 8
-        height = 30
-        tab = self.current_tab()
-        if tab is not None:
-            view = tab.view
-            view_top_left = view.mapTo(self, QPoint(0, 0))
-            view_width = max(1, view.width())
-            view_height = max(1, view.height())
-            desired_width = max(220, int(view_width * 0.35))
-            max_width = max(1, view_width - (margin * 2))
-            width = min(desired_width, max_width)
-            x = max(
-                view_top_left.x() + margin,
-                view_top_left.x() + view_width - margin - width,
-            )
-            y = max(
-                view_top_left.y() + margin,
-                view_top_left.y() + view_height - margin - height,
-            )
-            self.filter_edit.setGeometry(x, y, width, height)
-            self.filter_edit.raise_()
-            self._sync_widget_map_overlay()
-            return
-
-        width = max(220, int(self.width() * 0.35))
-        x = max(margin, self.width() - width - margin)
-        self.filter_edit.setGeometry(x, margin, width, height)
-        self.filter_edit.raise_()
-        self._sync_widget_map_overlay()
-
-    def show_filter_overlay(self, *, seed_text: str) -> None:
-        self._position_filter_overlay()
-        self.filter_edit.setVisible(True)
-        self.filter_edit.raise_()
-        self._sync_widget_map_overlay()
-        self.filter_edit.setFocus()
-        if seed_text:
-            self.filter_edit.setText(self.filter_edit.text() + seed_text)
-            self.filter_edit.setCursorPosition(len(self.filter_edit.text()))
-
-    def _hide_filter_overlay(self) -> None:
-        self.filter_edit.setVisible(False)
-        self._sync_widget_map_overlay()
-
-    def _on_filter_text_changed(self, text: str) -> None:
-        tab = self.current_tab()
-        if tab is not None:
-            tab.navigation.set_inline_filter(text)
-
-    def _should_start_inline_filter(self, key_event: QKeyEvent) -> bool:
-        if key_event.modifiers() not in {
-            Qt.KeyboardModifier.NoModifier,
-            Qt.KeyboardModifier.ShiftModifier,
-        }:
-            return False
-        text = key_event.text()
-        if not text:
-            return False
-        if len(text) != 1 or text.isspace():
-            return False
-        return text.isprintable()
 
     def _is_active_files_list_source(self, obj: QObject) -> bool:
         tab = self.current_tab()
@@ -1075,37 +632,3 @@ class PanelWidget(QWidget):
         tab = self.current_tab()
         if tab is not None:
             tab.view.setFocus()
-
-    def _apply_visual_role(self) -> None:
-        if self._pane_role == "active":
-            color = self._active_role_color
-            alpha = self._alpha_from_percent(self._active_role_intensity_percent)
-            background_color = (
-                f"rgba({color.red()}, {color.green()}, {color.blue()}, {alpha})"
-            )
-        elif self._pane_role == "target":
-            color = self._target_role_color
-            alpha = self._alpha_from_percent(self._target_role_intensity_percent)
-            background_color = (
-                f"rgba({color.red()}, {color.green()}, {color.blue()}, {alpha})"
-            )
-        else:
-            background_color = "rgba(0, 0, 0, 0)"
-        panel_object_name = self.objectName()
-        self.setStyleSheet(
-            f"QWidget#{panel_object_name} {{ "
-            f"border: none; "
-            f"background-color: {background_color}; "
-            f"}}"
-        )
-
-    def _normalize_percent(self, value: int) -> int:
-        if value < 0:
-            return 0
-        if value > 100:
-            return 100
-        return int(value)
-
-    def _alpha_from_percent(self, percent: int) -> int:
-        normalized = self._normalize_percent(percent)
-        return int((normalized / 100.0) * 255.0)

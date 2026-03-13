@@ -1,3 +1,5 @@
+"""Normalization helpers for persisted settings values."""
+
 from __future__ import annotations
 
 import json
@@ -42,6 +44,8 @@ _ALLOWED_STATUS_LABEL_FIELDS = {
 
 
 def normalize_percent(raw: Any, *, fallback: int) -> int:
+    """Clamp a numeric percentage into the inclusive `0..100` range."""
+
     try:
         value = int(raw)
     except (TypeError, ValueError):
@@ -54,6 +58,8 @@ def normalize_percent(raw: Any, *, fallback: int) -> int:
 
 
 def normalize_bool(raw: Any) -> bool:
+    """Normalize truthy persisted values into a boolean."""
+
     if isinstance(raw, bool):
         return raw
     if isinstance(raw, str):
@@ -62,6 +68,8 @@ def normalize_bool(raw: Any) -> bool:
 
 
 def normalize_font_family(raw: Any) -> str:
+    """Normalize a stored font family name."""
+
     return str(raw or "").strip()
 
 
@@ -71,6 +79,8 @@ def normalize_font_size(
     fallback: int,
     allow_zero: bool = False,
 ) -> int:
+    """Clamp a persisted font size into the supported UI range."""
+
     try:
         size = int(raw)
     except (TypeError, ValueError):
@@ -85,6 +95,8 @@ def normalize_font_size(
 
 
 def normalize_color_hex(raw: Any, *, fallback: str) -> str:
+    """Normalize a stored RGB color into uppercase `#RRGGBB` form."""
+
     text = str(raw).strip()
     if not text:
         return fallback
@@ -96,6 +108,8 @@ def normalize_color_hex(raw: Any, *, fallback: str) -> str:
 
 
 def normalize_text(raw: Any, *, fallback: str) -> str:
+    """Return a stripped string or the supplied fallback."""
+
     text = str(raw or "").strip()
     if text:
         return text
@@ -103,6 +117,8 @@ def normalize_text(raw: Any, *, fallback: str) -> str:
 
 
 def normalize_windows_path_text(raw: Any, *, fallback: str) -> str:
+    """Normalize user-supplied path text into canonical Windows form."""
+
     text = normalize_text(raw, fallback=fallback)
     if not text:
         return text
@@ -116,6 +132,8 @@ def normalize_positive_int(
     minimum: int = 1,
     maximum: int = 10_000,
 ) -> int:
+    """Clamp a persisted integer into the configured positive range."""
+
     try:
         value = int(raw)
     except (TypeError, ValueError):
@@ -128,6 +146,8 @@ def normalize_positive_int(
 
 
 def normalize_overrides_json(raw: Any, *, fallback: str) -> str:
+    """Normalize file-open override JSON into a canonical mapping string."""
+
     text = str(raw or "").strip()
     if not text:
         return str(fallback)
@@ -161,6 +181,8 @@ def normalize_byte_separator(
     fallback: str,
     allow_empty: bool = False,
 ) -> str:
+    """Normalize a byte-format separator to a single safe character."""
+
     if raw is None:
         return str(fallback)
     text = str(raw)
@@ -179,6 +201,8 @@ def normalize_byte_separators(
     fallback_thousands: str = ",",
     fallback_decimal: str = ".",
 ) -> tuple[str, str]:
+    """Normalize thousands and decimal separators as a compatible pair."""
+
     thousands = normalize_byte_separator(
         raw_thousands,
         fallback=fallback_thousands,
@@ -200,6 +224,8 @@ def normalize_byte_format_mode(
     fallback: str,
     allowed_modes: set[str],
 ) -> str:
+    """Normalize a byte display mode against the allowed mode set."""
+
     mode = str(raw or "").strip().lower()
     if mode in allowed_modes:
         return mode
@@ -207,6 +233,8 @@ def normalize_byte_format_mode(
 
 
 def normalize_byte_custom_template(raw: Any, *, fallback: str = "") -> str:
+    """Normalize an optional custom byte-format template string."""
+
     if raw is None:
         return str(fallback)
     text = str(raw)
@@ -216,6 +244,8 @@ def normalize_byte_custom_template(raw: Any, *, fallback: str = "") -> str:
 
 
 def normalize_status_storage_label_template(raw: Any, *, fallback: str) -> str:
+    """Validate a status label template against the supported field names."""
+
     template = str(raw or "")
     if not template:
         return str(fallback)
@@ -239,18 +269,26 @@ def normalize_status_storage_label_template(raw: Any, *, fallback: str) -> str:
 
 
 def normalize_robocopy_structured_options(raw: Any) -> RobocopyBackendOptions:
+    """Normalize persisted Robocopy options into their typed model."""
+
     return normalize_robocopy_options(raw)
 
 
 def normalize_teracopy_structured_options(raw: Any) -> TeraCopyBackendOptions:
+    """Normalize persisted TeraCopy options into their typed model."""
+
     return normalize_teracopy_options(raw)
 
 
 def normalize_unstoppable_structured_options(raw: Any) -> UnstoppableBackendOptions:
+    """Normalize persisted Unstoppable options into their typed model."""
+
     return normalize_unstoppable_options(raw)
 
 
 def normalize_external_copymove_structured_options(
     raw: Any,
 ) -> ExternalCopyMoveBackendOptions:
+    """Normalize persisted external copy-move options into their model."""
+
     return normalize_external_copymove_options(raw)

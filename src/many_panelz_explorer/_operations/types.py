@@ -1,3 +1,5 @@
+"""Typed operation request, result, and queue models."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -83,6 +85,8 @@ DEFAULT_SYSTEM_ROBOCOPY_FALLBACK = r"C:\Windows\System32\robocopy.exe"
 
 @dataclass(frozen=True)
 class OperationExecutionPreferences:
+    """Default execution preferences for queued and direct operations."""
+
     default_copy_move_backend: str = BACKEND_PYTHON
     default_delete_backend: str = BACKEND_RECYCLE_BIN
     default_dispatch_mode: str = DISPATCH_MODE_QUEUE
@@ -120,6 +124,8 @@ class OperationExecutionPreferences:
 
 @dataclass(frozen=True)
 class OperationRequest:
+    """Describe a single requested copy, move, or delete operation."""
+
     kind: OperationKind
     sources: tuple[Path, ...]
     target_dir: Path | None
@@ -132,6 +138,8 @@ class OperationRequest:
 
 @dataclass(frozen=True)
 class OperationResult:
+    """Capture the executor outcome for an operation request."""
+
     status: OperationStatus
     message: str
     processed_count: int = 0
@@ -140,6 +148,8 @@ class OperationResult:
 
 @dataclass(frozen=True)
 class OperationArtifacts:
+    """Paths to persisted job metadata, logs, and helper scripts."""
+
     job_dir: Path
     metadata_path: Path
     log_path: Path
@@ -148,6 +158,8 @@ class OperationArtifacts:
 
 @dataclass(frozen=True)
 class OperationJob:
+    """Represent a queued or executed operation and its runtime state."""
+
     job_id: str
     request: OperationRequest
     status: OperationStatus
@@ -174,4 +186,6 @@ class OperationJob:
 
 
 def utcnow() -> datetime:
+    """Return the current timezone-aware UTC timestamp."""
+
     return datetime.now(UTC)

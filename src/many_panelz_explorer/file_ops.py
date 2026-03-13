@@ -1,3 +1,5 @@
+"""File operation helpers shared by explorer widgets and dialogs."""
+
 from __future__ import annotations
 
 import json
@@ -20,6 +22,8 @@ if TYPE_CHECKING:
 
 @dataclass
 class ClipboardPayload:
+    """Represent clipboard file paths and whether the payload is a cut."""
+
     paths: list[Path]
     cut: bool
 
@@ -41,15 +45,21 @@ def _string_mapping(value: object) -> dict[str, object]:
 
 
 def set_clipboard(paths: Iterable[Path], cut: bool) -> None:
+    """Store paths for a later paste operation."""
+
     global _clipboard_payload
     _clipboard_payload = ClipboardPayload(paths=[Path(p) for p in paths], cut=cut)
 
 
 def get_clipboard() -> ClipboardPayload | None:
+    """Return the current clipboard payload, if one exists."""
+
     return _clipboard_payload
 
 
 def clear_clipboard() -> None:
+    """Clear the in-process clipboard payload."""
+
     global _clipboard_payload
     _clipboard_payload = None
 
@@ -98,6 +108,8 @@ def configure_open_routing(
     default_viewer_executable: str,
     overrides_json: str,
 ) -> None:
+    """Configure file-open routing defaults and per-extension overrides."""
+
     global _default_editor_executable
     global _default_viewer_executable
     global _file_open_overrides
@@ -123,6 +135,8 @@ def _resolve_launch_executable(executable: str) -> str:
 
 
 def resolve_open_executable(path: Path, mode: Literal["edit", "view"]) -> str | None:
+    """Resolve the configured executable for opening a path in the given mode."""
+
     extension = _normalize_extension(Path(path).suffix)
     override = _file_open_overrides.get(extension) or {}
     if mode == "edit":
@@ -145,6 +159,8 @@ def _launch_file_with_executable(executable: str, path: Path) -> None:
 
 
 def open_with_default(path: Path) -> None:
+    """Open a path with the configured viewer or the platform default app."""
+
     path = Path(path)
     configured = resolve_open_executable(path, "view")
     if configured:
@@ -175,6 +191,8 @@ def _resolve_text_editor_executable_fallback() -> str:
 
 
 def open_in_text_editor(path: Path, editor_executable: str = "") -> None:
+    """Open a path in the configured text editor or a safe fallback."""
+
     path = Path(path)
     configured = str(editor_executable or "").strip()
     if configured:
@@ -190,12 +208,16 @@ def open_in_text_editor(path: Path, editor_executable: str = "") -> None:
 
 
 def rename_path(path: Path, new_name: str) -> Path:
+    """Rename a path within its current parent directory."""
+
     path = Path(path)
     target = path.with_name(new_name)
     return path.rename(target)
 
 
 def create_folder(parent: Path, name: str = "New Folder") -> Path:
+    """Create a new uniquely named folder inside the given parent."""
+
     parent = Path(parent)
     target = _safe_target(parent, name)
     target.mkdir(parents=False, exist_ok=False)
@@ -203,6 +225,8 @@ def create_folder(parent: Path, name: str = "New Folder") -> Path:
 
 
 def copy_items(paths: Iterable[Path], destination: Path) -> list[Path]:
+    """Copy paths into a destination directory and return the created paths."""
+
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
     copied: list[Path] = []
@@ -219,6 +243,8 @@ def copy_items(paths: Iterable[Path], destination: Path) -> list[Path]:
 
 
 def move_items(paths: Iterable[Path], destination: Path) -> list[Path]:
+    """Move paths into a destination directory and return the new paths."""
+
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
     moved: list[Path] = []
@@ -231,6 +257,8 @@ def move_items(paths: Iterable[Path], destination: Path) -> list[Path]:
 
 
 def paste_items(destination: Path) -> list[Path]:
+    """Paste the stored clipboard payload into the destination directory."""
+
     payload = get_clipboard()
     if payload is None:
         return []
@@ -244,11 +272,15 @@ def paste_items(destination: Path) -> list[Path]:
 
 
 def delete_to_recycle_bin(paths: Iterable[Path]) -> None:
+    """Send the provided paths to the recycle bin."""
+
     for path in paths:
         send2trash(str(Path(path)))
 
 
 def zip_create(sources: Iterable[Path], archive_path: Path) -> Path:
+    """Create a ZIP archive from the provided source paths."""
+
     archive_path = Path(archive_path)
     archive_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -265,6 +297,8 @@ def zip_create(sources: Iterable[Path], archive_path: Path) -> Path:
 
 
 def zip_extract(archive_path: Path, destination: Path) -> Path:
+    """Extract a ZIP archive into the destination directory."""
+
     archive_path = Path(archive_path)
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
@@ -274,6 +308,8 @@ def zip_extract(archive_path: Path, destination: Path) -> Path:
 
 
 def open_terminal_here(path: Path) -> None:
+    """Open a terminal rooted at the given path."""
+
     path = Path(path)
     if os.name == "nt":
         subprocess.Popen(
@@ -287,6 +323,8 @@ def open_terminal_here(path: Path) -> None:
 
 
 def compute_properties(path: Path) -> dict[str, str]:
+    """Compute simple file or directory properties for the properties dialog."""
+
     path = Path(path)
     size = 0
     file_count = 0

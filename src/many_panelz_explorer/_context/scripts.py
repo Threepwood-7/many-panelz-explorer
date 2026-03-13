@@ -1,3 +1,5 @@
+"""Discover runnable project scripts for context menus."""
+
 from __future__ import annotations
 
 import json
@@ -11,6 +13,8 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class RunnableScript:
+    """Describe a runnable script entry shown in the context menu."""
+
     label: str
     command: str
 
@@ -24,6 +28,7 @@ def _string_object_mapping(value: object) -> dict[str, object] | None:
 
 
 def parse_python_runnable_scripts(root: Path) -> list[RunnableScript]:
+    """Collect runnable Python-oriented scripts from a project root."""
     scripts: dict[str, RunnableScript] = {}
     pyproject_path = root / "pyproject.toml"
     if pyproject_path.is_file():
@@ -34,6 +39,7 @@ def parse_python_runnable_scripts(root: Path) -> list[RunnableScript]:
 
 
 def parse_node_runnable_scripts(root: Path, *, runner: str) -> list[RunnableScript]:
+    """Collect runnable Node scripts from package.json."""
     package_json_path = root / "package.json"
     if not package_json_path.is_file():
         return []

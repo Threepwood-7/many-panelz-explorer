@@ -1,3 +1,5 @@
+"""Reusable settings-dialog control builders."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -33,6 +35,8 @@ def build_command_controls(
     test_button: QPushButton | None = None,
     on_test: Callable[[], None] | None = None,
 ) -> QWidget:
+    """Build executable and argument controls for a backend command."""
+
     executable_edit.textChanged.connect(dialog.on_controls_changed)
     args_edit.textChanged.connect(dialog.on_controls_changed)
     executable_edit.setSizePolicy(
@@ -101,6 +105,8 @@ def build_path_controls(
     executable_edit: QLineEdit,
     default_executable: str,
 ) -> QWidget:
+    """Build a single executable-path control row with actions."""
+
     executable_edit.textChanged.connect(dialog.on_controls_changed)
     executable_edit.setSizePolicy(
         QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
@@ -140,6 +146,8 @@ def build_dual_text_controls(
     second_label: str,
     second_edit: QLineEdit,
 ) -> QWidget:
+    """Build a simple two-row text control group."""
+
     first_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
     second_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
     host = QWidget(dialog)
@@ -166,6 +174,8 @@ def build_robocopy_controls(
     extended_paths_checkbox: QCheckBox,
     test_button: QPushButton,
 ) -> QWidget:
+    """Build Robocopy-specific command controls with test action."""
+
     host = QWidget(dialog)
     layout = QVBoxLayout(host)
     layout.setContentsMargins(0, 0, 0, 0)
@@ -203,6 +213,8 @@ def build_delete_shell_controls(
     cmd_test_button: QPushButton,
     powershell_test_button: QPushButton,
 ) -> QWidget:
+    """Build grouped command controls for cmd and PowerShell delete backends."""
+
     host = QWidget(dialog)
     layout = QGridLayout(host)
     layout.setContentsMargins(0, 0, 0, 0)

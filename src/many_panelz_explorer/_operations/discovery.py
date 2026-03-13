@@ -1,3 +1,5 @@
+"""Resolve companion backend executables and core Windows command paths."""
+
 from __future__ import annotations
 
 import os
@@ -26,6 +28,7 @@ from .types import (
 
 
 def common_tool_search_dirs() -> list[Path]:
+    """Return the common Windows directories searched for companion tools."""
     dirs: list[Path] = [Path(r"C:\bin")]
     env_vars = [
         "ProgramFiles",
@@ -47,6 +50,7 @@ def common_tool_search_dirs() -> list[Path]:
 
 
 def candidate_executable_paths(executable_name: str) -> list[Path]:
+    """Return likely filesystem candidates for the given executable name."""
     exe = str(executable_name or "").strip().strip('"')
     if not exe:
         return []
@@ -83,6 +87,7 @@ def candidate_executable_paths(executable_name: str) -> list[Path]:
 
 
 def resolve_if_missing(configured: str, default_name: str) -> str:
+    """Resolve a configured tool path when it is unset or still defaulted."""
     configured_text = str(configured or "").strip()
     if configured_text == COMPANION_TOOL_NOT_FOUND:
         return COMPANION_TOOL_NOT_FOUND
@@ -106,6 +111,7 @@ def resolve_if_missing(configured: str, default_name: str) -> str:
 
 
 def is_scripted_backend(backend_id: str) -> bool:
+    """Return whether the backend launches through a companion command path."""
     return str(backend_id).strip().lower() in {
         BACKEND_EXPLORER,
         BACKEND_ROBOCOPY,
@@ -120,6 +126,7 @@ def is_scripted_backend(backend_id: str) -> bool:
 
 
 def resolve_system_command_paths() -> tuple[str, str]:
+    """Resolve the current system `cmd.exe` and `robocopy.exe` paths."""
     comspec_raw = str(os.environ.get("COMSPEC", "")).strip()
     windir_raw = str(os.environ.get("WINDIR", r"C:\Windows")).strip() or r"C:\Windows"
     cmd_candidates: list[Path] = []
@@ -145,6 +152,7 @@ def resolve_system_command_paths() -> tuple[str, str]:
 def resolve_companion_tool_paths(
     preferences: OperationExecutionPreferences,
 ) -> OperationExecutionPreferences:
+    """Resolve configured companion tool paths inside execution preferences."""
     resolved_cmd, resolved_robocopy = resolve_system_command_paths()
     return replace(
         preferences,
@@ -170,4 +178,5 @@ def discover_single_companion_tool(
     configured: str,
     default_executable: str,
 ) -> str:
+    """Resolve one configured companion tool path by itself."""
     return resolve_if_missing(configured, default_executable)

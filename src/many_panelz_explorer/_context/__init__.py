@@ -1,3 +1,5 @@
+"""Context detection and menu helpers for active explorer paths."""
+
 from .detector import (
     ContextDetectionResult,
     ContextDetector,

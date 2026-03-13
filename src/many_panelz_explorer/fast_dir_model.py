@@ -1,3 +1,5 @@
+"""Asynchronous directory listing model for explorer tabs."""
+
 from __future__ import annotations
 
 import fnmatch
@@ -85,6 +87,8 @@ class _ModelSignals(QObject):
 
 
 class FastDirModel(QAbstractTableModel):
+    """Present filesystem entries in a table model with async refresh."""
+
     directory_loaded = Signal(str)
 
     _HEADERS = ("Name", "Ext", "Size", "Date")

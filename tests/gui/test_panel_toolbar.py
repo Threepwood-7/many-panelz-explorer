@@ -154,13 +154,13 @@ def test_address_autocomplete_shows_live_directory_suggestions(
     QTest.keyClicks(panel.address_edit, "al")
 
     qtbot.waitUntil(
-        lambda: len(panel._address_completion_model.stringList()) >= 2,
+        lambda: len(panel.address_completion_model.stringList()) >= 2,
         timeout=2000,
     )
-    suggestions = panel._address_completion_model.stringList()
+    suggestions = panel.address_completion_model.stringList()
     assert _norm(alpha) in {_norm(item) for item in suggestions}
     assert _norm(alpine) in {_norm(item) for item in suggestions}
-    assert panel._address_completer.popup().isVisible() is True
+    assert panel.address_completer.popup().isVisible() is True
 
 
 def test_address_autocomplete_respects_show_hidden_setting(
@@ -186,7 +186,7 @@ def test_address_autocomplete_respects_show_hidden_setting(
     panel.address_edit.selectAll()
     QTest.keyClicks(panel.address_edit, ".hid")
     qtbot.wait(220)
-    suggestions_hidden_off = panel._address_completion_model.stringList()
+    suggestions_hidden_off = panel.address_completion_model.stringList()
     assert _norm(hidden) not in {_norm(item) for item in suggestions_hidden_off}
 
     panel.set_show_hidden(True)
@@ -195,7 +195,7 @@ def test_address_autocomplete_respects_show_hidden_setting(
     qtbot.waitUntil(
         lambda: (
             _norm(hidden)
-            in {_norm(item) for item in panel._address_completion_model.stringList()}
+            in {_norm(item) for item in panel.address_completion_model.stringList()}
         ),
         timeout=2000,
     )
@@ -224,7 +224,7 @@ def test_address_autocomplete_activation_fills_and_navigates_on_enter(
     qtbot.waitUntil(
         lambda: (
             _norm(alpha)
-            in {_norm(item) for item in panel._address_completion_model.stringList()}
+            in {_norm(item) for item in panel.address_completion_model.stringList()}
         ),
         timeout=2000,
     )
@@ -379,7 +379,7 @@ def test_toolbar_visibility_flags_are_independent(qtbot, tmp_path: Path) -> None
     assert panel.address_edit.isVisible() is True
     assert panel.back_btn.isVisible() is True
 
-    panel.apply_toolbar_visibility(
+    panel.presentation_coordinator.apply_toolbar_visibility(
         show_refresh_button=False,
         show_root_buttons=False,
         show_root_dropdown=False,
@@ -395,7 +395,7 @@ def test_toolbar_visibility_flags_are_independent(qtbot, tmp_path: Path) -> None
     assert panel.up_btn.isVisible() is False
     assert panel.root_btn.isVisible() is False
 
-    panel.apply_toolbar_visibility(
+    panel.presentation_coordinator.apply_toolbar_visibility(
         show_refresh_button=False,
         show_root_buttons=True,
         show_root_dropdown=False,
@@ -408,7 +408,7 @@ def test_toolbar_visibility_flags_are_independent(qtbot, tmp_path: Path) -> None
     assert panel.address_edit.isVisible() is True
     assert panel.back_btn.isVisible() is False
 
-    panel.apply_toolbar_visibility(
+    panel.presentation_coordinator.apply_toolbar_visibility(
         show_refresh_button=True,
         show_root_buttons=True,
         show_root_dropdown=True,
@@ -575,7 +575,7 @@ def test_column_widths_persist_in_panel_state(qtbot, tmp_path: Path) -> None:
     tab.view.setColumnWidth(2, 220)
     tab.view.setColumnWidth(3, 180)
 
-    state = panel.serialize_state()
+    state = panel.state_coordinator.serialize_state()
 
     restored = PanelWidget(
         panel_id=1,
@@ -585,7 +585,7 @@ def test_column_widths_persist_in_panel_state(qtbot, tmp_path: Path) -> None:
     )
     qtbot.addWidget(restored)
     restored.show()
-    restored.restore_state(state)
+    restored.state_coordinator.restore_state(state)
 
     restored_tab = restored.current_tab()
     assert restored_tab is not None
@@ -725,15 +725,15 @@ def test_widget_map_overlay_can_be_toggled(qtbot, tmp_path: Path) -> None:
     tab = panel.add_tab(root)
     assert tab is not None
 
-    panel.set_widget_map_enabled(True)
-    qtbot.waitUntil(lambda: panel._widget_map_overlay.isVisible())
+    panel.widget_map_coordinator.set_enabled(True)
+    qtbot.waitUntil(panel.widget_map_coordinator.overlay_visible)
 
-    aliases = [entry.alias for entry in panel.widget_map_entries()]
+    aliases = [entry.alias for entry in panel.widget_map_coordinator.entries()]
     assert any(alias.endswith(".file_list") for alias in aliases)
     assert "P1.address" in aliases
 
-    panel.set_widget_map_enabled(False)
-    assert panel._widget_map_overlay.isVisible() is False
+    panel.widget_map_coordinator.set_enabled(False)
+    assert panel.widget_map_coordinator.overlay_visible() is False
 
 
 def test_type_to_focus_does_not_show_filter_overlay_from_address_bar(

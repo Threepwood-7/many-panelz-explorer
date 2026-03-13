@@ -1,3 +1,5 @@
+"""Serializable binary split-tree model for panel layout state."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,11 +12,15 @@ ORIENTATION_VERTICAL = 2
 
 @dataclass(slots=True)
 class LeafNode:
+    """Leaf node representing a single panel identifier."""
+
     panel_id: int
 
 
 @dataclass(slots=True)
 class SplitNode:
+    """Split node representing two child branches and their ratio."""
+
     orientation: int
     ratio: float
     left: Node
@@ -25,6 +31,8 @@ Node = LeafNode | SplitNode
 
 
 class RemoveLeafResult(TypedDict):
+    """Structured result returned after removing a panel leaf."""
+
     removed: bool
     removed_last: bool
     remaining_panels: int

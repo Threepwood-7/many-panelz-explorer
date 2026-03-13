@@ -1,3 +1,5 @@
+"""Action, menu, shortcut, and queue-widget composition for the window."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -18,10 +20,21 @@ if TYPE_CHECKING:
 
 
 class WindowUiComposer:
+    """Build window-level actions, menus, shortcuts, and queue widgets."""
+
     def __init__(self, window: ExplorerWindow) -> None:
+        """Store the owning window."""
         self.window = window
 
     def build_actions(self) -> None:
+        """Create the QAction instances used by the main window."""
+        self._build_panel_actions()
+        self._build_operation_actions()
+        self._build_window_actions()
+        self._build_view_actions()
+        self._build_settings_actions()
+
+    def _build_panel_actions(self) -> None:
         self.window.new_tab_action = QAction("&New Tab", self.window)
         self.window.new_tab_action.setShortcut(QKeySequence("Ctrl+T"))
         self.window.new_tab_action.triggered.connect(
@@ -66,6 +79,39 @@ class WindowUiComposer:
             )
         )
 
+        self.window.close_tab_action = QAction("Close Ta&b", self.window)
+        self.window.close_tab_action.setShortcut(QKeySequence("Ctrl+W"))
+        self.window.close_tab_action.triggered.connect(
+            self.window.panels_coordinator.close_active_tab
+        )
+
+        self.window.close_panel_action = QAction("Close Pane&l", self.window)
+        self.window.close_panel_action.setShortcut(QKeySequence("Ctrl+Shift+W"))
+        self.window.close_panel_action.triggered.connect(
+            self.window.panels_coordinator.close_active_panel
+        )
+
+        self.window.refresh_action = QAction("&Refresh", self.window)
+        self.window.refresh_action.setShortcut(QKeySequence("Ctrl+R"))
+        self.window.refresh_action.triggered.connect(
+            self.window.panels_coordinator.refresh_active_panel
+        )
+
+        self.window.align_columns_current_panel_tabs_action = QAction(
+            "Align Columns: Current Panel Tabs", self.window
+        )
+        self.window.align_columns_current_panel_tabs_action.triggered.connect(
+            self.window.panels_coordinator.align_columns_current_panel_tabs
+        )
+
+        self.window.align_columns_all_panels_tabs_action = QAction(
+            "Align Columns: All Panels and Tabs", self.window
+        )
+        self.window.align_columns_all_panels_tabs_action.triggered.connect(
+            self.window.panels_coordinator.align_columns_all_panels_tabs
+        )
+
+    def _build_operation_actions(self) -> None:
         self.window.copy_to_target_action = QAction("&Copy to Target Pane", self.window)
         self.window.copy_to_target_action.setShortcut(QKeySequence("F5"))
         self.window.copy_to_target_action.triggered.connect(
@@ -117,6 +163,7 @@ class WindowUiComposer:
             )
         )
 
+    def _build_window_actions(self) -> None:
         self.window.new_window_action = QAction("New &Window", self.window)
         self.window.new_window_action.setShortcut(QKeySequence("Ctrl+N"))
         self.window.new_window_action.triggered.connect(
@@ -126,27 +173,6 @@ class WindowUiComposer:
         self.window.clone_window_action = QAction("Clone Current W&indow", self.window)
         self.window.clone_window_action.triggered.connect(
             self.window.clone_current_window
-        )
-
-        self.window.save_view_action = QAction("&Save View", self.window)
-        self.window.save_view_action.triggered.connect(self.window.save_view)
-
-        self.window.restore_view_action = QAction("&Restore View...", self.window)
-        self.window.restore_view_action.triggered.connect(self.window.restore_view)
-
-        self.window.replace_view_action = QAction("Re&place View", self.window)
-        self.window.replace_view_action.triggered.connect(self.window.replace_view)
-
-        self.window.close_tab_action = QAction("Close Ta&b", self.window)
-        self.window.close_tab_action.setShortcut(QKeySequence("Ctrl+W"))
-        self.window.close_tab_action.triggered.connect(
-            self.window.panels_coordinator.close_active_tab
-        )
-
-        self.window.close_panel_action = QAction("Close Pane&l", self.window)
-        self.window.close_panel_action.setShortcut(QKeySequence("Ctrl+Shift+W"))
-        self.window.close_panel_action.triggered.connect(
-            self.window.panels_coordinator.close_active_panel
         )
 
         self.window.close_window_action = QAction("Close Win&dow", self.window)
@@ -159,11 +185,23 @@ class WindowUiComposer:
         )
         self.window.exit_action.triggered.connect(self.window.quit_application)
 
-        self.window.refresh_action = QAction("&Refresh", self.window)
-        self.window.refresh_action.setShortcut(QKeySequence("Ctrl+R"))
-        self.window.refresh_action.triggered.connect(
-            self.window.panels_coordinator.refresh_active_panel
+    def _build_view_actions(self) -> None:
+        self.window.save_view_action = QAction("&Save View", self.window)
+        self.window.save_view_action.triggered.connect(
+            self.window.views_coordinator.save_view
         )
+
+        self.window.restore_view_action = QAction("&Restore View...", self.window)
+        self.window.restore_view_action.triggered.connect(
+            self.window.views_coordinator.restore_view
+        )
+
+        self.window.replace_view_action = QAction("Re&place View", self.window)
+        self.window.replace_view_action.triggered.connect(
+            self.window.views_coordinator.replace_view
+        )
+
+    def _build_settings_actions(self) -> None:
 
         self.window.on_top_action = QAction("On &Top", self.window)
         self.window.on_top_action.setCheckable(True)
@@ -171,30 +209,20 @@ class WindowUiComposer:
 
         self.window.show_hidden_action = QAction("Show &Hidden Files", self.window)
         self.window.show_hidden_action.setCheckable(True)
-        self.window.show_hidden_action.setChecked(self.window.show_hidden_enabled)
-        self.window.show_hidden_action.toggled.connect(self.window.toggle_show_hidden)
+        self.window.show_hidden_action.setChecked(
+            self.window.preferences_coordinator.show_hidden_enabled
+        )
+        self.window.show_hidden_action.toggled.connect(
+            self.window.preferences_coordinator.set_show_hidden
+        )
 
         self.window.show_widget_map_action = QAction("Show &Widget Map", self.window)
         self.window.show_widget_map_action.setCheckable(True)
         self.window.show_widget_map_action.setChecked(
-            self.window.show_widget_map_enabled
+            self.window.preferences_coordinator.show_widget_map_enabled
         )
         self.window.show_widget_map_action.toggled.connect(
-            self.window.toggle_show_widget_map
-        )
-
-        self.window.align_columns_current_panel_tabs_action = QAction(
-            "Align Columns: Current Panel Tabs", self.window
-        )
-        self.window.align_columns_current_panel_tabs_action.triggered.connect(
-            self.window.panels_coordinator.align_columns_current_panel_tabs
-        )
-
-        self.window.align_columns_all_panels_tabs_action = QAction(
-            "Align Columns: All Panels and Tabs", self.window
-        )
-        self.window.align_columns_all_panels_tabs_action.triggered.connect(
-            self.window.panels_coordinator.align_columns_all_panels_tabs
+            self.window.preferences_coordinator.set_show_widget_map
         )
 
         self.window.show_queue_dock_action = QAction("Show Queue Dock", self.window)
@@ -217,6 +245,7 @@ class WindowUiComposer:
         self.window.help_action.triggered.connect(self.window.show_help)
 
     def build_shortcuts(self) -> None:
+        """Create the global shortcuts that are not QAction-based."""
         self.window.next_pane_shortcut = QShortcut(QKeySequence("Tab"), self.window)
         self.window.next_pane_shortcut.setContext(
             Qt.ShortcutContext.WidgetWithChildrenShortcut
@@ -240,6 +269,7 @@ class WindowUiComposer:
         self.window.menu_focus_shortcut.activated.connect(self.window.focus_menu_bar)
 
     def build_menus(self) -> None:
+        """Build the main menubar and register the exposed actions."""
         menu_bar = self.window.menuBar()
         menu_bar.setNativeMenuBar(True)
 
@@ -263,7 +293,7 @@ class WindowUiComposer:
         file_menu.addAction(self.window.save_view_action)
         self.window.restore_view_menu = QMenu("&Restore View", self.window)
         self.window.restore_view_menu.aboutToShow.connect(
-            self.window.populate_restore_view_menu
+            self._populate_restore_view_menu
         )
         file_menu.addMenu(self.window.restore_view_menu)
         file_menu.addAction(self.window.replace_view_action)
@@ -333,6 +363,7 @@ class WindowUiComposer:
         )
 
     def build_operation_queue_widgets(self) -> None:
+        """Create the docked operation queue widgets."""
         self.window.queue_dock = QDockWidget("Operation Queue", self.window)
         self.window.queue_dock.setObjectName(
             object_name_for_id(
@@ -356,10 +387,20 @@ class WindowUiComposer:
         )
 
     def apply_operation_queue_visibility(self) -> None:
-        mode = str(self.window.operation_queue_view_mode or "").strip().lower()
+        """Apply the preferred queue docking and floating-window visibility."""
+        mode = (
+            str(self.window.preferences_coordinator.operation_queue_view_mode or "")
+            .strip()
+            .lower()
+        )
         show_dock = mode in {"dock_tab", "both"}
         with QSignalBlocker(self.window.show_queue_dock_action):
             self.window.show_queue_dock_action.setChecked(show_dock)
         self.window.queue_dock.setVisible(show_dock)
         if mode in {"floating_window", "both"}:
             self.window.controller.show_queue_floating_window()
+
+    def _populate_restore_view_menu(self) -> None:
+        self.window.views_coordinator.populate_restore_view_menu(
+            self.window.restore_view_menu
+        )

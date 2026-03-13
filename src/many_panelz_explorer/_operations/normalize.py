@@ -1,3 +1,5 @@
+"""Normalize operation settings and request enum-like string values."""
+
 from __future__ import annotations
 
 from typing import cast
@@ -32,6 +34,7 @@ from .types import (
 def normalize_operation_kind(
     value: str, *, fallback: OperationKind = "copy"
 ) -> OperationKind:
+    """Normalize a raw operation kind string."""
     normalized = str(value).strip().lower()
     if normalized in {"copy", "move", "delete"}:
         return cast("OperationKind", normalized)
@@ -43,6 +46,7 @@ def normalize_dispatch_mode(
     *,
     fallback: OperationDispatchMode = DISPATCH_MODE_QUEUE,
 ) -> OperationDispatchMode:
+    """Normalize a raw dispatch mode string."""
     normalized = str(value).strip().lower()
     if normalized in {
         DISPATCH_MODE_QUEUE,
@@ -58,6 +62,7 @@ def normalize_conflict_policy(
     *,
     fallback: OperationConflictPolicy = "rename",
 ) -> OperationConflictPolicy:
+    """Normalize a raw conflict policy string."""
     normalized = str(value).strip().lower()
     if normalized in {"overwrite", "skip", "rename", "cancel"}:
         return cast("OperationConflictPolicy", normalized)
@@ -65,6 +70,7 @@ def normalize_conflict_policy(
 
 
 def normalize_shortcut_behavior(value: str) -> str:
+    """Normalize a raw shortcut behavior string."""
     normalized = str(value).strip().lower()
     if normalized in {SHORTCUT_BEHAVIOR_DIRECT, SHORTCUT_BEHAVIOR_DIALOG}:
         return normalized
@@ -72,6 +78,7 @@ def normalize_shortcut_behavior(value: str) -> str:
 
 
 def normalize_queue_view_mode(value: str) -> str:
+    """Normalize a raw queue presentation mode string."""
     normalized = str(value).strip().lower()
     if normalized in {QUEUE_VIEW_DOCK, QUEUE_VIEW_FLOATING, QUEUE_VIEW_BOTH}:
         return normalized
@@ -79,6 +86,7 @@ def normalize_queue_view_mode(value: str) -> str:
 
 
 def normalize_copy_move_backend(value: str) -> str:
+    """Normalize a raw copy or move backend identifier."""
     normalized = str(value).strip().lower()
     if normalized in {
         BACKEND_PYTHON,
@@ -93,6 +101,7 @@ def normalize_copy_move_backend(value: str) -> str:
 
 
 def normalize_delete_backend(value: str) -> str:
+    """Normalize a raw delete backend identifier."""
     normalized = str(value).strip().lower()
     if normalized in {
         BACKEND_RECYCLE_BIN,

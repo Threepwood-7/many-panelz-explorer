@@ -1,3 +1,5 @@
+"""Status-bar coordination for source, target, and storage summaries."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
@@ -59,7 +61,10 @@ class _ElidedStatusLabel(QLabel):
 
 
 class WindowStatusCoordinator:
+    """Own status-bar rows and panel-role visual feedback."""
+
     def __init__(self, window: ExplorerWindow) -> None:
+        """Create status widgets and refresh timers for the window."""
         self.window = window
         self._storage_bytes_formatter: Callable[[int], str] = (
             self._default_storage_bytes_formatter
@@ -157,7 +162,7 @@ class WindowStatusCoordinator:
         )
 
         for panel_id, panel in self.window.panel_widgets.items():
-            panel.set_role_visual_state(
+            panel.presentation_coordinator.set_role_visual_state(
                 is_active=panel_id == source_id,
                 is_target=panel_id == target_id,
             )
@@ -207,7 +212,7 @@ class WindowStatusCoordinator:
         )
 
     def refresh_storage_overview_status(self) -> None:
-        if not self.window.show_storage_overview_enabled:
+        if not self.window.preferences_coordinator.show_storage_overview_enabled:
             self.window.storage_overview_row.setVisible(False)
             self._set_storage_overview_entries([])
             return

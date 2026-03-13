@@ -1,3 +1,5 @@
+"""Prepare on-disk artifacts for external operation executors."""
+
 from __future__ import annotations
 
 import json
@@ -11,12 +13,14 @@ from .types import OperationArtifacts, OperationJob, OperationResult
 
 
 def ensure_artifacts_root() -> Path:
+    """Return the shared artifact root used for companion process files."""
     root = Path(tempfile.gettempdir()) / "many_panelz_explorer_ops"
     root.mkdir(parents=True, exist_ok=True)
     return root
 
 
 def prepare_artifacts(job_id: str) -> OperationArtifacts:
+    """Create per-job artifact paths for the given operation job id."""
     root = ensure_artifacts_root()
     job_dir = root / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
@@ -28,6 +32,7 @@ def prepare_artifacts(job_id: str) -> OperationArtifacts:
 
 
 def write_metadata(job: OperationJob, artifacts: OperationArtifacts) -> None:
+    """Persist a JSON metadata snapshot for a queued or running job."""
     payload: dict[str, Any] = {
         "job_id": job.job_id,
         "kind": job.request.kind,
@@ -54,6 +59,7 @@ def write_metadata(job: OperationJob, artifacts: OperationArtifacts) -> None:
 
 
 def write_script(artifacts: OperationArtifacts, script_lines: list[str]) -> Path:
+    """Write the launcher script used by companion executors."""
     script_path = artifacts.job_dir / "run.cmd"
     full_text = "\n".join(
         [
@@ -75,6 +81,7 @@ def write_unstoppable_job_file(
     target_dir: Path,
     use_extended_paths: bool,
 ) -> Path:
+    """Write the UTF-16 UCB job file consumed by Unstoppable Copier."""
     job_path = artifacts.job_dir / "unstoppable.ucb"
     lines = [
         (
@@ -97,6 +104,7 @@ def run_script(
     cmd_path: str,
     wait: bool,
 ) -> OperationResult:
+    """Run a prepared launcher script and return its execution result."""
     cmd_executable = str(cmd_path or "").strip()
     if not cmd_executable or not Path(cmd_executable).exists():
         return OperationResult(
@@ -142,6 +150,7 @@ def expand_template(
     target_dir: Path | None,
     use_extended_paths: bool,
 ) -> str:
+    """Expand operation placeholders into an executor argument template."""
     source_literals = " ".join(
         quoted(to_windows_arg_path(path, use_extended_paths=use_extended_paths))
         for path in sources

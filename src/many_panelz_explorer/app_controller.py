@@ -1,3 +1,5 @@
+"""Application bootstrap and multi-window lifecycle coordination."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -33,6 +35,8 @@ if TYPE_CHECKING:
 
 
 class AppController:
+    """Own the QApplication and coordinate explorer windows."""
+
     def __init__(self, argv: Iterable[str] | None = None) -> None:
         argv_list = list(argv) if argv is not None else []
         configure_qsettings(APP_IDENTITY)
@@ -182,7 +186,7 @@ class AppController:
             self._preferences_to_operation_execution(preferences)
         )
         for window in list(self.windows):
-            window.apply_ui_preferences(preferences)
+            window.preferences_coordinator.apply_ui_preferences(preferences)
 
     def apply_ui_preferences(self, preferences: UiPreferences) -> None:
         self.settings.set_ui_preferences(preferences)

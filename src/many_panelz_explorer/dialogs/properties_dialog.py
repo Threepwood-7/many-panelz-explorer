@@ -1,3 +1,5 @@
+"""Simple properties dialog for a filesystem item."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -23,6 +25,8 @@ def _default_size_formatter(value: int) -> str:
 
 
 class PropertiesDialog(QDialog):
+    """Render basic path, type, and size information for one item."""
+
     def __init__(
         self,
         path: Path,

@@ -1,3 +1,5 @@
+"""Formatting helpers for storage-usage labels and tooltips."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -39,6 +41,8 @@ _INDICATOR_EMPTY_BLOCK = "\u2591"
 
 @dataclass(frozen=True)
 class StorageStatusRenderResult:
+    """Rendered label and tooltip text for one storage usage entry."""
+
     label_text: str
     tooltip_html: str
 
@@ -67,6 +71,8 @@ def format_storage_usage_entry(
     bytes_formatter: Callable[[int], str],
     label_template: str,
 ) -> StorageStatusRenderResult:
+    """Render label and tooltip text for a storage usage entry."""
+
     context = _build_context(entry, bytes_formatter)
     label_text = _render_label_template(label_template, context)
     tooltip_html = _render_tooltip_html(context)

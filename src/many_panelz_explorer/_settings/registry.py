@@ -1,3 +1,5 @@
+"""Shared settings keys, defaults, and allowed value sets."""
+
 from __future__ import annotations
 
 from typing import ClassVar
@@ -31,6 +33,8 @@ from many_panelz_explorer._operations.types import (
 
 
 class SettingsRegistry:
+    """Central registry of persisted settings keys and default values."""
+
     NEW_CONTEXT_MODE_KEY = "config/new_context_mode"
     SHOW_HIDDEN_DEFAULT_KEY = "ui/show_hidden_default"
     SHOW_ROOT_DROPDOWN_KEY = "ui/show_root_dropdown"

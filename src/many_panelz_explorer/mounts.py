@@ -1,3 +1,5 @@
+"""Root and storage-usage discovery helpers for navigation widgets."""
+
 from __future__ import annotations
 
 import os
@@ -20,6 +22,8 @@ _storage_usage_cache: tuple[float, list[StorageUsageEntry]] | None = None
 
 @dataclass(frozen=True)
 class StorageUsageEntry:
+    """Summarize storage usage for a navigable root path."""
+
     root_path: Path
     display_root: str
     volume_label: str
@@ -33,6 +37,8 @@ def _monotonic_seconds() -> float:
 
 
 def clear_roots_cache() -> None:
+    """Clear cached root and storage usage discovery results."""
+
     global _windows_roots_cache
     global _storage_usage_cache
     _windows_roots_cache = None
@@ -65,6 +71,8 @@ def _list_non_windows_roots(current_path: Path | None) -> list[Path]:
 
 
 def list_roots_for_navigation(current_path: Path | None = None) -> list[Path]:
+    """Return the root paths that should be offered in navigation controls."""
+
     if os.name == "nt":
         return _list_windows_roots_cached()
     return _list_non_windows_roots(current_path)
@@ -89,6 +97,8 @@ def _storage_usage_entry_from_raw(raw: WindowsStorageUsage) -> StorageUsageEntry
 def list_storage_usage_entries(
     current_path: Path | None = None,
 ) -> list[StorageUsageEntry]:
+    """Return cached storage-usage entries for navigable roots."""
+
     _ = current_path
     global _storage_usage_cache
 

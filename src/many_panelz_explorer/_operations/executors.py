@@ -1,3 +1,5 @@
+"""Execute file operations through built-in and external backends."""
+
 from __future__ import annotations
 
 import shutil
@@ -45,6 +47,7 @@ from .types import (
 
 
 def execute_python_builtin(request: OperationRequest) -> OperationResult:
+    """Execute a request with the built-in Python file operations."""
     target_dir = request.target_dir
     if request.kind in {"copy", "move"} and target_dir is None:
         return OperationResult(status="failed", message="Target directory is required.")
@@ -107,6 +110,7 @@ def execute_python_builtin(request: OperationRequest) -> OperationResult:
 
 
 def execute_permanent_delete(request: OperationRequest) -> OperationResult:
+    """Execute a non-recoverable native delete operation."""
     processed = 0
     for source in request.sources:
         path = normalize_path(source)
@@ -129,6 +133,7 @@ def execute_windows_explorer(
     preferences: OperationExecutionPreferences,
     wait: bool,
 ) -> OperationResult:
+    """Execute copy or move through the Windows Explorer COM shell."""
     if request.kind not in {"copy", "move"} or request.target_dir is None:
         return OperationResult(
             status="failed", message="Windows Explorer backend supports copy/move only."
@@ -171,6 +176,7 @@ def execute_robocopy(
     wait: bool,
     preferences: OperationExecutionPreferences,
 ) -> OperationResult:
+    """Execute copy or move through Robocopy wrapper scripts."""
     if request.kind not in {"copy", "move"} or request.target_dir is None:
         return OperationResult(
             status="failed", message="Robocopy backend supports copy/move only."
@@ -243,6 +249,7 @@ def execute_external_command(
     use_extended_paths_default: bool,
     operation_token: str | None = None,
 ) -> OperationResult:
+    """Execute a request through a configured external command template."""
     exe = str(executable or "").strip()
     if not exe or exe == COMPANION_TOOL_NOT_FOUND:
         return OperationResult(status="failed", message="Executable is not configured.")
@@ -315,6 +322,7 @@ def execute_unstoppable(
     wait: bool,
     preferences: OperationExecutionPreferences,
 ) -> OperationResult:
+    """Execute copy or move through Unstoppable Copier."""
     if request.kind not in {"copy", "move"} or request.target_dir is None:
         return OperationResult(
             status="failed",
@@ -381,6 +389,7 @@ def execute_cmd_delete(
     wait: bool,
     preferences: OperationExecutionPreferences,
 ) -> OperationResult:
+    """Execute delete operations through classic `cmd.exe` commands."""
     if request.kind != "delete":
         return OperationResult(
             status="failed", message="cmd delete backend supports delete only."
@@ -416,6 +425,7 @@ def execute_powershell_delete(
     wait: bool,
     preferences: OperationExecutionPreferences,
 ) -> OperationResult:
+    """Execute delete operations through PowerShell."""
     if request.kind != "delete":
         return OperationResult(
             status="failed", message="PowerShell delete backend supports delete only."
@@ -455,6 +465,7 @@ def execute_rimraf_delete(
     wait: bool,
     preferences: OperationExecutionPreferences,
 ) -> OperationResult:
+    """Execute delete operations through `rimraf`."""
     if request.kind != "delete":
         return OperationResult(
             status="failed", message="rimraf backend supports delete only."
@@ -477,6 +488,7 @@ def execute_operation_request(
     preferences: OperationExecutionPreferences,
     artifacts: OperationArtifacts,
 ) -> OperationResult:
+    """Dispatch an operation request to the configured backend executor."""
     backend = request.backend_id
     if backend == BACKEND_PYTHON:
         return execute_python_builtin(request)

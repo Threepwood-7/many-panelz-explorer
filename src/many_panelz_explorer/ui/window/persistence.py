@@ -1,3 +1,5 @@
+"""Persistence helpers for saving and restoring window state."""
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -17,6 +19,8 @@ type TabsState = dict[int, PanelState]
 
 
 class WindowPersistenceCoordinator:
+    """Serialize and restore panel, tab, and geometry state for a window."""
+
     def __init__(self, window: ExplorerWindow) -> None:
         self.window = window
 

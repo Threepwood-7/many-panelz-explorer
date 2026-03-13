@@ -1,3 +1,5 @@
+"""Qt models and widgets for the operation queue UI."""
+
 from __future__ import annotations
 
 from dataclasses import replace
@@ -47,6 +49,8 @@ def _fmt_time(value: datetime | None) -> str:
 
 
 class OperationQueueTableModel(QAbstractTableModel):
+    """Expose queued operation jobs in a table-friendly model."""
+
     def __init__(
         self, manager: OperationQueueManager, parent: QWidget | None = None
     ) -> None:
@@ -151,6 +155,8 @@ class OperationQueueTableModel(QAbstractTableModel):
 
 
 class OperationQueuePanel(QWidget):
+    """Render queue controls, job table, and artifact shortcuts."""
+
     def __init__(
         self,
         *,

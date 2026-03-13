@@ -1,3 +1,5 @@
+"""Application entry point for Many Panelz Explorer."""
+
 from __future__ import annotations
 
 import sys
@@ -6,6 +8,7 @@ from .app_controller import AppController
 
 
 def main() -> int:
+    """Run the desktop application."""
     controller = AppController(argv=sys.argv)
     return controller.run()
 

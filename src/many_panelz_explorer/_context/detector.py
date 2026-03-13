@@ -1,3 +1,5 @@
+"""Detect Python, Git, and Node project context around a folder."""
+
 from __future__ import annotations
 
 import configparser
@@ -36,6 +38,8 @@ def _string_object_mapping(value: object) -> dict[str, object] | None:
 
 @dataclass(frozen=True)
 class PythonContextRoot:
+    """Describe a detected Python project root."""
+
     root_path: Path
     pyproject_path: Path | None
     python_version: str | None
@@ -43,6 +47,8 @@ class PythonContextRoot:
 
 @dataclass(frozen=True)
 class GitContextRoot:
+    """Describe a detected Git repository root."""
+
     root_path: Path
     git_dir: Path
     branch: str | None
@@ -52,6 +58,8 @@ class GitContextRoot:
 
 @dataclass(frozen=True)
 class NodeContextRoot:
+    """Describe a detected Node project root."""
+
     root_path: Path
     package_json_path: Path | None
     runner: str
@@ -59,6 +67,8 @@ class NodeContextRoot:
 
 @dataclass(frozen=True)
 class ContextDetectionResult:
+    """Collect all project roots discovered for the active folder."""
+
     python_roots: list[PythonContextRoot]
     git_roots: list[GitContextRoot]
     node_roots: list[NodeContextRoot]
@@ -69,10 +79,13 @@ class ContextDetectionResult:
 
 
 class ContextDetector:
+    """Scan a folder and its immediate children for supported project roots."""
+
     def __init__(self, *, immediate_child_scan_cap: int = 33) -> None:
         self._immediate_child_scan_cap = max(1, int(immediate_child_scan_cap))
 
     def detect(self, active_path: Path) -> ContextDetectionResult:
+        """Return the detected project roots for the active folder."""
         target = Path(active_path).expanduser()
         if not target.exists() or not target.is_dir():
             return ContextDetectionResult([], [], [])

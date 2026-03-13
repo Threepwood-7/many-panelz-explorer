@@ -1,3 +1,5 @@
+"""Resolve external context tools and expand their launch arguments."""
+
 from __future__ import annotations
 
 import os
@@ -15,6 +17,8 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class ContextTool:
+    """Describe an external tool entry exposed in the context menu."""
+
     key: str
     label: str
     exe_path: str
@@ -28,10 +32,13 @@ class ContextTool:
 
 
 class ContextToolRegistry:
+    """Resolve configured external tools from UI preferences."""
+
     def __init__(self, preferences: UiPreferences) -> None:
         self._preferences = preferences
 
     def resolve(self, key: str) -> ContextTool:
+        """Resolve a configured tool by logical key."""
         normalized = str(key).strip().lower()
         if normalized == "code_editor":
             label = "Code Editor"
@@ -69,6 +76,7 @@ def expand_tool_args(
     files: list[Path] | None = None,
     project_root: Path | None = None,
 ) -> list[str]:
+    """Expand a tool argument template into a process argument list."""
     files_list = [Path(item) for item in (files or [])]
     rendered = str(args_template or "")
     rendered = rendered.replace("{folder}", _quote(folder))

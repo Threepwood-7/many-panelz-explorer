@@ -1,3 +1,5 @@
+"""Operation configuration dialog with backend-specific option controls."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,16 +7,11 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
-    QGridLayout,
-    QHBoxLayout,
     QLabel,
-    QLineEdit,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -24,6 +21,12 @@ from .._operations.backend_options import (
     generate_unstoppable_switch_args,
 )
 from .._operations.types import OperationKind, OperationRequest
+from ._operation_dialog_option_widgets import (
+    build_external_options_group,
+    build_robocopy_options_group,
+    build_teracopy_options_group,
+    build_unstoppable_options_group,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -38,6 +41,8 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class OperationDialogResult:
+    """Capture the user's selected operation dialog settings."""
+
     backend_id: str
     dispatch_mode: str
     conflict_policy: str
@@ -45,6 +50,8 @@ class OperationDialogResult:
 
 
 class OperationDialog(QDialog):
+    """Collect backend-specific settings for a copy, move, or delete request."""
+
     def __init__(
         self,
         *,
@@ -118,202 +125,7 @@ class OperationDialog(QDialog):
         self._backend_options_layout = QVBoxLayout(self._backend_options_host)
         self._backend_options_layout.setContentsMargins(0, 0, 0, 0)
         self._backend_options_layout.setSpacing(8)
-
-        self.robocopy_options_group = QWidget(self._backend_options_host)
-        robocopy_layout = QGridLayout(self.robocopy_options_group)
-        robocopy_layout.setContentsMargins(0, 0, 0, 0)
-        robocopy_layout.setHorizontalSpacing(8)
-        robocopy_layout.setVerticalSpacing(6)
-        self.robocopy_include_subdirs_checkbox = QCheckBox(
-            "Copy subdirectories (/E)", self
-        )
-        self.robocopy_include_subdirs_checkbox.setChecked(True)
-        self.robocopy_mirror_checkbox = QCheckBox("Mirror target (/MIR)", self)
-        self.robocopy_mirror_checkbox.setChecked(False)
-        self.robocopy_move_checkbox = QCheckBox("Move files (/MOVE)", self)
-        self.robocopy_move_checkbox.setChecked(self._kind == "move")
-        self.robocopy_move_checkbox.setEnabled(self._kind == "move")
-        self.robocopy_restartable_checkbox = QCheckBox("Restartable mode (/Z)", self)
-        self.robocopy_restartable_checkbox.setChecked(False)
-        self.robocopy_backup_mode_checkbox = QCheckBox("Backup mode (/B)", self)
-        self.robocopy_backup_mode_checkbox.setChecked(False)
-        self.robocopy_list_only_checkbox = QCheckBox("List only dry-run (/L)", self)
-        self.robocopy_list_only_checkbox.setChecked(False)
-        self.robocopy_quiet_checkbox = QCheckBox(
-            "Suppress detailed logs (/NFL /NDL /NJH /NJS /NP)",
-            self,
-        )
-        # Default is verbose.
-        self.robocopy_quiet_checkbox.setChecked(False)
-
-        self.robocopy_retry_spin = QSpinBox(self)
-        self.robocopy_retry_spin.setRange(0, 1_000_000)
-        self.robocopy_retry_spin.setValue(0)
-        self.robocopy_wait_spin = QSpinBox(self)
-        self.robocopy_wait_spin.setRange(0, 3600)
-        self.robocopy_wait_spin.setValue(0)
-        self.robocopy_multithread_checkbox = QCheckBox(
-            "Multi-threaded copy (/MT)", self
-        )
-        self.robocopy_multithread_checkbox.setChecked(False)
-        self.robocopy_multithread_spin = QSpinBox(self)
-        self.robocopy_multithread_spin.setRange(1, 128)
-        self.robocopy_multithread_spin.setValue(8)
-        self.robocopy_multithread_spin.setEnabled(False)
-        self.robocopy_multithread_checkbox.toggled.connect(
-            self.robocopy_multithread_spin.setEnabled
-        )
-        self.robocopy_extra_args_edit = QLineEdit(self)
-        self.robocopy_extra_args_edit.setPlaceholderText("Additional Robocopy args")
-
-        robocopy_layout.addWidget(self.robocopy_include_subdirs_checkbox, 0, 0, 1, 2)
-        robocopy_layout.addWidget(self.robocopy_mirror_checkbox, 1, 0, 1, 2)
-        robocopy_layout.addWidget(self.robocopy_move_checkbox, 2, 0, 1, 2)
-        robocopy_layout.addWidget(self.robocopy_restartable_checkbox, 3, 0, 1, 2)
-        robocopy_layout.addWidget(self.robocopy_backup_mode_checkbox, 4, 0, 1, 2)
-        robocopy_layout.addWidget(self.robocopy_list_only_checkbox, 5, 0, 1, 2)
-        robocopy_layout.addWidget(self.robocopy_quiet_checkbox, 6, 0, 1, 2)
-        robocopy_layout.addWidget(QLabel("Retry count (/R)", self), 7, 0)
-        robocopy_layout.addWidget(self.robocopy_retry_spin, 7, 1)
-        robocopy_layout.addWidget(QLabel("Wait seconds (/W)", self), 8, 0)
-        robocopy_layout.addWidget(self.robocopy_wait_spin, 8, 1)
-        robocopy_layout.addWidget(self.robocopy_multithread_checkbox, 9, 0)
-        robocopy_layout.addWidget(self.robocopy_multithread_spin, 9, 1)
-        robocopy_layout.addWidget(QLabel("Extra args", self), 10, 0)
-        robocopy_layout.addWidget(self.robocopy_extra_args_edit, 10, 1)
-        robocopy_layout.setColumnStretch(1, 1)
-
-        self.teracopy_options_group = QWidget(self._backend_options_host)
-        teracopy_layout = QGridLayout(self.teracopy_options_group)
-        teracopy_layout.setContentsMargins(0, 0, 0, 0)
-        teracopy_layout.setHorizontalSpacing(8)
-        teracopy_layout.setVerticalSpacing(6)
-        self.teracopy_close_checkbox = QCheckBox("Close on completion (/Close)", self)
-        self.teracopy_no_close_checkbox = QCheckBox("Keep window open (/NoClose)", self)
-        self.teracopy_close_checkbox.toggled.connect(self._on_teracopy_close_toggled)
-        self.teracopy_no_close_checkbox.toggled.connect(
-            self._on_teracopy_no_close_toggled
-        )
-        self.teracopy_conflict_combo = QComboBox(self)
-        self.teracopy_conflict_combo.addItem("No explicit override", "")
-        self.teracopy_conflict_combo.addItem("Overwrite All", "/OverwriteAll")
-        self.teracopy_conflict_combo.addItem("Skip All", "/SkipAll")
-        self.teracopy_conflict_combo.addItem("Rename All", "/RenameAll")
-        self.teracopy_conflict_combo.addItem("Overwrite Older", "/OverwriteOlder")
-        self.teracopy_conflict_combo.addItem(
-            "Overwrite Different Size", "/OverwriteDiffSize"
-        )
-        self.teracopy_conflict_combo.addItem("Rename Copied", "/RenameCopied")
-        self.teracopy_conflict_combo.addItem(
-            "Rename Destination",
-            "/RenameDestination",
-        )
-        self.teracopy_extra_args_edit = QLineEdit(self)
-        self.teracopy_extra_args_edit.setPlaceholderText("Additional TeraCopy args")
-        teracopy_layout.addWidget(self.teracopy_close_checkbox, 0, 0, 1, 2)
-        teracopy_layout.addWidget(self.teracopy_no_close_checkbox, 1, 0, 1, 2)
-        teracopy_layout.addWidget(QLabel("Conflict override", self), 2, 0)
-        teracopy_layout.addWidget(self.teracopy_conflict_combo, 2, 1)
-        teracopy_layout.addWidget(QLabel("Extra args", self), 3, 0)
-        teracopy_layout.addWidget(self.teracopy_extra_args_edit, 3, 1)
-        teracopy_layout.setColumnStretch(1, 1)
-
-        self.unstoppable_options_group = QWidget(self._backend_options_host)
-        unstoppable_layout = QGridLayout(self.unstoppable_options_group)
-        unstoppable_layout.setContentsMargins(0, 0, 0, 0)
-        unstoppable_layout.setHorizontalSpacing(8)
-        unstoppable_layout.setVerticalSpacing(6)
-        self.unstoppable_defaults_checkbox = QCheckBox(
-            "Use program defaults (+d)", self
-        )
-        self.unstoppable_defaults_checkbox.setChecked(True)
-        self.unstoppable_keep_attributes_checkbox = QCheckBox(
-            "Copy attributes (+a)", self
-        )
-        self.unstoppable_keep_attributes_checkbox.setChecked(True)
-        self.unstoppable_keep_owner_checkbox = QCheckBox("Copy ownership (+o)", self)
-        self.unstoppable_keep_owner_checkbox.setChecked(True)
-        self.unstoppable_keep_time_checkbox = QCheckBox("Copy date/time (+t)", self)
-        self.unstoppable_keep_time_checkbox.setChecked(True)
-        self.unstoppable_overwrite_checkbox = QCheckBox("Overwrite existing (+e)", self)
-        self.unstoppable_overwrite_checkbox.setChecked(True)
-        self.unstoppable_include_subdirs_checkbox = QCheckBox(
-            "Include subfolders (+i)", self
-        )
-        self.unstoppable_include_subdirs_checkbox.setChecked(True)
-        self.unstoppable_resume_checkbox = QCheckBox(
-            "Recover damaged and resume (+r)", self
-        )
-        self.unstoppable_resume_checkbox.setChecked(False)
-        self.unstoppable_copy_newer_checkbox = QCheckBox(
-            "Copy only if source newer (+c)", self
-        )
-        self.unstoppable_copy_newer_checkbox.setChecked(False)
-        self.unstoppable_skip_damaged_checkbox = QCheckBox(
-            "Auto-skip damaged files (+s)", self
-        )
-        self.unstoppable_skip_damaged_checkbox.setChecked(False)
-        self.unstoppable_undamaged_first_checkbox = QCheckBox(
-            "Undamaged files first (+u)", self
-        )
-        self.unstoppable_undamaged_first_checkbox.setChecked(False)
-        self.unstoppable_overwrite_readonly_checkbox = QCheckBox(
-            "Overwrite read-only files (+w)", self
-        )
-        self.unstoppable_overwrite_readonly_checkbox.setChecked(False)
-        self.unstoppable_copy_empty_folders_checkbox = QCheckBox(
-            "Copy empty folders (+f)", self
-        )
-        self.unstoppable_copy_empty_folders_checkbox.setChecked(False)
-        self.unstoppable_eta_checkbox = QCheckBox("Show remaining time (+z)", self)
-        self.unstoppable_eta_checkbox.setChecked(False)
-        self.unstoppable_power_down_checkbox = QCheckBox(
-            "Power down after completion (+p)", self
-        )
-        self.unstoppable_power_down_checkbox.setChecked(False)
-        self.unstoppable_extra_args_edit = QLineEdit(self)
-        self.unstoppable_extra_args_edit.setPlaceholderText(
-            "Additional Unstoppable Copier args"
-        )
-
-        unstoppable_layout.addWidget(self.unstoppable_defaults_checkbox, 0, 0, 1, 2)
-        unstoppable_layout.addWidget(
-            self.unstoppable_keep_attributes_checkbox, 1, 0, 1, 2
-        )
-        unstoppable_layout.addWidget(self.unstoppable_keep_owner_checkbox, 2, 0, 1, 2)
-        unstoppable_layout.addWidget(self.unstoppable_keep_time_checkbox, 3, 0, 1, 2)
-        unstoppable_layout.addWidget(self.unstoppable_overwrite_checkbox, 4, 0, 1, 2)
-        unstoppable_layout.addWidget(
-            self.unstoppable_include_subdirs_checkbox, 5, 0, 1, 2
-        )
-        unstoppable_layout.addWidget(self.unstoppable_resume_checkbox, 6, 0, 1, 2)
-        unstoppable_layout.addWidget(self.unstoppable_copy_newer_checkbox, 7, 0, 1, 2)
-        unstoppable_layout.addWidget(self.unstoppable_skip_damaged_checkbox, 8, 0, 1, 2)
-        unstoppable_layout.addWidget(
-            self.unstoppable_undamaged_first_checkbox, 9, 0, 1, 2
-        )
-        unstoppable_layout.addWidget(
-            self.unstoppable_overwrite_readonly_checkbox, 10, 0, 1, 2
-        )
-        unstoppable_layout.addWidget(
-            self.unstoppable_copy_empty_folders_checkbox, 11, 0, 1, 2
-        )
-        unstoppable_layout.addWidget(self.unstoppable_eta_checkbox, 12, 0, 1, 2)
-        unstoppable_layout.addWidget(self.unstoppable_power_down_checkbox, 13, 0, 1, 2)
-        unstoppable_layout.addWidget(QLabel("Extra args", self), 14, 0)
-        unstoppable_layout.addWidget(self.unstoppable_extra_args_edit, 14, 1)
-        unstoppable_layout.setColumnStretch(1, 1)
-
-        self.external_options_group = QWidget(self._backend_options_host)
-        external_layout = QHBoxLayout(self.external_options_group)
-        external_layout.setContentsMargins(0, 0, 0, 0)
-        external_layout.setSpacing(8)
-        self.external_extra_args_edit = QLineEdit(self)
-        self.external_extra_args_edit.setPlaceholderText(
-            "Optional args appended to command"
-        )
-        external_layout.addWidget(QLabel("Extra args", self))
-        external_layout.addWidget(self.external_extra_args_edit, 1)
+        self._bind_backend_option_widgets()
 
         self._backend_options_layout.addWidget(self.robocopy_options_group)
         self._backend_options_layout.addWidget(self.teracopy_options_group)
@@ -332,7 +144,65 @@ class OperationDialog(QDialog):
         self.buttons.rejected.connect(self.reject)
         root.addWidget(self.buttons)
 
+    def _bind_backend_option_widgets(self) -> None:
+        """Create backend-specific option widgets and expose them on the dialog."""
+        robocopy = build_robocopy_options_group(
+            self._backend_options_host,
+            kind=self._kind,
+        )
+        self.robocopy_options_group = robocopy.group
+        self.robocopy_include_subdirs_checkbox = robocopy.include_subdirs_checkbox
+        self.robocopy_mirror_checkbox = robocopy.mirror_checkbox
+        self.robocopy_move_checkbox = robocopy.move_checkbox
+        self.robocopy_restartable_checkbox = robocopy.restartable_checkbox
+        self.robocopy_backup_mode_checkbox = robocopy.backup_mode_checkbox
+        self.robocopy_list_only_checkbox = robocopy.list_only_checkbox
+        self.robocopy_quiet_checkbox = robocopy.quiet_checkbox
+        self.robocopy_retry_spin = robocopy.retry_spin
+        self.robocopy_wait_spin = robocopy.wait_spin
+        self.robocopy_multithread_checkbox = robocopy.multithread_checkbox
+        self.robocopy_multithread_spin = robocopy.multithread_spin
+        self.robocopy_extra_args_edit = robocopy.extra_args_edit
+
+        teracopy = build_teracopy_options_group(self._backend_options_host)
+        self.teracopy_options_group = teracopy.group
+        self.teracopy_close_checkbox = teracopy.close_checkbox
+        self.teracopy_no_close_checkbox = teracopy.no_close_checkbox
+        self.teracopy_conflict_combo = teracopy.conflict_combo
+        self.teracopy_extra_args_edit = teracopy.extra_args_edit
+        self.teracopy_close_checkbox.toggled.connect(self._on_teracopy_close_toggled)
+        self.teracopy_no_close_checkbox.toggled.connect(
+            self._on_teracopy_no_close_toggled
+        )
+
+        unstoppable = build_unstoppable_options_group(self._backend_options_host)
+        self.unstoppable_options_group = unstoppable.group
+        self.unstoppable_defaults_checkbox = unstoppable.defaults_checkbox
+        self.unstoppable_keep_attributes_checkbox = unstoppable.keep_attributes_checkbox
+        self.unstoppable_keep_owner_checkbox = unstoppable.keep_owner_checkbox
+        self.unstoppable_keep_time_checkbox = unstoppable.keep_time_checkbox
+        self.unstoppable_overwrite_checkbox = unstoppable.overwrite_checkbox
+        self.unstoppable_include_subdirs_checkbox = unstoppable.include_subdirs_checkbox
+        self.unstoppable_resume_checkbox = unstoppable.resume_checkbox
+        self.unstoppable_copy_newer_checkbox = unstoppable.copy_newer_checkbox
+        self.unstoppable_skip_damaged_checkbox = unstoppable.skip_damaged_checkbox
+        self.unstoppable_undamaged_first_checkbox = unstoppable.undamaged_first_checkbox
+        self.unstoppable_overwrite_readonly_checkbox = (
+            unstoppable.overwrite_readonly_checkbox
+        )
+        self.unstoppable_copy_empty_folders_checkbox = (
+            unstoppable.copy_empty_folders_checkbox
+        )
+        self.unstoppable_eta_checkbox = unstoppable.eta_checkbox
+        self.unstoppable_power_down_checkbox = unstoppable.power_down_checkbox
+        self.unstoppable_extra_args_edit = unstoppable.extra_args_edit
+
+        external = build_external_options_group(self._backend_options_host)
+        self.external_options_group = external.group
+        self.external_extra_args_edit = external.extra_args_edit
+
     def _summary_text(self) -> str:
+        """Return the dialog summary text for the selected sources."""
         lines: list[str] = []
         lines.append(f"Operation: {self._kind}")
         lines.append(f"Items: {len(self._sources)}")
@@ -344,6 +214,7 @@ class OperationDialog(QDialog):
         return "\n".join(lines)
 
     def _backend_options(self) -> list[tuple[str, str]]:
+        """Return the available backends for the current operation kind."""
         if self._kind == "delete":
             return [
                 ("Recycle Bin", "recycle_bin"),
@@ -363,6 +234,7 @@ class OperationDialog(QDialog):
         ]
 
     def _set_combo_data(self, combo: QComboBox, target_data: str) -> None:
+        """Select a combo item by its stored data value."""
         for index in range(combo.count()):
             if str(combo.itemData(index)) == str(target_data):
                 combo.setCurrentIndex(index)
@@ -370,14 +242,17 @@ class OperationDialog(QDialog):
         combo.setCurrentIndex(0)
 
     def _on_teracopy_close_toggled(self, checked: bool) -> None:
+        """Keep `/Close` and `/NoClose` mutually exclusive."""
         if checked and self.teracopy_no_close_checkbox.isChecked():
             self.teracopy_no_close_checkbox.setChecked(False)
 
     def _on_teracopy_no_close_toggled(self, checked: bool) -> None:
+        """Keep `/NoClose` and `/Close` mutually exclusive."""
         if checked and self.teracopy_close_checkbox.isChecked():
             self.teracopy_close_checkbox.setChecked(False)
 
     def _load_backend_options_from_preferences(self) -> None:
+        """Apply structured backend defaults from preferences to the controls."""
         self._apply_robocopy_structured_options_to_controls(
             self._preferences.robocopy_structured_options
         )
@@ -394,6 +269,7 @@ class OperationDialog(QDialog):
     def _apply_robocopy_structured_options_to_controls(
         self, options: RobocopyBackendOptions
     ) -> None:
+        """Load stored Robocopy options into the dialog controls."""
         self.robocopy_include_subdirs_checkbox.setChecked(
             options.include_subdirectories
         )
@@ -413,6 +289,7 @@ class OperationDialog(QDialog):
     def _apply_teracopy_structured_options_to_controls(
         self, options: TeraCopyBackendOptions
     ) -> None:
+        """Load stored TeraCopy options into the dialog controls."""
         self.teracopy_close_checkbox.setChecked(options.close_on_finish)
         self.teracopy_no_close_checkbox.setChecked(options.keep_open)
         self._set_combo_data(self.teracopy_conflict_combo, options.conflict_mode)
@@ -429,6 +306,7 @@ class OperationDialog(QDialog):
     def _apply_unstoppable_structured_options_to_controls(
         self, options: UnstoppableBackendOptions
     ) -> None:
+        """Load stored Unstoppable Copier options into the dialog controls."""
         self.unstoppable_defaults_checkbox.setChecked(options.use_defaults)
         self.unstoppable_keep_attributes_checkbox.setChecked(options.keep_attributes)
         self.unstoppable_keep_owner_checkbox.setChecked(options.keep_owner)
@@ -452,9 +330,11 @@ class OperationDialog(QDialog):
     def _apply_external_copymove_structured_options_to_controls(
         self, options: ExternalCopyMoveBackendOptions
     ) -> None:
+        """Load stored external-command options into the dialog controls."""
         self.external_extra_args_edit.setText(str(options.extra_args or "").strip())
 
     def _sync_backend_options_visibility(self) -> None:
+        """Show only the backend panel that applies to the current selection."""
         backend = str(self.backend_combo.currentData() or "")
         show_robocopy = backend == "robocopy" and self._kind in {"copy", "move"}
         show_teracopy = backend == "teracopy" and self._kind in {"copy", "move"}
@@ -472,6 +352,7 @@ class OperationDialog(QDialog):
         )
 
     def _collect_robocopy_args(self) -> str:
+        """Serialize the Robocopy controls back into command-line arguments."""
         parts: list[str] = []
         if self.robocopy_include_subdirs_checkbox.isChecked():
             parts.append("/E")
@@ -497,6 +378,7 @@ class OperationDialog(QDialog):
         return " ".join(parts).strip()
 
     def _collect_teracopy_extra_args(self) -> str:
+        """Serialize the TeraCopy controls back into extra arguments."""
         parts: list[str] = []
         if self.teracopy_close_checkbox.isChecked():
             parts.append("/Close")
@@ -513,6 +395,7 @@ class OperationDialog(QDialog):
         return " ".join(parts).strip()
 
     def _collect_unstoppable_extra_args(self) -> str:
+        """Serialize the Unstoppable Copier controls back into switch args."""
         flags = generate_unstoppable_switch_args(
             UnstoppableBackendOptions(
                 use_defaults=self.unstoppable_defaults_checkbox.isChecked(),
@@ -537,6 +420,7 @@ class OperationDialog(QDialog):
         return " ".join(flags).strip()
 
     def _collect_backend_options(self) -> dict[str, str]:
+        """Collect the backend-specific options for the active selection."""
         backend = str(self.backend_combo.currentData() or "")
         options: dict[str, str] = {}
         if backend == "robocopy" and self._kind in {"copy", "move"}:
@@ -556,6 +440,7 @@ class OperationDialog(QDialog):
         return options
 
     def selected_result(self) -> OperationDialogResult:
+        """Return the currently selected dialog values."""
         return OperationDialogResult(
             backend_id=str(self.backend_combo.currentData()),
             dispatch_mode=str(self.dispatch_combo.currentData()),
@@ -571,6 +456,7 @@ class OperationDialog(QDialog):
         target_dir: Path | None,
         created_by: str,
     ) -> OperationRequest:
+        """Build an operation request from the current dialog selection."""
         selection = self.selected_result()
         return OperationRequest(
             kind=kind,

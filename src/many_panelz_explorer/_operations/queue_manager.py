@@ -1,3 +1,5 @@
+"""Operation queue execution and lifecycle management."""
+
 from __future__ import annotations
 
 import threading
@@ -23,6 +25,8 @@ if TYPE_CHECKING:
 
 
 class OperationQueueManager(QObject):
+    """Queue and execute file-operation jobs for the window UI."""
+
     job_added = Signal(object)
     job_updated = Signal(object)
     jobs_reset = Signal()

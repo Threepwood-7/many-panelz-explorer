@@ -1,3 +1,5 @@
+"""Byte-size formatting helpers shared across file-list surfaces."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -39,12 +41,16 @@ _ALLOWED_CUSTOM_FIELDS: Final[set[str]] = {"b", *_CUSTOM_FIELD_FACTORS.keys()}
 
 @dataclass(frozen=True)
 class ByteFormatScopeConfig:
+    """Configure byte formatting for a single UI scope."""
+
     mode: str = BYTE_FORMAT_MODE_BYTES
     custom_template: str = ""
 
 
 @dataclass(frozen=True)
 class ByteFormatPreferences:
+    """Bundle byte-format preferences for all major UI scopes."""
+
     thousands_sep: str = ","
     decimal_sep: str = "."
     file_list: ByteFormatScopeConfig = field(default_factory=ByteFormatScopeConfig)
@@ -57,6 +63,8 @@ def format_bytes(
     scope_config: ByteFormatScopeConfig,
     separators: tuple[str, str] | None = None,
 ) -> str:
+    """Format a byte count using the requested display mode and separators."""
+
     size = max(0, int(value))
     mode = _normalized_mode(scope_config.mode)
     thousands_sep, decimal_sep = _normalized_separators(separators)

@@ -1,3 +1,5 @@
+"""Immutable settings data models shared across the application."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -28,6 +30,8 @@ from many_panelz_explorer._operations.types import (
 
 @dataclass(frozen=True)
 class UiPreferences:
+    """Aggregate UI and operation defaults consumed by the main window."""
+
     new_context_mode: str = "clone_active_path"
     show_hidden_default: bool = True
     show_root_dropdown: bool = False

@@ -97,7 +97,7 @@ class _ControllerSettingsStub:
         )
         self._apply_application_font(preferences)
         for window in list(self.windows):
-            window.apply_ui_preferences(preferences)
+            window.preferences_coordinator.apply_ui_preferences(preferences)
 
     def apply_ui_preferences(self, preferences: UiPreferences) -> None:
         self.settings.set_ui_preferences(preferences)

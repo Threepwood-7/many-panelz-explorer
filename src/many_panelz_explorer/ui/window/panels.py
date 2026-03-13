@@ -22,6 +22,73 @@ type TabsState = dict[int, PanelState]
 type PanelRows = list[list[int]]
 
 
+def _clear_layout(window: ExplorerWindow) -> None:
+    """Delete the current central layout widgets."""
+    while window.central_layout.count() > 0:
+        item = window.central_layout.takeAt(0)
+        if item is None:
+            continue
+        widget = item.widget()
+        if widget is not None:
+            widget.hide()
+            widget.deleteLater()
+
+
+def _build_rows_widget(
+    window: ExplorerWindow,
+    panel_widgets: dict[int, PanelWidget],
+    rows: PanelRows,
+) -> QWidget | None:
+    """Build the nested splitter widget for the current rows."""
+    if not rows:
+        return None
+    if len(rows) == 1:
+        return _build_row_widget(window, panel_widgets, rows[0])
+
+    splitter = QSplitter(Qt.Orientation.Vertical, window)
+    for row in rows:
+        row_widget = _build_row_widget(window, panel_widgets, row)
+        splitter.addWidget(row_widget if row_widget is not None else QWidget())
+    splitter.setChildrenCollapsible(False)
+    splitter.setSizes([1000] * len(rows))
+    return splitter
+
+
+def _build_row_widget(
+    window: ExplorerWindow,
+    panel_widgets: dict[int, PanelWidget],
+    row: list[int],
+) -> QWidget | None:
+    """Build a single horizontal splitter row."""
+    if not row:
+        return None
+    if len(row) == 1:
+        panel = panel_widgets.get(row[0])
+        return panel if panel is not None else QWidget()
+
+    splitter = QSplitter(Qt.Orientation.Horizontal, window)
+    for panel_id in row:
+        panel = panel_widgets.get(panel_id)
+        splitter.addWidget(panel if panel is not None else QWidget())
+    splitter.setChildrenCollapsible(False)
+    splitter.setSizes([1000] * len(row))
+    return splitter
+
+
+def _activate_panel_and_focus(
+    coordinator: WindowPanelsCoordinator,
+    panel_id: int,
+) -> None:
+    """Activate a panel and transfer focus to its current view."""
+    coordinator.set_active_panel(panel_id)
+    panel = coordinator.window.panel_widgets.get(panel_id)
+    if panel is None:
+        return
+    tab = panel.current_tab()
+    if tab is not None:
+        tab.view.setFocus()
+
+
 class WindowPanelsCoordinator:
     """Manage panel lifecycle, active state, and widget rebuilds."""
 
@@ -44,7 +111,9 @@ class WindowPanelsCoordinator:
         if row_index is None or column_index is None:
             return
 
-        seed_path = self.window.resolve_new_context_path(active_panel.current_path())
+        seed_path = self.window.preferences_coordinator.resolve_new_context_path(
+            active_panel.current_path()
+        )
         preferred_active_panel: int | None = None
         is_horizontal_split = orientation == Qt.Orientation.Horizontal
         if is_horizontal_split:
@@ -88,7 +157,9 @@ class WindowPanelsCoordinator:
         panel = self.active_panel()
         if panel is None:
             return
-        seed_path = self.window.resolve_new_context_path(panel.current_path())
+        seed_path = self.window.preferences_coordinator.resolve_new_context_path(
+            panel.current_path()
+        )
         panel.add_tab(seed_path)
 
     def clone_active_panel(self, orientation: Qt.Orientation) -> None:
@@ -177,7 +248,10 @@ class WindowPanelsCoordinator:
         if tab is None:
             return
         widths = list(tab.columns.widths)
-        panel.apply_column_widths_to_panel_tabs(widths, source_tab=tab)
+        panel.state_coordinator.apply_column_widths_to_panel_tabs(
+            widths,
+            source_tab=tab,
+        )
         self.window.statusBar().showMessage(
             "Aligned columns in current panel tabs.",
             2000,
@@ -236,31 +310,39 @@ class WindowPanelsCoordinator:
         self.window.layout_coordinator.sync_panel_tree_from_rows()
 
         new_panel_widgets: dict[int, PanelWidget] = {}
-        file_list_font, navigation_font = self.window.effective_panel_fonts()
+        file_list_font, navigation_font = (
+            self.window.preferences_coordinator.effective_panel_fonts()
+        )
         (
             active_color_hex,
             active_intensity_percent,
             target_color_hex,
             target_intensity_percent,
-        ) = self.window.panel_role_visual_preferences()
+        ) = self.window.preferences_coordinator.panel_role_visual_preferences()
         (
             show_refresh_button,
             show_root_buttons,
             show_root_dropdown,
             show_address_bar,
             show_navigation_buttons,
-        ) = self.window.panel_toolbar_visibility_preferences()
+        ) = self.window.preferences_coordinator.panel_toolbar_visibility_preferences()
         for panel_id in panel_ids:
             panel_state = tabs_state.get(panel_id)
             panel = PanelWidget(
                 panel_id=panel_id,
-                default_path=self.window.resolve_new_context_path(
-                    self.window.initial_path
+                default_path=self.window.preferences_coordinator.resolve_new_context_path(
+                    self.window.preferences_coordinator.initial_path
                 ),
-                show_hidden=self.window.show_hidden_enabled,
-                show_root_dropdown=self.window.show_root_dropdown_enabled,
-                file_list_size_formatter=self.window.format_file_list_bytes,
-                properties_size_formatter=self.window.format_properties_bytes,
+                show_hidden=self.window.preferences_coordinator.show_hidden_enabled,
+                show_root_dropdown=(
+                    self.window.preferences_coordinator.show_root_dropdown_enabled
+                ),
+                file_list_size_formatter=(
+                    self.window.preferences_coordinator.format_file_list_bytes
+                ),
+                properties_size_formatter=(
+                    self.window.preferences_coordinator.format_properties_bytes
+                ),
                 roots_provider=self.window.roots_provider,
                 parent=self.window,
             )
@@ -270,44 +352,52 @@ class WindowPanelsCoordinator:
                 self.panel_widths_sync_callback(panel_id)
             )
             panel.became_empty.connect(lambda pid=panel_id: self.close_panel_by_id(pid))
-            panel.set_column_width_auto_align_mode(
-                self.window.column_width_auto_align_mode
+            panel.state_coordinator.set_column_width_auto_align_mode(
+                self.window.preferences_coordinator.column_width_auto_align_mode
             )
 
             if isinstance(panel_state, dict):
-                panel.restore_state(panel_state)
+                panel.state_coordinator.restore_state(panel_state)
             else:
                 panel.add_tab(
-                    self.window.resolve_new_context_path(self.window.initial_path)
+                    self.window.preferences_coordinator.resolve_new_context_path(
+                        self.window.preferences_coordinator.initial_path
+                    )
                 )
 
-            panel.set_role_visual_preferences(
+            panel.presentation_coordinator.set_role_visual_preferences(
                 active_color_hex=active_color_hex,
                 active_intensity_percent=active_intensity_percent,
                 target_color_hex=target_color_hex,
                 target_intensity_percent=target_intensity_percent,
             )
-            panel.apply_toolbar_visibility(
+            panel.presentation_coordinator.apply_toolbar_visibility(
                 show_refresh_button=show_refresh_button,
                 show_root_buttons=show_root_buttons,
                 show_root_dropdown=show_root_dropdown,
                 show_address_bar=show_address_bar,
                 show_navigation_buttons=show_navigation_buttons,
             )
-            panel.apply_font_preferences(
+            panel.presentation_coordinator.apply_font_preferences(
                 file_list_font=file_list_font,
                 navigation_font=navigation_font,
             )
-            panel.set_widget_map_enabled(self.window.show_widget_map_enabled)
+            panel.widget_map_coordinator.set_enabled(
+                self.window.preferences_coordinator.show_widget_map_enabled
+            )
             new_panel_widgets[panel_id] = panel
 
         self.window.panel_widgets = new_panel_widgets
 
-        root_widget = self._build_rows_widget(self.window.layout_rows)
+        root_widget = _build_rows_widget(
+            self.window,
+            self.window.panel_widgets,
+            self.window.layout_rows,
+        )
         if root_widget is None:
             root_widget = QWidget()
 
-        self._clear_layout()
+        _clear_layout(self.window)
         self.window.central_layout.addWidget(root_widget)
 
         target_active = preferred_active_panel
@@ -381,7 +471,7 @@ class WindowPanelsCoordinator:
     def serialize_tabs_state(self) -> TabsState:
         """Serialize all panel tabs into persistence state."""
         return {
-            panel_id: panel.serialize_state()
+            panel_id: panel.state_coordinator.serialize_state()
             for panel_id, panel in self.window.panel_widgets.items()
         }
 
@@ -395,7 +485,7 @@ class WindowPanelsCoordinator:
             next_index = (current + 1) % len(ordered)
         else:
             next_index = 0
-        self._activate_panel_and_focus(ordered[next_index])
+        _activate_panel_and_focus(self, ordered[next_index])
 
     def focus_previous_panel(self) -> None:
         """Move focus to the previous panel."""
@@ -407,7 +497,7 @@ class WindowPanelsCoordinator:
             next_index = (current - 1) % len(ordered)
         else:
             next_index = 0
-        self._activate_panel_and_focus(ordered[next_index])
+        _activate_panel_and_focus(self, ordered[next_index])
 
     def resolve_target_panel_id(self, source_panel_id: int) -> int | None:
         """Resolve the preferred target panel for cross-panel actions."""
@@ -444,7 +534,7 @@ class WindowPanelsCoordinator:
         _ = source_panel_id, source_tab
         for panel_id, panel in self.window.panel_widgets.items():
             _ = panel_id
-            panel.apply_column_widths_to_panel_tabs(widths)
+            panel.state_coordinator.apply_column_widths_to_panel_tabs(widths)
 
     def default_close_warning(self) -> bool:
         """Return whether closing the window should be treated as lossy."""
@@ -452,55 +542,3 @@ class WindowPanelsCoordinator:
             return True
         panel = self.active_panel()
         return panel is not None and panel.tab_count() > 1
-
-    def _clear_layout(self) -> None:
-        """Delete the current central layout widgets."""
-        while self.window.central_layout.count() > 0:
-            item = self.window.central_layout.takeAt(0)
-            if item is None:
-                continue
-            widget = item.widget()
-            if widget is not None:
-                widget.hide()
-                widget.deleteLater()
-
-    def _build_rows_widget(self, rows: PanelRows) -> QWidget | None:
-        """Build the nested splitter widget for the current rows."""
-        if not rows:
-            return None
-        if len(rows) == 1:
-            return self._build_row_widget(rows[0])
-
-        splitter = QSplitter(Qt.Orientation.Vertical, self.window)
-        for row in rows:
-            row_widget = self._build_row_widget(row)
-            splitter.addWidget(row_widget if row_widget is not None else QWidget())
-        splitter.setChildrenCollapsible(False)
-        splitter.setSizes([1000] * len(rows))
-        return splitter
-
-    def _build_row_widget(self, row: list[int]) -> QWidget | None:
-        """Build a single horizontal splitter row."""
-        if not row:
-            return None
-        if len(row) == 1:
-            panel = self.window.panel_widgets.get(row[0])
-            return panel if panel is not None else QWidget()
-
-        splitter = QSplitter(Qt.Orientation.Horizontal, self.window)
-        for panel_id in row:
-            panel = self.window.panel_widgets.get(panel_id)
-            splitter.addWidget(panel if panel is not None else QWidget())
-        splitter.setChildrenCollapsible(False)
-        splitter.setSizes([1000] * len(row))
-        return splitter
-
-    def _activate_panel_and_focus(self, panel_id: int) -> None:
-        """Activate a panel and transfer focus to its current view."""
-        self.set_active_panel(panel_id)
-        panel = self.window.panel_widgets.get(panel_id)
-        if panel is None:
-            return
-        tab = panel.current_tab()
-        if tab is not None:
-            tab.view.setFocus()

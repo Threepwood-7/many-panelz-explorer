@@ -1,3 +1,5 @@
+"""Context-menu and file action helpers for a single explorer tab."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -17,6 +19,8 @@ if TYPE_CHECKING:
 
 
 class ExplorerTabActions(QObject):
+    """Own context-menu actions and file operations for an explorer tab."""
+
     def __init__(self, tab: ExplorerTab, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._tab = tab

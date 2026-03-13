@@ -1,3 +1,5 @@
+"""Build and execute context-aware project actions for the active panel path."""
+
 from __future__ import annotations
 
 import os
@@ -89,6 +91,8 @@ class _AsyncScriptLoader:
 
 
 class ContextMenuController(QObject):
+    """Own the dynamic Context menu shown for detected project roots."""
+
     def __init__(self, window: ExplorerWindow, menu: QMenu) -> None:
         super().__init__(window)
         self._window = window
