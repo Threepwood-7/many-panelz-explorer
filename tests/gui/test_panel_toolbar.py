@@ -229,7 +229,7 @@ def test_address_autocomplete_activation_fills_and_navigates_on_enter(
         timeout=2000,
     )
 
-    panel._on_address_completion_activated(str(alpha))
+    panel.address_edit.completer().activated.emit(str(alpha))
     assert _norm(panel.address_edit.text()) == _norm(alpha)
 
     panel.address_edit.returnPressed.emit()
@@ -322,7 +322,7 @@ def test_root_dropdown_is_optional(qtbot, tmp_path: Path) -> None:
     assert len(panel_with_dropdown.root_buttons) == 2
 
     index = _index_for_root(panel_with_dropdown, a)
-    panel_with_dropdown._on_root_selected(index)
+    panel_with_dropdown.root_combo.activated.emit(index)
     assert panel_with_dropdown.current_tab() is not None
     assert panel_with_dropdown.current_tab().navigation.path == a
 

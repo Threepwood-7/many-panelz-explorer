@@ -187,7 +187,7 @@ def test_menu_activation_from_view_filter_and_address(qtbot, tmp_path: Path) -> 
     )
     file_menu.close()
 
-    panel._show_filter_overlay(seed_text="")
+    panel.show_filter_overlay(seed_text="")
     panel.filter_edit.setFocus()
     window.menu_focus_shortcut.activated.emit()
     qtbot.waitUntil(

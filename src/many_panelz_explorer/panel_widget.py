@@ -236,7 +236,7 @@ class PanelWidget(QWidget):
         self.refresh_btn.setSizePolicy(
             QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
         )
-        self.refresh_btn.clicked.connect(self._refresh)
+        self.refresh_btn.clicked.connect(self._navigation_coordinator.refresh)
         toolbar.addWidget(self.refresh_btn)
 
         self.root_buttons_host = QWidget()
@@ -250,7 +250,7 @@ class PanelWidget(QWidget):
         toolbar.addWidget(self.root_buttons_host, 1)
 
         self.root_combo = QComboBox()
-        self.root_combo.activated.connect(self._on_root_selected)
+        self.root_combo.activated.connect(self._navigation_coordinator.on_root_selected)
         self.root_combo.setVisible(self._show_root_dropdown)
         self.root_combo.setMinimumWidth(self.ROOT_COMBO_MIN_WIDTH)
         self.root_combo.setSizePolicy(
@@ -259,7 +259,9 @@ class PanelWidget(QWidget):
         toolbar.addWidget(self.root_combo)
 
         self.address_edit = QLineEdit()
-        self.address_edit.returnPressed.connect(self._on_address_submitted)
+        self.address_edit.returnPressed.connect(
+            self._navigation_coordinator.on_address_submitted
+        )
         self.address_edit.setMinimumWidth(0)
         self.address_edit.setSizePolicy(
             QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
@@ -273,14 +275,18 @@ class PanelWidget(QWidget):
             QCompleter.CompletionMode.PopupCompletion
         )
         self._address_completer.setMaxVisibleItems(14)
-        self._address_completer.activated.connect(self._on_address_completion_activated)
+        self._address_completer.activated.connect(
+            self._handle_address_completion_activated
+        )
         self.address_edit.setCompleter(self._address_completer)
-        self.address_edit.textEdited.connect(self._schedule_address_completion_update)
+        self.address_edit.textEdited.connect(
+            self._navigation_coordinator.schedule_address_completion_update
+        )
 
         self.back_btn = QPushButton("<")
         self.back_btn.setMinimumWidth(28)
         self.back_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.back_btn.clicked.connect(self._go_back)
+        self.back_btn.clicked.connect(self._navigation_coordinator.go_back)
         toolbar.addWidget(self.back_btn)
 
         self.forward_btn = QPushButton(">")
@@ -288,19 +294,19 @@ class PanelWidget(QWidget):
         self.forward_btn.setSizePolicy(
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
-        self.forward_btn.clicked.connect(self._go_forward)
+        self.forward_btn.clicked.connect(self._navigation_coordinator.go_forward)
         toolbar.addWidget(self.forward_btn)
 
         self.up_btn = QPushButton("..")
         self.up_btn.setMinimumWidth(32)
         self.up_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.up_btn.clicked.connect(self._go_up)
+        self.up_btn.clicked.connect(self._navigation_coordinator.go_up)
         toolbar.addWidget(self.up_btn)
 
         self.root_btn = QPushButton("\\")
         self.root_btn.setMinimumWidth(28)
         self.root_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.root_btn.clicked.connect(self._go_root)
+        self.root_btn.clicked.connect(self._navigation_coordinator.go_root)
         toolbar.addWidget(self.root_btn)
         self._navigation_buttons = [
             self.back_btn,
@@ -401,11 +407,13 @@ class PanelWidget(QWidget):
         self._alt_down_shortcut.setContext(
             Qt.ShortcutContext.WidgetWithChildrenShortcut
         )
-        self._alt_down_shortcut.activated.connect(self._show_history_menu)
+        self._alt_down_shortcut.activated.connect(
+            self._navigation_coordinator.show_history_menu
+        )
         self._ctrl_f_shortcut = QShortcut("Ctrl+F", self)
         self._ctrl_f_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self._ctrl_f_shortcut.activated.connect(
-            lambda: self._show_filter_overlay(seed_text="")
+            lambda: self.show_filter_overlay(seed_text="")
         )
         self._column_sync_timer = QTimer(self)
         self._column_sync_timer.setSingleShot(True)
@@ -413,7 +421,7 @@ class PanelWidget(QWidget):
         self._address_completion_timer = QTimer(self)
         self._address_completion_timer.setSingleShot(True)
         self._address_completion_timer.timeout.connect(
-            self._refresh_address_completions
+            self._navigation_coordinator.refresh_address_completions
         )
 
         self._sync_toolbar_for_current_tab()
@@ -494,12 +502,12 @@ class PanelWidget(QWidget):
                 key_event.modifiers() == Qt.KeyboardModifier.AltModifier
                 and key_event.key() == int(Qt.Key.Key_Down)
             ):
-                self._show_history_menu()
+                self._navigation_coordinator.show_history_menu()
                 return True
             if self._is_active_files_list_source(
                 obj
             ) and self._should_start_inline_filter(key_event):
-                self._show_filter_overlay(seed_text=key_event.text())
+                self.show_filter_overlay(seed_text=key_event.text())
                 return True
         return super().eventFilter(obj, event)
 
@@ -582,7 +590,9 @@ class PanelWidget(QWidget):
             if isinstance(widget, ExplorerTab):
                 widget.navigation.set_show_hidden(self._show_hidden)
         if self.address_edit.hasFocus():
-            self._schedule_address_completion_update(self.address_edit.text())
+            self._navigation_coordinator.schedule_address_completion_update(
+                self.address_edit.text()
+            )
 
     def set_show_root_dropdown(self, enabled: bool) -> None:
         self.apply_toolbar_visibility(
@@ -624,7 +634,7 @@ class PanelWidget(QWidget):
         self._show_address_bar = bool(show_address_bar)
         self._show_navigation_buttons = bool(show_navigation_buttons)
         if dropdown_changed:
-            self._rebuild_root_controls(self.current_path())
+            self._navigation_coordinator.rebuild_root_controls(self.current_path())
         self._sync_toolbar_visibility()
         self._sync_widget_map_overlay()
 
@@ -912,8 +922,8 @@ class PanelWidget(QWidget):
             self.up_btn.setEnabled(False)
             self.root_btn.setEnabled(False)
             self.refresh_btn.setEnabled(False)
-            self._set_address_text_programmatically("")
-            self._rebuild_root_controls(None)
+            self._navigation_coordinator.set_address_text_programmatically("")
+            self._navigation_coordinator.rebuild_root_controls(None)
             self._sync_widget_map_overlay()
             return
 
@@ -922,8 +932,10 @@ class PanelWidget(QWidget):
         self.up_btn.setEnabled(True)
         self.root_btn.setEnabled(True)
         self.refresh_btn.setEnabled(True)
-        self._set_address_text_programmatically(display_path_text(tab.navigation.path))
-        self._rebuild_root_controls(tab.navigation.path)
+        self._navigation_coordinator.set_address_text_programmatically(
+            display_path_text(tab.navigation.path)
+        )
+        self._navigation_coordinator.rebuild_root_controls(tab.navigation.path)
         if self.filter_edit.isVisible():
             tab.navigation.set_inline_filter(self.filter_edit.text())
         self._sync_widget_map_overlay()
@@ -967,78 +979,11 @@ class PanelWidget(QWidget):
     def _default_properties_size_formatter(self, value: int) -> str:
         return f"{int(value):,}"
 
-    def _rebuild_root_controls(self, current_path: Path | None) -> None:
-        self._navigation_coordinator.rebuild_root_controls(current_path)
-
-    def _rebuild_root_buttons(
-        self, current_path: Path | None, roots: list[Path]
-    ) -> None:
-        self._navigation_coordinator.rebuild_root_buttons(current_path, roots)
-
-    def _rebuild_root_combo(self, current_path: Path | None, roots: list[Path]) -> None:
-        self._navigation_coordinator.rebuild_root_combo(current_path, roots)
-
-    def _safe_roots(self, current_path: Path | None) -> list[Path]:
-        return self._navigation_coordinator.safe_roots(current_path)
-
-    def _existing_unique_paths(self, paths: list[Path]) -> list[Path]:
-        return self._navigation_coordinator.existing_unique_paths(paths)
-
-    def _fallback_roots(self, current_path: Path | None) -> list[Path]:
-        return self._navigation_coordinator.fallback_roots(current_path)
-
-    def _go_back(self) -> None:
-        self._navigation_coordinator.go_back()
-
-    def _go_forward(self) -> None:
-        self._navigation_coordinator.go_forward()
-
-    def _go_up(self) -> None:
-        self._navigation_coordinator.go_up()
-
-    def _go_root(self) -> None:
-        self._navigation_coordinator.go_root()
-
     def refresh_current_path(self) -> None:
         self._navigation_coordinator.refresh_current_path()
 
-    def _refresh(self) -> None:
-        self._navigation_coordinator.refresh()
-
-    def _on_address_submitted(self) -> None:
-        self._navigation_coordinator.on_address_submitted()
-
-    def _set_address_text_programmatically(self, text: str) -> None:
-        self._navigation_coordinator.set_address_text_programmatically(text)
-
-    def _schedule_address_completion_update(self, _text: str) -> None:
-        self._navigation_coordinator.schedule_address_completion_update(_text)
-
-    def _refresh_address_completions(self) -> None:
-        self._navigation_coordinator.refresh_address_completions()
-
-    def _on_address_completion_activated(self, path_text: object) -> None:
+    def _handle_address_completion_activated(self, path_text: object) -> None:
         self._navigation_coordinator.on_address_completion_activated(str(path_text))
-
-    def _hide_address_completion_popup(self) -> None:
-        self._navigation_coordinator.hide_address_completion_popup()
-
-    def _collect_address_completion_paths(self, raw_text: str) -> list[str]:
-        return self._navigation_coordinator.collect_address_completion_paths(raw_text)
-
-    def _resolve_address_completion_context(
-        self, raw_text: str
-    ) -> tuple[Path, str] | None:
-        return self._navigation_coordinator.resolve_address_completion_context(raw_text)
-
-    def _on_root_selected(self, index: int) -> None:
-        self._navigation_coordinator.on_root_selected(index)
-
-    def _navigate_to_root(self, root_path: Path) -> None:
-        self._navigation_coordinator.navigate_to_root(root_path)
-
-    def _show_history_menu(self) -> None:
-        self._navigation_coordinator.show_history_menu()
 
     def set_role_visual_state(self, *, is_active: bool, is_target: bool) -> None:
         if is_active:
@@ -1057,9 +1002,6 @@ class PanelWidget(QWidget):
         tab = self.current_tab()
         if tab is not None:
             tab.navigation.clear_inline_filter()
-
-    def show_filter_overlay(self, *, seed_text: str) -> None:
-        self._show_filter_overlay(seed_text=seed_text)
 
     def _position_filter_overlay(self) -> None:
         margin = 8
@@ -1092,7 +1034,7 @@ class PanelWidget(QWidget):
         self.filter_edit.raise_()
         self._sync_widget_map_overlay()
 
-    def _show_filter_overlay(self, *, seed_text: str) -> None:
+    def show_filter_overlay(self, *, seed_text: str) -> None:
         self._position_filter_overlay()
         self.filter_edit.setVisible(True)
         self.filter_edit.raise_()

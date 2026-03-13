@@ -135,7 +135,7 @@ class ExplorerWindow(QMainWindow):
         self._ui_composer = WindowUiComposer(self)
         self.context_menu_controller: ContextMenuController | None = None
 
-        self._layout_rows: PanelRows = self._rows_from_tree(self.panel_tree.root)
+        self._layout_rows: PanelRows = self.rows_from_tree(self.panel_tree.root)
         self.panel_widgets: dict[int, PanelWidget] = {}
 
         self._central = QWidget(self)
@@ -231,8 +231,8 @@ class ExplorerWindow(QMainWindow):
         self.setWindowFlag(Qt.WindowType.Window, True)
 
         empty_state: TabsState = {}
-        self._sync_panel_tree_from_rows()
-        self._rebuild_from_tree(tabs_state=empty_state, preferred_active_panel=None)
+        self.sync_panel_tree_from_rows()
+        self.rebuild_from_tree(tabs_state=empty_state, preferred_active_panel=None)
         self._apply_operation_queue_visibility()
         self._refresh_context_menu()
 
@@ -284,107 +284,13 @@ class ExplorerWindow(QMainWindow):
     def default_operation_conflict_policy(self) -> str:
         return self._default_operation_conflict_policy
 
-    def copy_selected_to_target(self, configure: bool = False) -> None:
-        self._copy_selected_to_target(configure=configure)
-
-    def move_selected_to_target(self, configure: bool = False) -> None:
-        self._move_selected_to_target(configure=configure)
-
-    def delete_selected_items(self, configure: bool = False) -> None:
-        self._delete_selected_items(configure=configure)
-
-    def quit_application(self) -> None:
-        self._quit_application()
-
-    def refresh_active_panel(self) -> None:
-        self._refresh_active_panel()
-
-    def toggle_show_hidden(self, enabled: bool) -> None:
-        self._toggle_show_hidden(enabled)
-
-    def toggle_show_widget_map(self, enabled: bool) -> None:
-        self._toggle_show_widget_map(enabled)
-
-    def align_columns_current_panel_tabs(self) -> None:
-        self._align_columns_current_panel_tabs()
-
-    def align_columns_all_panels_tabs(self) -> None:
-        self._align_columns_all_panels_tabs()
-
-    def toggle_queue_dock(self, enabled: bool) -> None:
-        self._toggle_queue_dock(enabled)
-
-    def open_settings_dialog(self) -> None:
-        self._open_settings_dialog()
-
-    def show_help(self) -> None:
-        self._show_help()
-
-    def focus_next_panel(self) -> None:
-        self._focus_next_panel()
-
-    def focus_previous_panel(self) -> None:
-        self._focus_previous_panel()
-
-    def focus_menu_bar(self) -> None:
-        self._focus_menu_bar()
-
-    def populate_restore_view_menu(self) -> None:
-        self._populate_restore_view_menu()
-
-    def on_queue_dock_visibility_changed(self, visible: bool) -> None:
-        self._on_queue_dock_visibility_changed(visible)
-
-    def serialize_tabs_state(self) -> TabsState:
-        return self._serialize_tabs_state()
-
-    def sync_panel_tree_from_rows(self) -> None:
-        self._sync_panel_tree_from_rows()
-
-    def rows_from_tree(self, node: LeafNode | SplitNode | None) -> PanelRows:
-        return self._rows_from_tree(node)
-
-    def append_missing_panel_ids(
-        self,
-        rows: PanelRows,
-        panel_ids: list[int],
-    ) -> PanelRows:
-        return self._append_missing_panel_ids(rows, panel_ids)
-
-    def rebuild_from_tree(
-        self,
-        *,
-        tabs_state: TabsState,
-        preferred_active_panel: int | None,
-    ) -> None:
-        self._rebuild_from_tree(
-            tabs_state=tabs_state,
-            preferred_active_panel=preferred_active_panel,
-        )
-
-    def resolve_target_panel_id(self, source_panel_id: int) -> int | None:
-        return self._resolve_target_panel_id(source_panel_id)
-
-    def prompt_conflict_resolution(
-        self,
-        source: Path,
-        destination: Path,
-    ) -> ConflictChoice:
-        return self._prompt_conflict_resolution(source, destination)
-
-    def next_available_path(self, destination_dir: Path, base_name: str) -> Path:
-        return self._next_available_path(destination_dir, base_name)
-
-    def remove_existing_path(self, path: Path) -> None:
-        self._remove_existing_path(path)
-
     # ----- public API -----
     def split_active_panel(self, orientation: Qt.Orientation) -> None:
         active_panel = self.active_panel()
         if self._active_panel_id is None or active_panel is None:
             return
 
-        tabs_state = self._serialize_tabs_state()
+        tabs_state = self.serialize_tabs_state()
         rows = deepcopy(self._layout_rows)
         row_index, column_index = self._find_panel_position(self._active_panel_id, rows)
         if row_index is None or column_index is None:
@@ -413,8 +319,8 @@ class ExplorerWindow(QMainWindow):
             preferred_active_panel = new_row[0] if new_row else None
 
         self._layout_rows = self._normalize_rows(rows)
-        self._sync_panel_tree_from_rows()
-        self._rebuild_from_tree(
+        self.sync_panel_tree_from_rows()
+        self.rebuild_from_tree(
             tabs_state=tabs_state, preferred_active_panel=preferred_active_panel
         )
 
@@ -429,7 +335,7 @@ class ExplorerWindow(QMainWindow):
         if self._active_panel_id is None:
             return
 
-        tabs_state = self._serialize_tabs_state()
+        tabs_state = self.serialize_tabs_state()
         rows = deepcopy(self._layout_rows)
         row_index, column_index = self._find_panel_position(self._active_panel_id, rows)
         if row_index is None or column_index is None:
@@ -466,8 +372,8 @@ class ExplorerWindow(QMainWindow):
             preferred_active_panel = new_row[0] if new_row else None
 
         self._layout_rows = self._normalize_rows(rows)
-        self._sync_panel_tree_from_rows()
-        self._rebuild_from_tree(
+        self.sync_panel_tree_from_rows()
+        self.rebuild_from_tree(
             tabs_state=tabs_state, preferred_active_panel=preferred_active_panel
         )
 
@@ -574,10 +480,10 @@ class ExplorerWindow(QMainWindow):
     def _build_operation_queue_widgets(self) -> None:
         self._ui_composer.build_operation_queue_widgets()
 
-    def _toggle_queue_dock(self, enabled: bool) -> None:
+    def toggle_queue_dock(self, enabled: bool) -> None:
         self.queue_dock.setVisible(bool(enabled))
 
-    def _on_queue_dock_visibility_changed(self, visible: bool) -> None:
+    def on_queue_dock_visibility_changed(self, visible: bool) -> None:
         with QSignalBlocker(self.show_queue_dock_action):
             self.show_queue_dock_action.setChecked(bool(visible))
 
@@ -599,7 +505,7 @@ class ExplorerWindow(QMainWindow):
         if panel is not None:
             panel.refresh_current_path()
         target_id = (
-            self._resolve_target_panel_id(self._active_panel_id)
+            self.resolve_target_panel_id(self._active_panel_id)
             if self._active_panel_id is not None
             else None
         )
@@ -608,17 +514,17 @@ class ExplorerWindow(QMainWindow):
             if target_panel is not None:
                 target_panel.refresh_current_path()
 
-    def _focus_menu_bar(self) -> None:
+    def focus_menu_bar(self) -> None:
         menu_bar = self.menuBar()
         menu_bar.setFocus(Qt.FocusReason.ShortcutFocusReason)
         menu_bar.setActiveAction(self.menu_file_action)
 
-    def _refresh_active_panel(self) -> None:
+    def refresh_active_panel(self) -> None:
         panel = self.active_panel()
         if panel is not None:
             panel.refresh_current_path()
 
-    def _align_columns_current_panel_tabs(self) -> None:
+    def align_columns_current_panel_tabs(self) -> None:
         panel = self.active_panel()
         if panel is None:
             return
@@ -629,7 +535,7 @@ class ExplorerWindow(QMainWindow):
         panel.apply_column_widths_to_panel_tabs(widths, source_tab=tab)
         self.statusBar().showMessage("Aligned columns in current panel tabs.", 2000)
 
-    def _align_columns_all_panels_tabs(self) -> None:
+    def align_columns_all_panels_tabs(self) -> None:
         panel = self.active_panel()
         if panel is None:
             return
@@ -645,7 +551,7 @@ class ExplorerWindow(QMainWindow):
         )
         self.statusBar().showMessage("Aligned columns in all panels and tabs.", 2000)
 
-    def _show_help(self) -> None:
+    def show_help(self) -> None:
         QMessageBox.information(
             self,
             "Help",
@@ -659,13 +565,13 @@ class ExplorerWindow(QMainWindow):
             "Ctrl+Q / Alt+X: Exit application",
         )
 
-    def _open_settings_dialog(self) -> None:
+    def open_settings_dialog(self) -> None:
         from .dialogs.settings_dialog import SettingsDialog
 
         dialog = SettingsDialog(controller=self.controller, parent=self)
         dialog.exec()
 
-    def _populate_restore_view_menu(self) -> None:
+    def populate_restore_view_menu(self) -> None:
         self.restore_view_menu.clear()
         names = self.settings.list_saved_views()
         if not names:
@@ -679,7 +585,7 @@ class ExplorerWindow(QMainWindow):
                 lambda _checked=False, name=view_name: self.restore_view_named(name)
             )
 
-    def _quit_application(self) -> None:
+    def quit_application(self) -> None:
         app = QApplication.instance()
         if app is not None:
             app.quit()
@@ -707,7 +613,7 @@ class ExplorerWindow(QMainWindow):
                 widget.hide()
                 widget.deleteLater()
 
-    def _rebuild_from_tree(
+    def rebuild_from_tree(
         self,
         tabs_state: TabsState,
         preferred_active_panel: int | None,
@@ -719,7 +625,7 @@ class ExplorerWindow(QMainWindow):
             panel_ids = [1]
 
         self._layout_rows = normalized_rows
-        self._sync_panel_tree_from_rows()
+        self.sync_panel_tree_from_rows()
 
         new_panel_widgets: dict[int, PanelWidget] = {}
         file_list_font, navigation_font = self._effective_panel_fonts()
@@ -838,7 +744,7 @@ class ExplorerWindow(QMainWindow):
         if panel_id not in self.panel_widgets:
             return
 
-        tabs_state = self._serialize_tabs_state()
+        tabs_state = self.serialize_tabs_state()
         rows = deepcopy(self._layout_rows)
         removed = False
         new_rows: PanelRows = []
@@ -863,12 +769,12 @@ class ExplorerWindow(QMainWindow):
             return
 
         self._layout_rows = self._normalize_rows(new_rows)
-        self._sync_panel_tree_from_rows()
+        self.sync_panel_tree_from_rows()
         ordered = self._ordered_panel_ids(self._layout_rows)
         preferred = ordered[0] if ordered else None
-        self._rebuild_from_tree(tabs_state=tabs_state, preferred_active_panel=preferred)
+        self.rebuild_from_tree(tabs_state=tabs_state, preferred_active_panel=preferred)
 
-    def _serialize_tabs_state(self) -> TabsState:
+    def serialize_tabs_state(self) -> TabsState:
         return {
             panel_id: panel.serialize_state()
             for panel_id, panel in self.panel_widgets.items()
@@ -1049,13 +955,13 @@ class ExplorerWindow(QMainWindow):
             return Path(active_path)
         return Path.home()
 
-    def _toggle_show_hidden(self, enabled: bool) -> None:
+    def toggle_show_hidden(self, enabled: bool) -> None:
         self._show_hidden = bool(enabled)
         self.settings.show_hidden_default = self._show_hidden
         for panel in self.panel_widgets.values():
             panel.set_show_hidden(self._show_hidden)
 
-    def _toggle_show_widget_map(self, enabled: bool) -> None:
+    def toggle_show_widget_map(self, enabled: bool) -> None:
         self._show_widget_map = bool(enabled)
         for panel in self.panel_widgets.values():
             panel.set_widget_map_enabled(self._show_widget_map)
@@ -1079,7 +985,7 @@ class ExplorerWindow(QMainWindow):
             return None
         return payload
 
-    def _focus_next_panel(self) -> None:
+    def focus_next_panel(self) -> None:
         ordered = self._ordered_panel_ids(self._layout_rows)
         if not ordered:
             return
@@ -1090,7 +996,7 @@ class ExplorerWindow(QMainWindow):
             next_index = 0
         self._activate_panel_and_focus(ordered[next_index])
 
-    def _focus_previous_panel(self) -> None:
+    def focus_previous_panel(self) -> None:
         ordered = self._ordered_panel_ids(self._layout_rows)
         if not ordered:
             return
@@ -1110,13 +1016,13 @@ class ExplorerWindow(QMainWindow):
         if tab is not None:
             tab.view.setFocus()
 
-    def _copy_selected_to_target(self, configure: bool = False) -> None:
+    def copy_selected_to_target(self, configure: bool = False) -> None:
         self._operations_coordinator.copy_selected_to_target(configure=configure)
 
-    def _move_selected_to_target(self, configure: bool = False) -> None:
+    def move_selected_to_target(self, configure: bool = False) -> None:
         self._operations_coordinator.move_selected_to_target(configure=configure)
 
-    def _delete_selected_items(self, configure: bool = False) -> None:
+    def delete_selected_items(self, configure: bool = False) -> None:
         self._operations_coordinator.delete_selected_items(configure=configure)
 
     def _transfer_selected_to_target(
@@ -1151,7 +1057,7 @@ class ExplorerWindow(QMainWindow):
             move=move,
         )
 
-    def _prompt_conflict_resolution(
+    def prompt_conflict_resolution(
         self, source: Path, destination: Path
     ) -> ConflictChoice:
         return self._operations_coordinator.prompt_conflict_resolution(
@@ -1159,16 +1065,16 @@ class ExplorerWindow(QMainWindow):
             destination,
         )
 
-    def _next_available_path(self, destination_dir: Path, base_name: str) -> Path:
+    def next_available_path(self, destination_dir: Path, base_name: str) -> Path:
         return self._operations_coordinator.next_available_path(
             destination_dir=destination_dir,
             base_name=base_name,
         )
 
-    def _remove_existing_path(self, path: Path) -> None:
+    def remove_existing_path(self, path: Path) -> None:
         self._operations_coordinator.remove_existing_path(path)
 
-    def _resolve_target_panel_id(self, source_panel_id: int) -> int | None:
+    def resolve_target_panel_id(self, source_panel_id: int) -> int | None:
         ordered = self._ordered_panel_ids(self._layout_rows)
         candidates = [pid for pid in ordered if pid != source_panel_id]
         if not candidates:
@@ -1269,15 +1175,15 @@ class ExplorerWindow(QMainWindow):
     def _normalize_rows(self, rows: PanelRows) -> PanelRows:
         return self._layout_coordinator.normalize_rows(rows)
 
-    def _append_missing_panel_ids(
+    def append_missing_panel_ids(
         self, rows: PanelRows, panel_ids: list[int]
     ) -> PanelRows:
         return self._layout_coordinator.append_missing_panel_ids(rows, panel_ids)
 
-    def _rows_from_tree(self, node: LeafNode | SplitNode | None) -> PanelRows:
+    def rows_from_tree(self, node: LeafNode | SplitNode | None) -> PanelRows:
         return self._layout_coordinator.rows_from_tree(node)
 
-    def _sync_panel_tree_from_rows(self) -> None:
+    def sync_panel_tree_from_rows(self) -> None:
         self._layout_coordinator.sync_panel_tree_from_rows()
 
     def _build_tree_root_from_rows(

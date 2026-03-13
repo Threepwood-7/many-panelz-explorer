@@ -844,7 +844,7 @@ def test_copy_or_move_conflict_choices(qtbot, tmp_path: Path, monkeypatch) -> No
     existing = destination_dir / "source.txt"
     existing.write_text("dst", encoding="utf-8")
 
-    monkeypatch.setattr(window, "_prompt_conflict_resolution", lambda *_a, **_k: "skip")
+    monkeypatch.setattr(window, "prompt_conflict_resolution", lambda *_a, **_k: "skip")
     assert (
         window._copy_or_move_one(
             source=source, destination_dir=destination_dir, move=False
@@ -854,7 +854,7 @@ def test_copy_or_move_conflict_choices(qtbot, tmp_path: Path, monkeypatch) -> No
     assert existing.read_text(encoding="utf-8") == "dst"
 
     monkeypatch.setattr(
-        window, "_prompt_conflict_resolution", lambda *_a, **_k: "rename"
+        window, "prompt_conflict_resolution", lambda *_a, **_k: "rename"
     )
     assert (
         window._copy_or_move_one(
@@ -865,7 +865,7 @@ def test_copy_or_move_conflict_choices(qtbot, tmp_path: Path, monkeypatch) -> No
     assert (destination_dir / "source (1).txt").exists()
 
     monkeypatch.setattr(
-        window, "_prompt_conflict_resolution", lambda *_a, **_k: "overwrite"
+        window, "prompt_conflict_resolution", lambda *_a, **_k: "overwrite"
     )
     source.write_text("new", encoding="utf-8")
     assert (
@@ -877,7 +877,7 @@ def test_copy_or_move_conflict_choices(qtbot, tmp_path: Path, monkeypatch) -> No
     assert existing.read_text(encoding="utf-8") == "new"
 
     monkeypatch.setattr(
-        window, "_prompt_conflict_resolution", lambda *_a, **_k: "cancel"
+        window, "prompt_conflict_resolution", lambda *_a, **_k: "cancel"
     )
     assert (
         window._copy_or_move_one(
