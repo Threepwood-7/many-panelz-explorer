@@ -246,6 +246,27 @@ def build_operation_open_tools_rows(
 ) -> None:
     """Build default open-tool and extension-override rows."""
 
+    build_default_open_tool_rows(
+        dialog,
+        open_tools_group=open_tools_group,
+    )
+    build_context_tool_rows(
+        dialog,
+        open_tools_group=open_tools_group,
+    )
+    build_file_open_override_rows(
+        dialog,
+        open_tools_group=open_tools_group,
+    )
+
+
+def build_default_open_tool_rows(
+    dialog: SettingsDialog,
+    *,
+    open_tools_group: SubsectionEntry,
+) -> None:
+    """Build rows for the default editor and viewer executables."""
+
     dialog.default_editor_executable_edit = QLineEdit(dialog)
     default_editor_controls = control_builders.build_path_controls(
         dialog,
@@ -282,6 +303,14 @@ def build_operation_open_tools_rows(
         terms="default viewer executable open view fallback editor",
         controls=[default_viewer_controls],
     )
+
+
+def build_context_tool_rows(
+    dialog: SettingsDialog,
+    *,
+    open_tools_group: SubsectionEntry,
+) -> None:
+    """Build rows for code-editor and Git GUI context tools."""
 
     dialog.context_code_editor_executable_edit = QLineEdit(dialog)
     dialog.context_code_editor_args_edit = QLineEdit(dialog)
@@ -326,6 +355,14 @@ def build_operation_open_tools_rows(
         terms="context tool git gui executable args template",
         controls=[context_git_gui_controls],
     )
+
+
+def build_file_open_override_rows(
+    dialog: SettingsDialog,
+    *,
+    open_tools_group: SubsectionEntry,
+) -> None:
+    """Build rows for per-extension editor and viewer overrides."""
 
     dialog.file_open_overrides_table = QTableWidget(0, 3, dialog)
     dialog.file_open_overrides_table.setHorizontalHeaderLabels(
