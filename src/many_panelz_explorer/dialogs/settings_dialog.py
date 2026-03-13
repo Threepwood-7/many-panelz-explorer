@@ -264,6 +264,20 @@ class SettingsDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.controller = controller
+        self._initialize_dialog_state()
+        self._configure_dialog_window()
+        root = self._build_dialog_layout()
+        self._build_sections()
+        self._load_preferences_into_controls(self._working_preferences)
+        self._apply_search_filter("")
+        self._restore_last_tree_selection()
+        self._build_live_preview_and_buttons(root)
+
+    def _initialize_dialog_state(self) -> None:
+        """Initialize dialog state before building widgets."""
+
+        controller = self.controller
+        self.controller = controller
         self._committed_preferences = controller.current_ui_preferences()
         self._working_preferences = replace(self._committed_preferences)
         self._loading_ui = False
@@ -278,15 +292,27 @@ class SettingsDialog(QDialog):
         self._tree_sync_in_progress = False
         self._pending_full_store_reset = False
 
+    def _configure_dialog_window(self) -> None:
+        """Apply the top-level dialog window configuration."""
+
         self.setWindowTitle("Settings")
         self.resize(1180, 820)
         self.setMinimumSize(1080, 760)
         self.setModal(True)
         self._assign_identity(self, "settings_dialog", "settings.dialog")
 
+    def _build_dialog_layout(self) -> QVBoxLayout:
+        """Build the top-level dialog layout and content scaffold."""
+
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(10)
+        self._build_search_bar(root)
+        self._build_content_host(root)
+        return root
+
+    def _build_search_bar(self, root: QVBoxLayout) -> None:
+        """Build the settings search input."""
 
         self.search_edit = QLineEdit(self)
         self.search_edit.setPlaceholderText("Search settings...")
@@ -297,11 +323,23 @@ class SettingsDialog(QDialog):
         self.search_edit.textChanged.connect(self._apply_search_filter)
         root.addWidget(self.search_edit)
 
+    def _build_content_host(self, root: QVBoxLayout) -> None:
+        """Build the split content area with tree navigation and right pane."""
+
         content_host = QWidget(self)
         content_layout = QHBoxLayout(content_host)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(10)
         root.addWidget(content_host, 1)
+        self._build_section_tree(content_layout, content_host)
+        self._build_right_content(content_layout, content_host)
+
+    def _build_section_tree(
+        self,
+        content_layout: QHBoxLayout,
+        content_host: QWidget,
+    ) -> None:
+        """Build the left-side section tree."""
 
         self._section_tree = QTreeWidget(content_host)
         self._section_tree.setHeaderHidden(True)
@@ -314,11 +352,30 @@ class SettingsDialog(QDialog):
         )
         content_layout.addWidget(self._section_tree, 0)
 
+    def _build_right_content(
+        self,
+        content_layout: QHBoxLayout,
+        content_host: QWidget,
+    ) -> None:
+        """Build the right-side content stack."""
+
         right_host = QWidget(content_host)
         right_layout = QVBoxLayout(right_host)
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(8)
         content_layout.addWidget(right_host, 1)
+        self._build_reset_actions_bar(right_layout, right_host)
+        self._build_scroll_host(right_layout, right_host)
+        self._no_matches_label = QLabel("No settings match your search.", right_host)
+        self._no_matches_label.setVisible(False)
+        right_layout.addWidget(self._no_matches_label)
+
+    def _build_reset_actions_bar(
+        self,
+        right_layout: QVBoxLayout,
+        right_host: QWidget,
+    ) -> None:
+        """Build the reset actions bar shown above the section content."""
 
         self._reset_actions_bar = QWidget(right_host)
         reset_bar_layout = QVBoxLayout(self._reset_actions_bar)
@@ -375,6 +432,13 @@ class SettingsDialog(QDialog):
         reset_bar_layout.addWidget(self.reset_pending_label)
         right_layout.addWidget(self._reset_actions_bar, 0)
 
+    def _build_scroll_host(
+        self,
+        right_layout: QVBoxLayout,
+        right_host: QWidget,
+    ) -> None:
+        """Build the scrollable settings content host."""
+
         self._scroll = QScrollArea(right_host)
         self._scroll.setWidgetResizable(True)
         self._scroll_host = QWidget(self._scroll)
@@ -384,14 +448,8 @@ class SettingsDialog(QDialog):
         self._scroll.setWidget(self._scroll_host)
         right_layout.addWidget(self._scroll, 1)
 
-        self._no_matches_label = QLabel("No settings match your search.", right_host)
-        self._no_matches_label.setVisible(False)
-        right_layout.addWidget(self._no_matches_label)
-
-        self._build_sections()
-        self._load_preferences_into_controls(self._working_preferences)
-        self._apply_search_filter("")
-        self._restore_last_tree_selection()
+    def _build_live_preview_and_buttons(self, root: QVBoxLayout) -> None:
+        """Build the preview timer and dialog button box."""
 
         self._live_preview_timer = QTimer(self)
         self._live_preview_timer.setSingleShot(True)
