@@ -8,6 +8,7 @@ from many_panelz_explorer._operations.backend_options import (
     TeraCopyBackendOptions,
     UnstoppableBackendOptions,
 )
+from many_panelz_explorer._settings import normalize as settings_normalize
 from many_panelz_explorer._settings.manager import SettingsManager
 from many_panelz_explorer._settings.models import UiPreferences
 
@@ -256,6 +257,30 @@ def test_windows_executable_paths_normalize_to_backslashes() -> None:
         assert overrides[".log"]["viewer"] == r"C:\tools\logview.exe"
     finally:
         _restore(settings, before)
+
+
+def test_normalize_file_open_override_mapping_rejects_non_mapping_input() -> None:
+    assert settings_normalize.normalize_file_open_override_mapping([".txt"]) is None
+
+
+def test_normalize_file_open_override_mapping_normalizes_extensions_and_paths() -> None:
+    normalized = settings_normalize.normalize_file_open_override_mapping(
+        {
+            "TXT": {
+                "editor": "C:/tools/editor.exe",
+                "viewer": "C:/tools/viewer.exe",
+            },
+            ".log": "not-a-mapping",
+        }
+    )
+
+    assert normalized == {
+        ".txt": {
+            "editor": r"C:\tools\editor.exe",
+            "viewer": r"C:\tools\viewer.exe",
+        },
+        ".log": {"editor": "", "viewer": ""},
+    }
 
 
 def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFileDialog, QTableWidgetItem
@@ -128,17 +128,17 @@ def load_file_open_overrides(dialog: SettingsDialog, json_text: str) -> None:
     try:
         dialog.file_open_overrides_table.setRowCount(0)
         try:
-            raw = json.loads(str(json_text or "{}"))
+            raw: object = json.loads(str(json_text or "{}"))
         except json.JSONDecodeError:
             raw = {}
-        raw_mapping = string_object_mapping(cast("object", raw))
+        raw_mapping = settings_normalize.normalize_file_open_override_mapping(raw) or {}
         for ext in sorted(raw_mapping.keys(), key=str.casefold):
-            value_mapping = string_object_mapping(raw_mapping.get(ext, {}))
+            value_mapping = raw_mapping.get(ext, {"editor": "", "viewer": ""})
             row = dialog.file_open_overrides_table.rowCount()
             dialog.file_open_overrides_table.insertRow(row)
             ext_item = QTableWidgetItem(normalize_extension(ext))
-            editor_item = QTableWidgetItem(str(value_mapping.get("editor", "")))
-            viewer_item = QTableWidgetItem(str(value_mapping.get("viewer", "")))
+            editor_item = QTableWidgetItem(value_mapping["editor"])
+            viewer_item = QTableWidgetItem(value_mapping["viewer"])
             dialog.file_open_overrides_table.setItem(row, 0, ext_item)
             dialog.file_open_overrides_table.setItem(row, 1, editor_item)
             dialog.file_open_overrides_table.setItem(row, 2, viewer_item)
@@ -150,15 +150,3 @@ def load_file_open_overrides(dialog: SettingsDialog, json_text: str) -> None:
                 ext_item.setToolTip("Extension must look like .txt")
     finally:
         dialog.file_open_overrides_table.blockSignals(False)
-
-
-def string_object_mapping(value: object) -> dict[str, object]:
-    """Normalize a JSON-like mapping to string keys."""
-
-    if not isinstance(value, dict):
-        return {}
-    normalized: dict[str, object] = {}
-    mapping = cast("dict[object, object]", value)
-    for key, item in mapping.items():
-        normalized[str(key)] = item
-    return normalized

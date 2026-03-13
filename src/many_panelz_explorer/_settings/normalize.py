@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 from string import Formatter
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 from threep_commons.fs_paths import (
     normalize_windows_path_text as _normalize_windows_path_text,
@@ -41,6 +41,13 @@ _ALLOWED_STATUS_LABEL_FIELDS = {
     "usage_indicator",
     "free_indicator",
 }
+
+
+class FileOpenOverrideEntry(TypedDict):
+    """Typed editor/viewer override paths for one file extension."""
+
+    editor: str
+    viewer: str
 
 
 def normalize_percent(raw: Any, *, fallback: int) -> int:
@@ -155,24 +162,43 @@ def normalize_overrides_json(raw: Any, *, fallback: str) -> str:
         payload = json.loads(text)
     except json.JSONDecodeError:
         return str(fallback)
-    if not isinstance(payload, dict):
+    normalized = normalize_file_open_override_mapping(payload)
+    if normalized is None:
         return str(fallback)
-    normalized: dict[str, dict[str, str]] = {}
-    for ext, value in cast("dict[str, Any]", payload).items():
+    return json.dumps(normalized, sort_keys=True)
+
+
+def normalize_file_open_override_mapping(
+    raw: object,
+) -> dict[str, FileOpenOverrideEntry] | None:
+    """Normalize a JSON-like override mapping into typed extension entries."""
+
+    source_mapping = _string_object_mapping(raw)
+    if source_mapping is None:
+        return None
+
+    normalized: dict[str, FileOpenOverrideEntry] = {}
+    for ext, value in source_mapping.items():
         ext_text = str(ext or "").strip().lower()
         if not ext_text:
             continue
         if not ext_text.startswith("."):
             ext_text = f".{ext_text}"
-        if isinstance(value, dict):
-            source = cast("dict[str, Any]", value)
-            editor = normalize_windows_path_text(source.get("editor", ""), fallback="")
-            viewer = normalize_windows_path_text(source.get("viewer", ""), fallback="")
-        else:
-            editor = ""
-            viewer = ""
-        normalized[ext_text] = {"editor": editor, "viewer": viewer}
-    return json.dumps(normalized, sort_keys=True)
+        value_mapping = _string_object_mapping(value)
+        if value_mapping is None:
+            normalized[ext_text] = {"editor": "", "viewer": ""}
+            continue
+        normalized[ext_text] = {
+            "editor": normalize_windows_path_text(
+                value_mapping.get("editor", ""),
+                fallback="",
+            ),
+            "viewer": normalize_windows_path_text(
+                value_mapping.get("viewer", ""),
+                fallback="",
+            ),
+        }
+    return normalized
 
 
 def normalize_byte_separator(
@@ -292,3 +318,12 @@ def normalize_external_copymove_structured_options(
     """Normalize persisted external copy-move options into their model."""
 
     return normalize_external_copymove_options(raw)
+
+
+def _string_object_mapping(value: object) -> dict[str, object] | None:
+    """Return a string-key mapping view for JSON-like dictionary input."""
+
+    if not isinstance(value, dict):
+        return None
+    mapping = cast("dict[object, object]", value)
+    return {str(key): item for key, item in mapping.items()}
