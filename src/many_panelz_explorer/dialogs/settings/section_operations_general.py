@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 
 from ..._settings.manager import SettingsManager
 from ...constants import APP_DISPLAY_NAME, APP_VERSION
+from . import control_builders, open_overrides_controls
 from .section_structure import add_row
 
 if TYPE_CHECKING:
@@ -246,7 +247,8 @@ def build_operation_open_tools_rows(
     """Build default open-tool and extension-override rows."""
 
     dialog.default_editor_executable_edit = QLineEdit(dialog)
-    default_editor_controls = dialog.build_path_controls(
+    default_editor_controls = control_builders.build_path_controls(
+        dialog,
         executable_edit=dialog.default_editor_executable_edit,
         default_executable=SettingsManager.DEFAULT_DEFAULT_EDITOR_EXECUTABLE,
     )
@@ -263,7 +265,8 @@ def build_operation_open_tools_rows(
     )
 
     dialog.default_viewer_executable_edit = QLineEdit(dialog)
-    default_viewer_controls = dialog.build_path_controls(
+    default_viewer_controls = control_builders.build_path_controls(
+        dialog,
         executable_edit=dialog.default_viewer_executable_edit,
         default_executable=SettingsManager.DEFAULT_DEFAULT_VIEWER_EXECUTABLE,
     )
@@ -282,7 +285,8 @@ def build_operation_open_tools_rows(
 
     dialog.context_code_editor_executable_edit = QLineEdit(dialog)
     dialog.context_code_editor_args_edit = QLineEdit(dialog)
-    context_code_editor_controls = dialog.build_command_controls(
+    context_code_editor_controls = control_builders.build_command_controls(
+        dialog,
         executable_edit=dialog.context_code_editor_executable_edit,
         args_edit=dialog.context_code_editor_args_edit,
         default_executable=SettingsManager.DEFAULT_CONTEXT_TOOL_CODE_EDITOR_EXE_PATH,
@@ -304,7 +308,8 @@ def build_operation_open_tools_rows(
 
     dialog.context_git_gui_executable_edit = QLineEdit(dialog)
     dialog.context_git_gui_args_edit = QLineEdit(dialog)
-    context_git_gui_controls = dialog.build_command_controls(
+    context_git_gui_controls = control_builders.build_command_controls(
+        dialog,
         executable_edit=dialog.context_git_gui_executable_edit,
         args_edit=dialog.context_git_gui_args_edit,
         default_executable=SettingsManager.DEFAULT_CONTEXT_TOOL_GIT_GUI_EXE_PATH,
@@ -343,7 +348,9 @@ def build_operation_open_tools_rows(
         dialog.on_file_open_overrides_item_changed
     )
     dialog.file_open_overrides_table.setMinimumHeight(150)
-    overrides_controls = dialog.build_file_open_overrides_controls()
+    overrides_controls = open_overrides_controls.build_file_open_overrides_controls(
+        dialog
+    )
     add_row(
         dialog,
         section=open_tools_group,

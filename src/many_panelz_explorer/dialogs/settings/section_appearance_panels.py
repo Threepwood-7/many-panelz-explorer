@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
 )
 
+from . import control_builders
 from .section_models import FontSizeSpinBox, SubsectionEntry
 from .section_structure import add_row
 
@@ -434,7 +435,8 @@ def build_byte_separator_row(
     dialog.byte_decimal_separator_edit.setToolTip("Decimal separator")
     dialog.byte_decimal_separator_edit.textChanged.connect(dialog.on_controls_changed)
 
-    byte_separators_controls = dialog.build_dual_text_controls(
+    byte_separators_controls = control_builders.build_dual_text_controls(
+        dialog,
         first_label="Thousands",
         first_edit=dialog.byte_thousands_separator_edit,
         second_label="Decimal",

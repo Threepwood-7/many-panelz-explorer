@@ -34,12 +34,8 @@ from .settings import (
     FontSizeSpinBox,
     SectionEntry,
     SubsectionEntry,
-    backend_cards_external,
-    backend_cards_transfer,
     backend_state,
     build_sections,
-    control_builders,
-    open_overrides_controls,
     open_overrides_state,
     preferences_flow,
     preferences_sync,
@@ -47,8 +43,6 @@ from .settings import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from .._settings.models import UiPreferences
     from ..app_controller import AppController
 
@@ -485,116 +479,6 @@ class SettingsDialog(QDialog):
         cancel_button.clicked.connect(self.reject)
         root.addWidget(self._button_box)
 
-    def build_command_controls(
-        self,
-        *,
-        executable_edit: QLineEdit,
-        args_edit: QLineEdit,
-        default_executable: str,
-        default_args: str,
-        discover_default_executable: str,
-        enable_find: bool = True,
-        extended_paths_checkbox: QCheckBox | None = None,
-        test_button: QPushButton | None = None,
-        on_test: Callable[[], None] | None = None,
-    ) -> QWidget:
-        return control_builders.build_command_controls(
-            self,
-            executable_edit=executable_edit,
-            args_edit=args_edit,
-            default_executable=default_executable,
-            default_args=default_args,
-            discover_default_executable=discover_default_executable,
-            enable_find=enable_find,
-            extended_paths_checkbox=extended_paths_checkbox,
-            test_button=test_button,
-            on_test=on_test,
-        )
-
-    def build_path_controls(
-        self,
-        *,
-        executable_edit: QLineEdit,
-        default_executable: str,
-    ) -> QWidget:
-        return control_builders.build_path_controls(
-            self,
-            executable_edit=executable_edit,
-            default_executable=default_executable,
-        )
-
-    def build_dual_text_controls(
-        self,
-        *,
-        first_label: str,
-        first_edit: QLineEdit,
-        second_label: str,
-        second_edit: QLineEdit,
-    ) -> QWidget:
-        return control_builders.build_dual_text_controls(
-            self,
-            first_label=first_label,
-            first_edit=first_edit,
-            second_label=second_label,
-            second_edit=second_edit,
-        )
-
-    def _build_robocopy_controls(
-        self,
-        *,
-        first_label: str,
-        first_edit: QLineEdit,
-        second_label: str,
-        second_edit: QLineEdit,
-        extended_paths_checkbox: QCheckBox,
-        test_button: QPushButton,
-    ) -> QWidget:
-        return control_builders.build_robocopy_controls(
-            self,
-            first_label=first_label,
-            first_edit=first_edit,
-            second_label=second_label,
-            second_edit=second_edit,
-            extended_paths_checkbox=extended_paths_checkbox,
-            test_button=test_button,
-        )
-
-    def build_delete_shell_controls(
-        self,
-        *,
-        first_label: str,
-        first_edit: QLineEdit,
-        second_label: str,
-        second_edit: QLineEdit,
-        cmd_extended_paths_checkbox: QCheckBox,
-        powershell_extended_paths_checkbox: QCheckBox,
-        cmd_test_button: QPushButton,
-        powershell_test_button: QPushButton,
-    ) -> QWidget:
-        return control_builders.build_delete_shell_controls(
-            self,
-            first_label=first_label,
-            first_edit=first_edit,
-            second_label=second_label,
-            second_edit=second_edit,
-            cmd_extended_paths_checkbox=cmd_extended_paths_checkbox,
-            powershell_extended_paths_checkbox=powershell_extended_paths_checkbox,
-            cmd_test_button=cmd_test_button,
-            powershell_test_button=powershell_test_button,
-        )
-
-    def build_robocopy_settings_card(self) -> QWidget:
-        return backend_cards_transfer.build_robocopy_settings_card(self)
-
-    def build_teracopy_settings_card(self) -> QWidget:
-        return backend_cards_transfer.build_teracopy_settings_card(self)
-
-    def build_unstoppable_settings_card(self) -> QWidget:
-        return backend_cards_external.build_unstoppable_settings_card(self)
-
-    def build_external_copymove_settings_card(self) -> QWidget:
-        return backend_cards_external.build_external_copymove_settings_card(self)
-
     def on_teracopy_struct_close_toggled(self, checked: bool) -> None:
         if checked and self.teracopy_struct_keep_open_checkbox.isChecked():
             with QSignalBlocker(self.teracopy_struct_keep_open_checkbox):
@@ -621,9 +505,6 @@ class SettingsDialog(QDialog):
 
     def update_backend_generated_previews(self) -> None:
         backend_state.update_backend_generated_previews(self)
-
-    def build_file_open_overrides_controls(self) -> QWidget:
-        return open_overrides_controls.build_file_open_overrides_controls(self)
 
     def add_file_open_override_row(self) -> None:
         open_overrides_state.add_file_open_override_row(self)

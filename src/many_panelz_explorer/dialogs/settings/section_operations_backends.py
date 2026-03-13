@@ -8,7 +8,12 @@ from PySide6.QtWidgets import QCheckBox, QLineEdit, QPushButton
 
 from ..._operations.types import DEFAULT_RIMRAF_EXE
 from ..._settings.manager import SettingsManager
-from . import backend_actions
+from . import (
+    backend_actions,
+    backend_cards_external,
+    backend_cards_transfer,
+    control_builders,
+)
 from .section_structure import add_row
 
 if TYPE_CHECKING:
@@ -99,7 +104,7 @@ def build_copy_move_backend_rows(
         "Reset Backend Defaults",
         dialog,
     )
-    teracopy_controls = dialog.build_teracopy_settings_card()
+    teracopy_controls = backend_cards_transfer.build_teracopy_settings_card(dialog)
     add_row(
         dialog,
         section=backend_commands_group,
@@ -121,7 +126,9 @@ def build_copy_move_backend_rows(
         "Reset Backend Defaults",
         dialog,
     )
-    unstoppable_controls = dialog.build_unstoppable_settings_card()
+    unstoppable_controls = backend_cards_external.build_unstoppable_settings_card(
+        dialog
+    )
     add_row(
         dialog,
         section=backend_commands_group,
@@ -145,7 +152,9 @@ def build_copy_move_backend_rows(
         "Reset Backend Defaults",
         dialog,
     )
-    generic_copymove_controls = dialog.build_external_copymove_settings_card()
+    generic_copymove_controls = (
+        backend_cards_external.build_external_copymove_settings_card(dialog)
+    )
     add_row(
         dialog,
         section=backend_commands_group,
@@ -168,7 +177,7 @@ def build_copy_move_backend_rows(
         "Reset Backend Defaults",
         dialog,
     )
-    robocopy_args_controls = dialog.build_robocopy_settings_card()
+    robocopy_args_controls = backend_cards_transfer.build_robocopy_settings_card(dialog)
     add_row(
         dialog,
         section=backend_args_group,
@@ -197,7 +206,8 @@ def build_delete_backend_rows(
     dialog.generic_delete_executable_edit = QLineEdit(dialog)
     dialog.generic_delete_args_edit = QLineEdit(dialog)
     dialog.generic_delete_test_btn = QPushButton("Test", dialog)
-    generic_delete_controls = dialog.build_command_controls(
+    generic_delete_controls = control_builders.build_command_controls(
+        dialog,
         executable_edit=dialog.generic_delete_executable_edit,
         args_edit=dialog.generic_delete_args_edit,
         default_executable=SettingsManager.DEFAULT_GENERIC_DELETE_EXECUTABLE,
@@ -230,7 +240,8 @@ def build_delete_backend_rows(
     dialog.powershell_delete_args_edit.textChanged.connect(dialog.on_controls_changed)
     dialog.cmd_delete_test_btn = QPushButton("Test cmd", dialog)
     dialog.powershell_delete_test_btn = QPushButton("Test PowerShell", dialog)
-    delete_shell_args_controls = dialog.build_delete_shell_controls(
+    delete_shell_args_controls = control_builders.build_delete_shell_controls(
+        dialog,
         first_label="cmd Args",
         first_edit=dialog.cmd_delete_args_edit,
         second_label="PowerShell Args",
@@ -253,7 +264,8 @@ def build_delete_backend_rows(
     dialog.rimraf_executable_edit = QLineEdit(dialog)
     dialog.rimraf_args_edit = QLineEdit(dialog)
     dialog.rimraf_test_btn = QPushButton("Test", dialog)
-    rimraf_controls = dialog.build_command_controls(
+    rimraf_controls = control_builders.build_command_controls(
+        dialog,
         executable_edit=dialog.rimraf_executable_edit,
         args_edit=dialog.rimraf_args_edit,
         default_executable=SettingsManager.DEFAULT_RIMRAF_EXECUTABLE,
