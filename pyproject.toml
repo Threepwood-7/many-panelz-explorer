@@ -115,8 +115,6 @@ select = [
   "TCH",
   "RUF",
 ]
-external = ["C901"]
-ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["S101", "S105", "S106"]
@@ -193,8 +191,6 @@ known_first_party = ["many_panelz_explorer", "_common"]
 pythonVersion = "3.13"
 pythonPlatform = "All"
 typeCheckingMode = "strict"
-venvPath = "."
-venv = ".venv"
 include = ["src"]
 exclude = ["tests", "**/__pycache__"]
 

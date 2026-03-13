@@ -345,10 +345,24 @@ class ContextMenuController(QObject):
             action = state.menu.addAction(f"Run: {entry.label}")
             action.setToolTip(entry.command)
             action.triggered.connect(
-                lambda _checked=False, mode=state.mode_key, path=state.root_path, cmd=entry.command: (
-                    self._run_script(mode, path, cmd)
+                self._script_trigger_callback(
+                    mode=state.mode_key,
+                    root_path=state.root_path,
+                    command=entry.command,
                 )
             )
+
+    def _script_trigger_callback(
+        self,
+        *,
+        mode: str,
+        root_path: Path,
+        command: str,
+    ) -> Callable[[bool], None]:
+        def _trigger(_checked: bool = False) -> None:
+            self._run_script(mode, root_path, command)
+
+        return _trigger
 
     def _run_script(self, mode: str, root_path: Path, command: str) -> None:
         resolved_command = str(command).strip()
