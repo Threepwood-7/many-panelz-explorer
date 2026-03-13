@@ -34,7 +34,6 @@ from .settings import (
     FontSizeSpinBox,
     SectionEntry,
     SubsectionEntry,
-    backend_actions,
     backend_cards_external,
     backend_cards_transfer,
     backend_state,
@@ -50,13 +49,6 @@ from .settings import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from .._operations.backend_options import (
-        ExternalCopyMoveBackendOptions,
-        RobocopyBackendOptions,
-        TeraCopyBackendOptions,
-        UnstoppableBackendOptions,
-    )
-    from .._operations.types import OperationKind
     from .._settings.models import UiPreferences
     from ..app_controller import AppController
 
@@ -615,45 +607,6 @@ class SettingsDialog(QDialog):
                 self.teracopy_struct_close_checkbox.setChecked(False)
         self._on_controls_changed()
 
-    def _robocopy_structured_options_from_controls(self) -> RobocopyBackendOptions:
-        return backend_state.robocopy_structured_options_from_controls(self)
-
-    def _teracopy_structured_options_from_controls(self) -> TeraCopyBackendOptions:
-        return backend_state.teracopy_structured_options_from_controls(self)
-
-    def _unstoppable_structured_options_from_controls(
-        self,
-    ) -> UnstoppableBackendOptions:
-        return backend_state.unstoppable_structured_options_from_controls(self)
-
-    def _external_copymove_structured_options_from_controls(
-        self,
-    ) -> ExternalCopyMoveBackendOptions:
-        return backend_state.external_copymove_structured_options_from_controls(self)
-
-    def _apply_robocopy_structured_options_to_controls(
-        self, options: RobocopyBackendOptions
-    ) -> None:
-        backend_state.apply_robocopy_structured_options_to_controls(self, options)
-
-    def _apply_teracopy_structured_options_to_controls(
-        self, options: TeraCopyBackendOptions
-    ) -> None:
-        backend_state.apply_teracopy_structured_options_to_controls(self, options)
-
-    def _apply_unstoppable_structured_options_to_controls(
-        self, options: UnstoppableBackendOptions
-    ) -> None:
-        backend_state.apply_unstoppable_structured_options_to_controls(self, options)
-
-    def _apply_external_copymove_structured_options_to_controls(
-        self, options: ExternalCopyMoveBackendOptions
-    ) -> None:
-        backend_state.apply_external_copymove_structured_options_to_controls(
-            self,
-            options,
-        )
-
     def reset_robocopy_backend_defaults(self) -> None:
         backend_state.reset_robocopy_backend_defaults(self)
 
@@ -820,78 +773,10 @@ class SettingsDialog(QDialog):
 
         preferences_flow.on_reset_all_everything_stored(self)
 
-    def browse_executable(self, edit: QLineEdit) -> None:
-        backend_actions.browse_executable(self, edit)
-
-    def find_executable(self, edit: QLineEdit, *, default_executable: str) -> None:
-        backend_actions.find_executable(
-            self,
-            edit,
-            default_executable=default_executable,
-        )
-
-    def reset_command_controls(
-        self,
-        executable_edit: QLineEdit,
-        args_edit: QLineEdit,
-        *,
-        default_executable: str,
-        default_args: str,
-    ) -> None:
-        backend_actions.reset_command_controls(
-            self,
-            executable_edit,
-            args_edit,
-            default_executable=default_executable,
-            default_args=default_args,
-        )
-
-    def test_backend(self, kind: OperationKind, backend_id: str) -> None:
-        backend_actions.test_backend(self, kind, backend_id)
-
     def update_reset_controls(self) -> None:
         """Refresh the reset-action UI for the active section."""
 
         preferences_flow.update_reset_controls(self)
-
-    def robocopy_structured_options_from_controls(self) -> RobocopyBackendOptions:
-        return self._robocopy_structured_options_from_controls()
-
-    def teracopy_structured_options_from_controls(self) -> TeraCopyBackendOptions:
-        return self._teracopy_structured_options_from_controls()
-
-    def unstoppable_structured_options_from_controls(
-        self,
-    ) -> UnstoppableBackendOptions:
-        return self._unstoppable_structured_options_from_controls()
-
-    def external_copymove_structured_options_from_controls(
-        self,
-    ) -> ExternalCopyMoveBackendOptions:
-        return self._external_copymove_structured_options_from_controls()
-
-    def apply_robocopy_structured_options_to_controls(
-        self, options: RobocopyBackendOptions
-    ) -> None:
-        self._apply_robocopy_structured_options_to_controls(options)
-
-    def apply_teracopy_structured_options_to_controls(
-        self, options: TeraCopyBackendOptions
-    ) -> None:
-        self._apply_teracopy_structured_options_to_controls(options)
-
-    def apply_unstoppable_structured_options_to_controls(
-        self, options: UnstoppableBackendOptions
-    ) -> None:
-        self._apply_unstoppable_structured_options_to_controls(options)
-
-    def apply_external_copymove_structured_options_to_controls(
-        self, options: ExternalCopyMoveBackendOptions
-    ) -> None:
-        self._apply_external_copymove_structured_options_to_controls(options)
-
-    def serialize_file_open_overrides(self) -> str:
-        return open_overrides_state.serialize_file_open_overrides(self)
 
     def new_font_family_combo(
         self, *, include_base_option: bool, base_label: str

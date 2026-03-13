@@ -179,7 +179,11 @@ def _build_unstoppable_actions(
         dialog.reset_unstoppable_backend_defaults
     )
     dialog.unstoppable_test_btn.clicked.connect(
-        lambda: dialog.test_backend("copy", "unstoppable")
+        lambda: control_builders.backend_actions.test_backend(
+            dialog,
+            "copy",
+            "unstoppable",
+        )
     )
     actions_layout.addWidget(dialog.unstoppable_reset_backend_btn)
     actions_layout.addWidget(dialog.unstoppable_test_btn)
@@ -271,7 +275,11 @@ def build_external_copymove_settings_card(dialog: SettingsDialog) -> QWidget:
         dialog.reset_external_copymove_backend_defaults
     )
     dialog.generic_copymove_test_btn.clicked.connect(
-        lambda: dialog.test_backend("copy", "external_copymove")
+        lambda: control_builders.backend_actions.test_backend(
+            dialog,
+            "copy",
+            "external_copymove",
+        )
     )
     actions_layout.addWidget(dialog.external_copymove_reset_backend_btn)
     actions_layout.addWidget(dialog.generic_copymove_test_btn)

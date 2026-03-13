@@ -1102,7 +1102,9 @@ def test_settings_dialog_browse_normalizes_windows_executable_paths(
         ),
     )
 
-    dialog.browse_executable(dialog.unstoppable_executable_edit)
+    from many_panelz_explorer.dialogs.settings import backend_actions
+
+    backend_actions.browse_executable(dialog, dialog.unstoppable_executable_edit)
 
     assert (
         dialog.unstoppable_executable_edit.text()

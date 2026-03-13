@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt
 
 from ..._operations.discovery import resolve_system_command_paths
 from ..._settings.models import UiPreferences
-from . import open_overrides_state
+from . import backend_state, open_overrides_state
 
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QLabel
@@ -170,17 +170,17 @@ def load_operations_preferences(
     )
     dialog.generic_delete_executable_edit.setText(preferences.generic_delete_executable)
     dialog.generic_delete_args_edit.setText(preferences.generic_delete_args_template)
-    dialog.apply_robocopy_structured_options_to_controls(
-        preferences.robocopy_structured_options
+    backend_state.apply_robocopy_structured_options_to_controls(
+        dialog, preferences.robocopy_structured_options
     )
-    dialog.apply_teracopy_structured_options_to_controls(
-        preferences.teracopy_structured_options
+    backend_state.apply_teracopy_structured_options_to_controls(
+        dialog, preferences.teracopy_structured_options
     )
-    dialog.apply_unstoppable_structured_options_to_controls(
-        preferences.unstoppable_structured_options
+    backend_state.apply_unstoppable_structured_options_to_controls(
+        dialog, preferences.unstoppable_structured_options
     )
-    dialog.apply_external_copymove_structured_options_to_controls(
-        preferences.external_copymove_structured_options
+    backend_state.apply_external_copymove_structured_options_to_controls(
+        dialog, preferences.external_copymove_structured_options
     )
     dialog.cmd_delete_args_edit.setText(preferences.cmd_delete_args)
     dialog.powershell_delete_args_edit.setText(preferences.powershell_delete_args)
@@ -302,11 +302,17 @@ def collect_preferences_from_controls(dialog: SettingsDialog) -> UiPreferences:
         generic_copymove_executable=dialog.generic_copymove_executable_edit.text().strip(),
         generic_delete_executable=dialog.generic_delete_executable_edit.text().strip(),
         generic_delete_args_template=dialog.generic_delete_args_edit.text().strip(),
-        robocopy_structured_options=dialog.robocopy_structured_options_from_controls(),
-        teracopy_structured_options=dialog.teracopy_structured_options_from_controls(),
-        unstoppable_structured_options=dialog.unstoppable_structured_options_from_controls(),
+        robocopy_structured_options=backend_state.robocopy_structured_options_from_controls(
+            dialog
+        ),
+        teracopy_structured_options=backend_state.teracopy_structured_options_from_controls(
+            dialog
+        ),
+        unstoppable_structured_options=backend_state.unstoppable_structured_options_from_controls(
+            dialog
+        ),
         external_copymove_structured_options=(
-            dialog.external_copymove_structured_options_from_controls()
+            backend_state.external_copymove_structured_options_from_controls(dialog)
         ),
         cmd_delete_args=dialog.cmd_delete_args_edit.text().strip(),
         powershell_delete_args=dialog.powershell_delete_args_edit.text().strip(),

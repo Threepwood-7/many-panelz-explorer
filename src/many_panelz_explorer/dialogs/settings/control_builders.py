@@ -22,6 +22,8 @@ if TYPE_CHECKING:
 
     from ..settings_dialog import SettingsDialog
 
+from . import backend_actions
+
 
 def build_command_controls(
     dialog: SettingsDialog,
@@ -57,15 +59,19 @@ def build_command_controls(
     reset_btn = QPushButton("Reset", host)
     find_btn.setEnabled(bool(enable_find and discover_default_executable))
 
-    browse_btn.clicked.connect(lambda: dialog.browse_executable(executable_edit))
+    browse_btn.clicked.connect(
+        lambda: backend_actions.browse_executable(dialog, executable_edit)
+    )
     find_btn.clicked.connect(
-        lambda: dialog.find_executable(
+        lambda: backend_actions.find_executable(
+            dialog,
             executable_edit,
             default_executable=discover_default_executable,
         )
     )
     reset_btn.clicked.connect(
-        lambda: dialog.reset_command_controls(
+        lambda: backend_actions.reset_command_controls(
+            dialog,
             executable_edit,
             args_edit,
             default_executable=default_executable,
@@ -121,7 +127,9 @@ def build_path_controls(
     exe_label = QLabel("Executable", host)
     browse_btn = QPushButton("Browse...", host)
     reset_btn = QPushButton("Reset", host)
-    browse_btn.clicked.connect(lambda: dialog.browse_executable(executable_edit))
+    browse_btn.clicked.connect(
+        lambda: backend_actions.browse_executable(dialog, executable_edit)
+    )
     reset_btn.clicked.connect(lambda: executable_edit.setText(default_executable))
     actions = QWidget(host)
     actions_layout = QHBoxLayout(actions)
@@ -166,9 +174,12 @@ def build_backend_executable_controls(
     find_btn = QPushButton("Find", actions)
     find_btn.setEnabled(bool(enable_find and discover_default_executable))
     reset_btn = QPushButton("Reset", actions)
-    browse_btn.clicked.connect(lambda: dialog.browse_executable(executable_edit))
+    browse_btn.clicked.connect(
+        lambda: backend_actions.browse_executable(dialog, executable_edit)
+    )
     find_btn.clicked.connect(
-        lambda: dialog.find_executable(
+        lambda: backend_actions.find_executable(
+            dialog,
             executable_edit,
             default_executable=discover_default_executable,
         )
@@ -251,7 +262,9 @@ def build_robocopy_controls(
     actions_layout.setSpacing(8)
     actions_layout.addStretch(1)
     actions_layout.addWidget(test_button)
-    test_button.clicked.connect(lambda: dialog.test_backend("copy", "robocopy"))
+    test_button.clicked.connect(
+        lambda: backend_actions.test_backend(dialog, "copy", "robocopy")
+    )
     layout.addWidget(actions)
     return host
 
@@ -288,9 +301,11 @@ def build_delete_shell_controls(
     actions_layout.addStretch(1)
     actions_layout.addWidget(cmd_test_button)
     actions_layout.addWidget(powershell_test_button)
-    cmd_test_button.clicked.connect(lambda: dialog.test_backend("delete", "cmd_delete"))
+    cmd_test_button.clicked.connect(
+        lambda: backend_actions.test_backend(dialog, "delete", "cmd_delete")
+    )
     powershell_test_button.clicked.connect(
-        lambda: dialog.test_backend("delete", "powershell_delete")
+        lambda: backend_actions.test_backend(dialog, "delete", "powershell_delete")
     )
     layout.addWidget(actions, 4, 1)
     layout.setColumnStretch(1, 1)

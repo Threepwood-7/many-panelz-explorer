@@ -128,7 +128,11 @@ def build_robocopy_settings_card(dialog: SettingsDialog) -> QWidget:
         dialog.reset_robocopy_backend_defaults
     )
     dialog.robocopy_test_btn.clicked.connect(
-        lambda: dialog.test_backend("copy", "robocopy")
+        lambda: control_builders.backend_actions.test_backend(
+            dialog,
+            "copy",
+            "robocopy",
+        )
     )
     actions_layout.addWidget(dialog.robocopy_reset_backend_btn)
     actions_layout.addWidget(dialog.robocopy_test_btn)
@@ -238,7 +242,11 @@ def build_teracopy_settings_card(dialog: SettingsDialog) -> QWidget:
         dialog.reset_teracopy_backend_defaults
     )
     dialog.teracopy_test_btn.clicked.connect(
-        lambda: dialog.test_backend("copy", "teracopy")
+        lambda: control_builders.backend_actions.test_backend(
+            dialog,
+            "copy",
+            "teracopy",
+        )
     )
     actions_layout.addWidget(dialog.teracopy_reset_backend_btn)
     actions_layout.addWidget(dialog.teracopy_test_btn)

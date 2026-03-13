@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QCheckBox, QLineEdit, QPushButton
 
 from ..._operations.types import DEFAULT_RIMRAF_EXE
 from ..._settings.manager import SettingsManager
+from . import backend_actions
 from .section_structure import add_row
 
 if TYPE_CHECKING:
@@ -205,7 +206,11 @@ def build_delete_backend_rows(
         enable_find=False,
         extended_paths_checkbox=dialog.use_extended_paths_external_delete_checkbox,
         test_button=dialog.generic_delete_test_btn,
-        on_test=lambda: dialog.test_backend("delete", "external_delete"),
+        on_test=lambda: backend_actions.test_backend(
+            dialog,
+            "delete",
+            "external_delete",
+        ),
     )
     add_row(
         dialog,
@@ -256,7 +261,7 @@ def build_delete_backend_rows(
         discover_default_executable=DEFAULT_RIMRAF_EXE,
         extended_paths_checkbox=dialog.use_extended_paths_rimraf_checkbox,
         test_button=dialog.rimraf_test_btn,
-        on_test=lambda: dialog.test_backend("delete", "rimraf"),
+        on_test=lambda: backend_actions.test_backend(dialog, "delete", "rimraf"),
     )
     add_row(
         dialog,
