@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import replace
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import TYPE_CHECKING, ClassVar
 
-from PySide6.QtCore import QSignalBlocker, Qt, QTimer
+from PySide6.QtCore import QSignalBlocker, QTimer
 from PySide6.QtGui import QColor, QFontDatabase
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -15,8 +14,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QFileDialog,
-    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -33,7 +30,6 @@ from PySide6.QtWidgets import (
 )
 from threep_commons.qt.widget_identity import assign_widget_identity
 
-from .._settings import normalize as settings_normalize
 from .settings import (
     FontSizeSpinBox,
     SectionEntry,
@@ -45,6 +41,7 @@ from .settings import (
     build_sections,
     control_builders,
     open_overrides_controls,
+    open_overrides_state,
     preferences_flow,
     preferences_sync,
     tree_navigation,
@@ -62,16 +59,6 @@ if TYPE_CHECKING:
     from .._operations.types import OperationKind
     from .._settings.models import UiPreferences
     from ..app_controller import AppController
-
-
-def _string_object_mapping(value: object) -> dict[str, object]:
-    if not isinstance(value, dict):
-        return {}
-    normalized: dict[str, object] = {}
-    mapping = cast("dict[object, object]", value)
-    for key, item in mapping.items():
-        normalized[str(key)] = item
-    return normalized
 
 
 class SettingsDialog(QDialog):
@@ -604,54 +591,6 @@ class SettingsDialog(QDialog):
             powershell_test_button=powershell_test_button,
         )
 
-    def build_backend_executable_controls(
-        self,
-        *,
-        executable_edit: QLineEdit,
-        default_executable: str,
-        discover_default_executable: str,
-        enable_find: bool = True,
-    ) -> QWidget:
-        executable_edit.textChanged.connect(self._on_controls_changed)
-        host = QWidget(self)
-        layout = QGridLayout(host)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setHorizontalSpacing(8)
-        layout.setVerticalSpacing(6)
-        layout.addWidget(QLabel("Executable", host), 0, 0)
-        layout.addWidget(executable_edit, 0, 1)
-
-        actions = QWidget(host)
-        actions_layout = QHBoxLayout(actions)
-        actions_layout.setContentsMargins(0, 0, 0, 0)
-        actions_layout.setSpacing(8)
-        browse_btn = QPushButton("Browse...", actions)
-        find_btn = QPushButton("Find", actions)
-        find_btn.setEnabled(bool(enable_find and discover_default_executable))
-        reset_btn = QPushButton("Reset", actions)
-        browse_btn.clicked.connect(lambda: self.browse_executable(executable_edit))
-        find_btn.clicked.connect(
-            lambda: self.find_executable(
-                executable_edit,
-                default_executable=discover_default_executable,
-            )
-        )
-        reset_btn.clicked.connect(lambda: executable_edit.setText(default_executable))
-        actions_layout.addStretch(1)
-        actions_layout.addWidget(browse_btn)
-        actions_layout.addWidget(find_btn)
-        actions_layout.addWidget(reset_btn)
-        layout.addWidget(actions, 1, 1)
-        layout.setColumnStretch(1, 1)
-        return host
-
-    def build_preview_label(self) -> QLabel:
-        label = QLabel(self)
-        label.setTextFormat(Qt.TextFormat.PlainText)
-        label.setWordWrap(True)
-        label.setStyleSheet("color: #444;")
-        return label
-
     def build_robocopy_settings_card(self) -> QWidget:
         return backend_cards_transfer.build_robocopy_settings_card(self)
 
@@ -734,114 +673,16 @@ class SettingsDialog(QDialog):
         return open_overrides_controls.build_file_open_overrides_controls(self)
 
     def add_file_open_override_row(self) -> None:
-        row = self.file_open_overrides_table.rowCount()
-        self.file_open_overrides_table.insertRow(row)
-        self.file_open_overrides_table.setItem(row, 0, QTableWidgetItem(".ext"))
-        self.file_open_overrides_table.setItem(row, 1, QTableWidgetItem(""))
-        self.file_open_overrides_table.setItem(row, 2, QTableWidgetItem(""))
-        self.file_open_overrides_table.selectRow(row)
-        self._on_controls_changed()
+        open_overrides_state.add_file_open_override_row(self)
 
     def remove_file_open_override_row(self) -> None:
-        current = self.file_open_overrides_table.currentRow()
-        if current < 0:
-            return
-        self.file_open_overrides_table.removeRow(current)
-        self._on_controls_changed()
+        open_overrides_state.remove_file_open_override_row(self)
 
     def browse_file_open_override_executable(self, column: int) -> None:
-        current = self.file_open_overrides_table.currentRow()
-        if current < 0:
-            return
-        selected, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Executable",
-            str(Path.home()),
-            "Executable Files (*.exe *.cmd *.bat);;All Files (*.*)",
-        )
-        if not selected:
-            return
-        item = self.file_open_overrides_table.item(current, column)
-        if item is None:
-            item = QTableWidgetItem("")
-            self.file_open_overrides_table.setItem(current, column, item)
-        item.setText(
-            settings_normalize.normalize_windows_path_text(selected, fallback="")
-        )
-        self._on_controls_changed()
-
-    def _is_valid_extension(self, text: str) -> bool:
-        value = str(text or "").strip()
-        if not value:
-            return False
-        if not value.startswith("."):
-            return False
-        return len(value) > 1 and " " not in value
-
-    def _normalize_extension(self, text: str) -> str:
-        value = str(text or "").strip().lower()
-        if not value:
-            return ""
-        if not value.startswith("."):
-            value = f".{value}"
-        return value
+        open_overrides_state.browse_file_open_override_executable(self, column)
 
     def on_file_open_overrides_item_changed(self, item: QTableWidgetItem) -> None:
-        if item.column() == 0:
-            ext = self._normalize_extension(item.text())
-            if item.text() != ext:
-                item.setText(ext)
-                return
-            if self._is_valid_extension(ext):
-                item.setBackground(Qt.GlobalColor.transparent)
-                item.setToolTip("")
-            else:
-                item.setBackground(Qt.GlobalColor.red)
-                item.setToolTip("Extension must look like .txt")
-        self._on_controls_changed()
-
-    def _serialize_file_open_overrides(self) -> str:
-        payload: dict[str, dict[str, str]] = {}
-        for row in range(self.file_open_overrides_table.rowCount()):
-            ext_item = self.file_open_overrides_table.item(row, 0)
-            editor_item = self.file_open_overrides_table.item(row, 1)
-            viewer_item = self.file_open_overrides_table.item(row, 2)
-            ext = self._normalize_extension(ext_item.text() if ext_item else "")
-            if not self._is_valid_extension(ext):
-                continue
-            payload[ext] = {
-                "editor": (editor_item.text() if editor_item else "").strip(),
-                "viewer": (viewer_item.text() if viewer_item else "").strip(),
-            }
-        return json.dumps(payload, sort_keys=True)
-
-    def _load_file_open_overrides(self, json_text: str) -> None:
-        self.file_open_overrides_table.blockSignals(True)
-        try:
-            self.file_open_overrides_table.setRowCount(0)
-            try:
-                raw = json.loads(str(json_text or "{}"))
-            except json.JSONDecodeError:
-                raw = {}
-            raw_mapping = _string_object_mapping(cast("object", raw))
-            for ext in sorted(raw_mapping.keys(), key=str.casefold):
-                value_mapping = _string_object_mapping(raw_mapping.get(ext, {}))
-                row = self.file_open_overrides_table.rowCount()
-                self.file_open_overrides_table.insertRow(row)
-                ext_item = QTableWidgetItem(self._normalize_extension(ext))
-                editor_item = QTableWidgetItem(str(value_mapping.get("editor", "")))
-                viewer_item = QTableWidgetItem(str(value_mapping.get("viewer", "")))
-                self.file_open_overrides_table.setItem(row, 0, ext_item)
-                self.file_open_overrides_table.setItem(row, 1, editor_item)
-                self.file_open_overrides_table.setItem(row, 2, viewer_item)
-                if self._is_valid_extension(ext_item.text()):
-                    ext_item.setBackground(Qt.GlobalColor.transparent)
-                    ext_item.setToolTip("")
-                else:
-                    ext_item.setBackground(Qt.GlobalColor.red)
-                    ext_item.setToolTip("Extension must look like .txt")
-        finally:
-            self.file_open_overrides_table.blockSignals(False)
+        open_overrides_state.on_file_open_overrides_item_changed(self, item)
 
     @property
     def active_color_hex(self) -> str:
@@ -941,6 +782,12 @@ class SettingsDialog(QDialog):
 
         return self._scroll
 
+    @property
+    def home_directory(self) -> str:
+        """Return the home directory used for browse dialogs."""
+
+        return str(Path.home())
+
     def on_controls_changed(self) -> None:
         self._on_controls_changed()
 
@@ -962,9 +809,6 @@ class SettingsDialog(QDialog):
         """Populate dialog controls from a preferences snapshot."""
 
         self._load_preferences_into_controls(preferences)
-
-    def load_file_open_overrides(self, json_text: str) -> None:
-        self._load_file_open_overrides(json_text)
 
     def on_reset_current_section(self) -> None:
         """Reset the active section to defaults."""
@@ -1047,7 +891,7 @@ class SettingsDialog(QDialog):
         self._apply_external_copymove_structured_options_to_controls(options)
 
     def serialize_file_open_overrides(self) -> str:
-        return self._serialize_file_open_overrides()
+        return open_overrides_state.serialize_file_open_overrides(self)
 
     def new_font_family_combo(
         self, *, include_base_option: bool, base_label: str
@@ -1122,9 +966,6 @@ class SettingsDialog(QDialog):
             self._loading_ui = False
 
     def set_combo_value(self, combo: QComboBox, value: str) -> None:
-        self._set_combo_value(combo, value)
-
-    def _set_combo_value(self, combo: QComboBox, value: str) -> None:
         for index in range(combo.count()):
             if str(combo.itemData(index)) == str(value):
                 combo.setCurrentIndex(index)

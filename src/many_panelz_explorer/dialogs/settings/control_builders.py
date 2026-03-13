@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QGridLayout,
@@ -136,6 +137,60 @@ def build_path_controls(
     layout.setColumnStretch(1, 1)
     host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
     return host
+
+
+def build_backend_executable_controls(
+    dialog: SettingsDialog,
+    *,
+    executable_edit: QLineEdit,
+    default_executable: str,
+    discover_default_executable: str,
+    enable_find: bool = True,
+) -> QWidget:
+    """Build a backend executable chooser with browse/find/reset actions."""
+
+    executable_edit.textChanged.connect(dialog.on_controls_changed)
+    host = QWidget(dialog)
+    layout = QGridLayout(host)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setHorizontalSpacing(8)
+    layout.setVerticalSpacing(6)
+    layout.addWidget(QLabel("Executable", host), 0, 0)
+    layout.addWidget(executable_edit, 0, 1)
+
+    actions = QWidget(host)
+    actions_layout = QHBoxLayout(actions)
+    actions_layout.setContentsMargins(0, 0, 0, 0)
+    actions_layout.setSpacing(8)
+    browse_btn = QPushButton("Browse...", actions)
+    find_btn = QPushButton("Find", actions)
+    find_btn.setEnabled(bool(enable_find and discover_default_executable))
+    reset_btn = QPushButton("Reset", actions)
+    browse_btn.clicked.connect(lambda: dialog.browse_executable(executable_edit))
+    find_btn.clicked.connect(
+        lambda: dialog.find_executable(
+            executable_edit,
+            default_executable=discover_default_executable,
+        )
+    )
+    reset_btn.clicked.connect(lambda: executable_edit.setText(default_executable))
+    actions_layout.addStretch(1)
+    actions_layout.addWidget(browse_btn)
+    actions_layout.addWidget(find_btn)
+    actions_layout.addWidget(reset_btn)
+    layout.addWidget(actions, 1, 1)
+    layout.setColumnStretch(1, 1)
+    return host
+
+
+def build_preview_label(dialog: SettingsDialog) -> QLabel:
+    """Build a plain-text preview label used by backend settings cards."""
+
+    label = QLabel(dialog)
+    label.setTextFormat(Qt.TextFormat.PlainText)
+    label.setWordWrap(True)
+    label.setStyleSheet("color: #444;")
+    return label
 
 
 def build_dual_text_controls(

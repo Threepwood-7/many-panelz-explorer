@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from ..._operations.types import DEFAULT_TERA_COPY_EXE
 from ..._settings.manager import SettingsManager
+from . import control_builders
 
 if TYPE_CHECKING:
     from ..settings_dialog import SettingsDialog
@@ -115,7 +116,7 @@ def build_robocopy_settings_card(dialog: SettingsDialog) -> QWidget:
     grid.addWidget(dialog.use_extended_paths_robocopy_checkbox, 11, 1)
     layout.addLayout(grid)
 
-    dialog.robocopy_preview_label = dialog.build_preview_label()
+    dialog.robocopy_preview_label = control_builders.build_preview_label(dialog)
     layout.addWidget(dialog.robocopy_preview_label)
 
     actions = QWidget(host)
@@ -143,7 +144,8 @@ def build_teracopy_settings_card(dialog: SettingsDialog) -> QWidget:
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(8)
     layout.addWidget(
-        dialog.build_backend_executable_controls(
+        control_builders.build_backend_executable_controls(
+            dialog,
             executable_edit=dialog.teracopy_executable_edit,
             default_executable=SettingsManager.DEFAULT_TERACOPY_EXECUTABLE,
             discover_default_executable=DEFAULT_TERA_COPY_EXE,
@@ -224,7 +226,7 @@ def build_teracopy_settings_card(dialog: SettingsDialog) -> QWidget:
     grid.setColumnStretch(1, 1)
     layout.addLayout(grid)
 
-    dialog.teracopy_preview_label = dialog.build_preview_label()
+    dialog.teracopy_preview_label = control_builders.build_preview_label(dialog)
     layout.addWidget(dialog.teracopy_preview_label)
 
     actions = QWidget(host)

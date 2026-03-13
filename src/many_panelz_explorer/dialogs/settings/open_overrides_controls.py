@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QVBoxLayout, QWidget
 
+from . import open_overrides_state
+
 if TYPE_CHECKING:
     from ..settings_dialog import SettingsDialog
 
@@ -27,13 +29,17 @@ def build_file_open_overrides_controls(dialog: SettingsDialog) -> QWidget:
     dialog.remove_override_row_btn = QPushButton("Remove", actions)
     dialog.browse_override_editor_btn = QPushButton("Browse Editor...", actions)
     dialog.browse_override_viewer_btn = QPushButton("Browse Viewer...", actions)
-    dialog.add_override_row_btn.clicked.connect(dialog.add_file_open_override_row)
-    dialog.remove_override_row_btn.clicked.connect(dialog.remove_file_open_override_row)
+    dialog.add_override_row_btn.clicked.connect(
+        lambda: open_overrides_state.add_file_open_override_row(dialog)
+    )
+    dialog.remove_override_row_btn.clicked.connect(
+        lambda: open_overrides_state.remove_file_open_override_row(dialog)
+    )
     dialog.browse_override_editor_btn.clicked.connect(
-        lambda: dialog.browse_file_open_override_executable(1)
+        lambda: open_overrides_state.browse_file_open_override_executable(dialog, 1)
     )
     dialog.browse_override_viewer_btn.clicked.connect(
-        lambda: dialog.browse_file_open_override_executable(2)
+        lambda: open_overrides_state.browse_file_open_override_executable(dialog, 2)
     )
     actions_layout.addWidget(dialog.add_override_row_btn)
     actions_layout.addWidget(dialog.remove_override_row_btn)

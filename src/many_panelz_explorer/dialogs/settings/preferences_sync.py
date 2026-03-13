@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt
 
 from ..._operations.discovery import resolve_system_command_paths
 from ..._settings.models import UiPreferences
+from . import open_overrides_state
 
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QLabel
@@ -134,7 +135,10 @@ def load_operations_preferences(
     dialog.context_git_gui_args_edit.setText(
         preferences.context_tool_git_gui_args_template
     )
-    dialog.load_file_open_overrides(preferences.file_open_overrides_json)
+    open_overrides_state.load_file_open_overrides(
+        dialog,
+        preferences.file_open_overrides_json,
+    )
     dialog.use_extended_paths_robocopy_checkbox.setChecked(
         preferences.use_extended_paths_robocopy
     )
@@ -282,7 +286,9 @@ def collect_preferences_from_controls(dialog: SettingsDialog) -> UiPreferences:
         context_tool_code_editor_args_template=dialog.context_code_editor_args_edit.text().strip(),
         context_tool_git_gui_exe_path=dialog.context_git_gui_executable_edit.text().strip(),
         context_tool_git_gui_args_template=dialog.context_git_gui_args_edit.text().strip(),
-        file_open_overrides_json=dialog.serialize_file_open_overrides(),
+        file_open_overrides_json=open_overrides_state.serialize_file_open_overrides(
+            dialog
+        ),
         use_extended_paths_robocopy=dialog.use_extended_paths_robocopy_checkbox.isChecked(),
         use_extended_paths_teracopy=dialog.use_extended_paths_teracopy_checkbox.isChecked(),
         use_extended_paths_unstoppable=dialog.use_extended_paths_unstoppable_checkbox.isChecked(),

@@ -489,13 +489,13 @@ def test_settings_apply_persists_and_new_window_uses_values(
     dialog.show_storage_overview_status_row_checkbox.setChecked(False)
     dialog.byte_thousands_separator_edit.setText(" ")
     dialog.byte_decimal_separator_edit.setText(",")
-    dialog._set_combo_value(dialog.file_list_byte_format_mode_combo, "custom")
+    dialog.set_combo_value(dialog.file_list_byte_format_mode_combo, "custom")
     dialog.file_list_byte_custom_template_edit.setText("{b} ({MiB:.2f})")
-    dialog._set_combo_value(dialog.status_bar_byte_format_mode_combo, "always_mib")
+    dialog.set_combo_value(dialog.status_bar_byte_format_mode_combo, "always_mib")
     dialog.status_bar_storage_label_template_edit.setText(
         "{disk_root} {disk_label} {used_space}/{total_space} {usage_indicator}"
     )
-    dialog._set_combo_value(dialog.properties_byte_format_mode_combo, "always_mb")
+    dialog.set_combo_value(dialog.properties_byte_format_mode_combo, "always_mb")
     dialog.app_font_size_spin.setValue(12)
     dialog.file_list_use_app_font_checkbox.setChecked(False)
     dialog.file_list_font_size_spin.setValue(14)
@@ -782,7 +782,7 @@ def test_settings_dialog_reset_section_resets_selected_section_only(
     qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is panels_item)
     dialog.show_hidden_checkbox.setChecked(False)
     dialog.show_root_dropdown_checkbox.setChecked(True)
-    dialog._set_combo_value(dialog.column_width_auto_align_mode_combo, "none")
+    dialog.set_combo_value(dialog.column_width_auto_align_mode_combo, "none")
     dialog.context_scan_cap_spin.setValue(77)
 
     dialog.reset_section_button.click()
@@ -938,7 +938,7 @@ def test_settings_byte_format_preview_and_persistence(
     dialog._section_tree.setCurrentItem(byte_display_item)
     qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is byte_display_item)
 
-    dialog._set_combo_value(dialog.file_list_byte_format_mode_combo, "custom")
+    dialog.set_combo_value(dialog.file_list_byte_format_mode_combo, "custom")
     assert dialog.file_list_byte_custom_template_edit.isEnabled() is True
     dialog.file_list_byte_custom_template_edit.setText("{KiB:.2f} KiB")
     dialog.byte_thousands_separator_edit.setText(".")
