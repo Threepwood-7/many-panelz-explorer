@@ -12,8 +12,9 @@ from ...panel_widget import PanelWidget
 from .layout import WindowLayoutCoordinator
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
+    from ...explorer_tab import ExplorerTab
     from ...window import ExplorerWindow
 
 
@@ -293,7 +294,22 @@ class WindowPanelsCoordinator:
         )
 
     def align_columns_all_panels_tabs(self) -> None:
-        """Broadcast current tab widths to all panels."""
+        """Apply current tab widths to all panels in the current window."""
+        panel = self.active_panel()
+        if panel is None:
+            return
+        tab = panel.current_tab()
+        if tab is None:
+            return
+        widths = list(tab.columns.widths)
+        self.apply_column_widths_all_panels(widths)
+        self.window.statusBar().showMessage(
+            "Aligned columns in all panels and tabs in the current window.",
+            2000,
+        )
+
+    def align_columns_all_windows(self) -> None:
+        """Apply current tab widths to all panels in every open window."""
         panel = self.active_panel()
         if panel is None:
             return
@@ -308,7 +324,7 @@ class WindowPanelsCoordinator:
             source_tab=tab,
         )
         self.window.statusBar().showMessage(
-            "Aligned columns in all panels and tabs.",
+            "Aligned columns in all panels and tabs in all windows.",
             2000,
         )
 
@@ -533,23 +549,40 @@ class WindowPanelsCoordinator:
         widths: list[object],
         source_tab: object,
     ) -> None:
-        """Forward panel column width changes to the app controller."""
-        self.window.controller.broadcast_column_widths(
-            widths,
-            source_window=self.window,
-            source_panel_id=panel_id,
-            source_tab=source_tab,
-        )
+        """Apply debounced column width changes using the configured scope."""
+        panel = self.window.panel_widgets.get(panel_id)
+        if panel is None:
+            return
+        mode = panel.column_width_auto_align_mode
+        if mode == panel.COLUMN_ALIGN_MODE_CURRENT_WINDOW_PANELS_TABS:
+            self.apply_column_widths_all_panels(
+                widths,
+                source_panel_id=panel_id,
+                source_tab=source_tab,
+            )
+            return
+        if mode == panel.COLUMN_ALIGN_MODE_ALL_WINDOWS_PANELS_TABS:
+            self.window.controller.broadcast_column_widths(
+                widths,
+                source_window=self.window,
+                source_panel_id=panel_id,
+                source_tab=source_tab,
+            )
 
     def apply_column_widths_all_panels(
         self,
-        widths: list[object],
+        widths: Sequence[object],
         *,
         source_panel_id: int | None = None,
         source_tab: object | None = None,
     ) -> None:
         """Apply a width set to every panel in the window."""
-        _ = source_panel_id, source_tab
         for panel_id, panel in self.window.panel_widgets.items():
-            _ = panel_id
-            panel.state_coordinator.apply_column_widths_to_panel_tabs(widths)
+            panel.state_coordinator.apply_column_widths_to_panel_tabs(
+                widths,
+                source_tab=(
+                    cast("ExplorerTab | None", source_tab)
+                    if source_panel_id is not None and panel_id == source_panel_id
+                    else None
+                ),
+            )

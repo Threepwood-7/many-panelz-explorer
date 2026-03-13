@@ -68,11 +68,11 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
     assert window.panels_coordinator.active_panel().tab_count() == 3
 
     window.new_vertical_panel_action.trigger()
-    assert len(window.panel_widgets) == 2
+    assert len(window.panel_widgets) == 3
 
     assert window.new_horizontal_panel_action.shortcut().toString() == "Ctrl+H"
     window.new_horizontal_panel_action.trigger()
-    assert len(window.panel_widgets) == 4
+    assert len(window.panel_widgets) == 6
 
     assert window.copy_to_target_action.shortcut().toString() == "F5"
     assert window.move_to_target_action.shortcut().toString() == "F6"
@@ -117,6 +117,9 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
     assert any(
         action.text().replace("&", "") == "Show Widget Map"
         for action in view_menu.actions()
+    )
+    assert any(
+        action.text() == "Align Columns: All Windows" for action in view_menu.actions()
     )
     settings_action = next(
         (action for action in view_menu.actions() if action.text() == "&Settings..."),

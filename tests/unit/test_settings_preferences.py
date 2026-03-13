@@ -108,7 +108,7 @@ def test_ui_preferences_round_trip() -> None:
             show_hidden_default=False,
             show_root_dropdown=True,
             show_storage_overview_status_row=False,
-            column_width_auto_align_mode="all_panels_tabs",
+            column_width_auto_align_mode="all_windows_panels_tabs",
             show_refresh_button=False,
             show_root_buttons=False,
             show_address_bar=False,
@@ -562,6 +562,23 @@ def test_ui_preferences_column_auto_align_mode_defaults_when_unset() -> None:
     before = _snapshot(settings)
     try:
         settings.remove(SettingsManager.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY)
+        loaded = settings.ui_preferences()
+        assert (
+            loaded.column_width_auto_align_mode
+            == SettingsManager.DEFAULT_COLUMN_WIDTH_AUTO_ALIGN_MODE
+        )
+    finally:
+        _restore(settings, before)
+
+
+def test_ui_preferences_column_auto_align_mode_invalid_value_uses_default() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    try:
+        settings.set_value(
+            SettingsManager.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY,
+            "all_panels_tabs",
+        )
         loaded = settings.ui_preferences()
         assert (
             loaded.column_width_auto_align_mode

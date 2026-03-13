@@ -123,7 +123,7 @@ def test_split_tab_close_actions(qtbot, tmp_path: Path) -> None:
     qtbot.addWidget(window)
     window.show()
 
-    assert len(window.panel_widgets) == 1
+    assert len(window.panel_widgets) == 2
     panel = window.panels_coordinator.active_panel()
     assert panel is not None
     assert panel.tab_count() == 1
@@ -135,10 +135,10 @@ def test_split_tab_close_actions(qtbot, tmp_path: Path) -> None:
     assert window.panels_coordinator.active_panel().tab_count() == 1
 
     window.panels_coordinator.split_active_panel(Qt.Orientation.Horizontal)
-    assert len(window.panel_widgets) == 2
+    assert len(window.panel_widgets) == 3
 
     window.panels_coordinator.close_active_panel()
-    assert len(window.panel_widgets) == 1
+    assert len(window.panel_widgets) == 2
 
 
 def test_show_hidden_toggle_updates_tabs(qtbot, tmp_path: Path) -> None:
@@ -191,7 +191,7 @@ def test_show_widget_map_toggle_updates_existing_and_new_panels(
     )
 
     window.new_vertical_panel_action.trigger()
-    assert len(window.panel_widgets) == 2
+    assert len(window.panel_widgets) == 3
     assert all(
         panel.widget_map_coordinator.enabled()
         for panel in window.panel_widgets.values()
@@ -224,14 +224,14 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
     source_current_index = source_panel.tabs.currentIndex()
 
     window.clone_vertical_panel_action.trigger()
-    assert len(window.panel_widgets) == 2
+    assert len(window.panel_widgets) == 3
     cloned_panel_vertical = window.panels_coordinator.active_panel()
     assert cloned_panel_vertical is not None
     assert cloned_panel_vertical.tab_count() == source_tab_count
     assert cloned_panel_vertical.tabs.currentIndex() == source_current_index
 
     window.clone_horizontal_panel_action.trigger()
-    assert len(window.panel_widgets) == 4
+    assert len(window.panel_widgets) == 6
     cloned_panel_horizontal = window.panels_coordinator.active_panel()
     assert cloned_panel_horizontal is not None
     assert cloned_panel_horizontal.tab_count() == source_tab_count
@@ -434,7 +434,7 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     source.panels_coordinator.new_tab_in_active_panel()
     source.panels_coordinator.split_active_panel(Qt.Orientation.Horizontal)
     source.set_on_top(True)
-    assert len(source.panel_widgets) == 2
+    assert len(source.panel_widgets) == 3
 
     monkeypatch.setattr(QInputDialog, "getText", lambda *_a, **_k: ("My View", True))
     monkeypatch.setattr(
@@ -450,11 +450,11 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     assert saved["on_top"] is True
 
     source.panels_coordinator.close_active_panel()
-    assert len(source.panel_widgets) == 1
+    assert len(source.panel_widgets) == 2
 
     monkeypatch.setattr(QInputDialog, "getItem", lambda *_a, **_k: ("My View", True))
     source.replace_view_action.trigger()
-    assert len(source.panel_widgets) == 2
+    assert len(source.panel_widgets) == 3
     assert source.on_top_action.isChecked() is True
 
     monkeypatch.setattr(
@@ -473,7 +473,7 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     assert len(controller.created_windows) == 1
     restored = controller.created_windows[0]
     qtbot.addWidget(restored)
-    assert len(restored.panel_widgets) == 2
+    assert len(restored.panel_widgets) == 3
     assert restored.on_top_action.isChecked() is True
 
 
@@ -489,16 +489,16 @@ def test_split_behaviour_uses_full_width_rows(qtbot, tmp_path: Path) -> None:
     qtbot.addWidget(window)
     window.show()
 
-    assert [len(row) for row in window.layout_rows] == [1]
-
-    window.new_vertical_panel_action.trigger()
     assert [len(row) for row in window.layout_rows] == [2]
 
+    window.new_vertical_panel_action.trigger()
+    assert [len(row) for row in window.layout_rows] == [3]
+
     window.new_horizontal_panel_action.trigger()
-    assert [len(row) for row in window.layout_rows] == [2, 2]
+    assert [len(row) for row in window.layout_rows] == [3, 3]
 
     window.new_vertical_panel_action.trigger()
-    assert [len(row) for row in window.layout_rows] == [2, 3]
+    assert [len(row) for row in window.layout_rows] == [3, 4]
 
 
 def test_copy_to_target_uses_last_active_non_source_panel(
@@ -522,7 +522,7 @@ def test_copy_to_target_uses_last_active_non_source_panel(
 
     window.new_vertical_panel_action.trigger()
     window.new_horizontal_panel_action.trigger()
-    assert len(window.panel_widgets) == 4
+    assert len(window.panel_widgets) == 6
 
     ordered_ids = [pid for row in window.layout_rows for pid in row]
     source_id = ordered_ids[0]
@@ -978,11 +978,57 @@ def test_column_width_auto_align_none_disables_propagation(
     assert second_tab.view.columnWidth(0) == second_original
 
 
-def test_column_width_auto_align_all_panels_tabs_syncs_all_open_windows(
+def test_column_width_auto_align_current_window_syncs_current_window_only(
     qtbot, tmp_path: Path
 ) -> None:
     settings = SettingsManager()
-    settings.column_width_auto_align_mode = "all_panels_tabs"
+    settings.column_width_auto_align_mode = "current_window_panels_tabs"
+    settings.sync()
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerBroadcastStub()
+
+    first = ExplorerWindow(
+        controller=controller,
+        settings=settings,
+        window_id="column-sync-global-first",
+        roots_provider=roots_provider,
+    )
+    second = ExplorerWindow(
+        controller=controller,
+        settings=settings,
+        window_id="column-sync-global-second",
+        roots_provider=roots_provider,
+    )
+    controller.windows.extend([first, second])
+    qtbot.addWidget(first)
+    qtbot.addWidget(second)
+    first.show()
+    second.show()
+
+    source_panel = first.panels_coordinator.active_panel()
+    assert source_panel is not None
+    source_primary = source_panel.current_tab()
+    source_secondary = source_panel.add_tab(source_panel.current_path())
+    assert source_primary is not None
+    assert source_secondary is not None
+
+    target_panel = second.panels_coordinator.active_panel()
+    assert target_panel is not None
+    target_tab = target_panel.current_tab()
+    assert target_tab is not None
+
+    source_panel.tabs.setCurrentWidget(source_primary)
+    qtbot.waitUntil(lambda: source_panel.current_tab() is source_primary)
+    source_primary.view.setColumnWidth(0, 390)
+    qtbot.waitUntil(lambda: source_secondary.view.columnWidth(0) == 390)
+    assert target_tab.view.columnWidth(0) != 390
+
+
+def test_column_width_auto_align_all_windows_syncs_all_open_windows(
+    qtbot, tmp_path: Path
+) -> None:
+    settings = SettingsManager()
+    settings.column_width_auto_align_mode = "all_windows_panels_tabs"
     settings.sync()
     roots_provider = _test_roots_provider(tmp_path)
     controller = _ControllerBroadcastStub()
@@ -1065,7 +1111,7 @@ def test_view_align_columns_current_panel_tabs_is_one_shot(
     assert settings.column_width_auto_align_mode == "none"
 
 
-def test_view_align_columns_all_panels_tabs_is_one_shot_across_windows(
+def test_view_align_columns_all_panels_tabs_is_one_shot_within_current_window(
     qtbot, tmp_path: Path
 ) -> None:
     settings = SettingsManager()
@@ -1116,6 +1162,63 @@ def test_view_align_columns_all_panels_tabs_is_one_shot_across_windows(
 
     first.panels_coordinator.set_active_panel(source_panel.panel_id)
     first.align_columns_all_panels_tabs_action.trigger()
+    qtbot.waitUntil(lambda: source_secondary.view.columnWidth(0) == 355)
+    qtbot.waitUntil(lambda: other_tab.view.columnWidth(0) == 355)
+    assert second_tab.view.columnWidth(0) != 355
+    assert settings.column_width_auto_align_mode == "none"
+
+
+def test_view_align_columns_all_windows_is_one_shot_across_windows(
+    qtbot, tmp_path: Path
+) -> None:
+    settings = SettingsManager()
+    settings.column_width_auto_align_mode = "none"
+    settings.sync()
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerBroadcastStub()
+
+    first = ExplorerWindow(
+        controller=controller,
+        settings=settings,
+        window_id="column-align-view-all-first",
+        roots_provider=roots_provider,
+    )
+    second = ExplorerWindow(
+        controller=controller,
+        settings=settings,
+        window_id="column-align-view-all-second",
+        roots_provider=roots_provider,
+    )
+    controller.windows.extend([first, second])
+    qtbot.addWidget(first)
+    qtbot.addWidget(second)
+    first.show()
+    second.show()
+
+    first.new_vertical_panel_action.trigger()
+    ordered_ids = [pid for row in first.layout_rows for pid in row]
+    source_panel = first.panel_widgets[ordered_ids[0]]
+    other_panel = first.panel_widgets[ordered_ids[1]]
+
+    source_primary = source_panel.current_tab()
+    source_secondary = source_panel.add_tab(source_panel.current_path())
+    other_tab = other_panel.current_tab()
+    second_panel = second.panels_coordinator.active_panel()
+    second_tab = second_panel.current_tab() if second_panel else None
+    assert source_primary is not None
+    assert source_secondary is not None
+    assert other_tab is not None
+    assert second_tab is not None
+
+    source_panel.tabs.setCurrentWidget(source_primary)
+    source_primary.view.setColumnWidth(0, 355)
+    qtbot.wait(220)
+    assert source_secondary.view.columnWidth(0) != 355
+    assert other_tab.view.columnWidth(0) != 355
+    assert second_tab.view.columnWidth(0) != 355
+
+    first.panels_coordinator.set_active_panel(source_panel.panel_id)
+    first.align_columns_all_windows_action.trigger()
     qtbot.waitUntil(lambda: source_secondary.view.columnWidth(0) == 355)
     qtbot.waitUntil(lambda: other_tab.view.columnWidth(0) == 355)
     qtbot.waitUntil(lambda: second_tab.view.columnWidth(0) == 355)

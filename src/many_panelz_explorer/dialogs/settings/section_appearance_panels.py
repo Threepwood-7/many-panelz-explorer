@@ -379,12 +379,16 @@ def build_panel_layout_rows(
 
     dialog.column_width_auto_align_mode_combo = QComboBox(dialog)
     dialog.column_width_auto_align_mode_combo.addItem(
-        "All panels and tabs",
-        "all_panels_tabs",
-    )
-    dialog.column_width_auto_align_mode_combo.addItem(
         "Current panel tabs",
         "current_panel_tabs",
+    )
+    dialog.column_width_auto_align_mode_combo.addItem(
+        "All panels and tabs in current window",
+        "current_window_panels_tabs",
+    )
+    dialog.column_width_auto_align_mode_combo.addItem(
+        "All panels and tabs in all windows",
+        "all_windows_panels_tabs",
     )
     dialog.column_width_auto_align_mode_combo.addItem("No alignment", "none")
     dialog.column_width_auto_align_mode_combo.currentIndexChanged.connect(
@@ -396,7 +400,7 @@ def build_panel_layout_rows(
         key="column_width_auto_align_mode",
         title="Auto-Align Column Widths",
         description="Choose how file-list column width changes propagate.",
-        terms="column width align auto-align tabs panels",
+        terms="column width align auto-align tabs panels current window all windows",
         controls=[dialog.column_width_auto_align_mode_combo],
     )
 

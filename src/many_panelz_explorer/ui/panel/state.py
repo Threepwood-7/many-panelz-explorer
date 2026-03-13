@@ -234,8 +234,9 @@ class PanelStateCoordinator:
     def _normalize_column_width_mode(self, mode: str) -> str:
         normalized = str(mode).strip().lower()
         if normalized in {
-            self.panel.COLUMN_ALIGN_MODE_ALL_PANELS_TABS,
             self.panel.COLUMN_ALIGN_MODE_CURRENT_PANEL_TABS,
+            self.panel.COLUMN_ALIGN_MODE_CURRENT_WINDOW_PANELS_TABS,
+            self.panel.COLUMN_ALIGN_MODE_ALL_WINDOWS_PANELS_TABS,
             self.panel.COLUMN_ALIGN_MODE_NONE,
         }:
             return normalized

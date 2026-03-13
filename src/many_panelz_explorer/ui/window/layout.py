@@ -54,6 +54,18 @@ class WindowLayoutCoordinator:
         return (max(ids) + 1) if ids else 1
 
     @staticmethod
+    def default_startup_rows() -> PanelRows:
+        """Return the default row layout used for fresh windows."""
+
+        return [[1, 2]]
+
+    def default_startup_tree(self) -> PanelTreeModel:
+        """Return the default panel tree used for fresh windows."""
+
+        root = self.build_tree_root_from_rows(self.default_startup_rows())
+        return PanelTreeModel(root=root)
+
+    @staticmethod
     def ordered_panel_ids(rows: PanelRows) -> list[int]:
         ordered: list[int] = []
         for row in rows:

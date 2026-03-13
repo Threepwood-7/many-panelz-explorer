@@ -68,8 +68,8 @@ def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
     qtbot.addWidget(restored)
     restored.persistence_coordinator.restore_from_settings()
 
-    assert len(restored.panel_widgets) == 2
+    assert len(restored.panel_widgets) == 4
     assert restored.on_top_action.isChecked() is True
 
     tab_counts = sorted(panel.tab_count() for panel in restored.panel_widgets.values())
-    assert tab_counts == [1, 2]
+    assert tab_counts == [1, 1, 1, 2]

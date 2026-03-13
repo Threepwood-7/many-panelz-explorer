@@ -306,6 +306,44 @@ def test_settings_search_filters_rows_in_place(
     assert dialog._rows_by_key["show_hidden_default"].isVisible() is False
 
 
+def test_settings_column_width_align_combo_exposes_all_scopes(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-column-align-scopes",
+        roots_provider=roots_provider,
+    )
+
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    options = [
+        (
+            dialog.column_width_auto_align_mode_combo.itemText(index),
+            str(dialog.column_width_auto_align_mode_combo.itemData(index)),
+        )
+        for index in range(dialog.column_width_auto_align_mode_combo.count())
+    ]
+    assert options == [
+        ("Current panel tabs", "current_panel_tabs"),
+        (
+            "All panels and tabs in current window",
+            "current_window_panels_tabs",
+        ),
+        (
+            "All panels and tabs in all windows",
+            "all_windows_panels_tabs",
+        ),
+        ("No alignment", "none"),
+    ]
+
+
 def test_settings_live_preview_is_debounced(
     qtbot, tmp_path: Path, isolated_settings: SettingsManager
 ) -> None:

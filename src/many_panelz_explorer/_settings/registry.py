@@ -189,8 +189,9 @@ class SettingsRegistry:
 
     ALLOWED_NEW_CONTEXT_MODES: ClassVar[set[str]] = {"clone_active_path", "home", "cwd"}
     ALLOWED_COLUMN_WIDTH_AUTO_ALIGN_MODES: ClassVar[set[str]] = {
-        "all_panels_tabs",
         "current_panel_tabs",
+        "current_window_panels_tabs",
+        "all_windows_panels_tabs",
         "none",
     }
     ALLOWED_BYTE_FORMAT_MODES: ClassVar[set[str]] = {

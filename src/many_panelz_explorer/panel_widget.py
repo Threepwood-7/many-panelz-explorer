@@ -89,8 +89,9 @@ class PanelWidget(QWidget):
     COLUMN_SYNC_DEBOUNCE_MS = 120
     ADDRESS_COMPLETION_DEBOUNCE_MS = 140
     ROOT_COMBO_MIN_WIDTH = 108
-    COLUMN_ALIGN_MODE_ALL_PANELS_TABS = "all_panels_tabs"
     COLUMN_ALIGN_MODE_CURRENT_PANEL_TABS = "current_panel_tabs"
+    COLUMN_ALIGN_MODE_CURRENT_WINDOW_PANELS_TABS = "current_window_panels_tabs"
+    COLUMN_ALIGN_MODE_ALL_WINDOWS_PANELS_TABS = "all_windows_panels_tabs"
     COLUMN_ALIGN_MODE_NONE = "none"
 
     activated = Signal()

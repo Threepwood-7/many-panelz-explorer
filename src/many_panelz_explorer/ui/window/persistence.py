@@ -84,7 +84,9 @@ class WindowPersistenceCoordinator:
                 QMessageBox.warning(
                     self.window, "Restore", f"Could not restore panel tree: {exc}"
                 )
-                self.window.panel_tree = PanelTreeModel()
+                self.window.panel_tree = (
+                    self.window.layout_coordinator.default_startup_tree()
+                )
         self.window.layout_rows = self.window.layout_coordinator.rows_from_tree(
             self.window.panel_tree.root
         )

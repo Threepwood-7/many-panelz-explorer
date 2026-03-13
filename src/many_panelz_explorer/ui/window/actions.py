@@ -111,6 +111,13 @@ class WindowUiComposer:
             self.window.panels_coordinator.align_columns_all_panels_tabs
         )
 
+        self.window.align_columns_all_windows_action = QAction(
+            "Align Columns: All Windows", self.window
+        )
+        self.window.align_columns_all_windows_action.triggered.connect(
+            self.window.panels_coordinator.align_columns_all_windows
+        )
+
     def _build_operation_actions(self) -> None:
         self.window.copy_to_target_action = QAction("&Copy to Target Pane", self.window)
         self.window.copy_to_target_action.setShortcut(QKeySequence("F5"))
@@ -308,6 +315,7 @@ class WindowUiComposer:
         view_menu.addAction(self.window.refresh_action)
         view_menu.addAction(self.window.align_columns_current_panel_tabs_action)
         view_menu.addAction(self.window.align_columns_all_panels_tabs_action)
+        view_menu.addAction(self.window.align_columns_all_windows_action)
         view_menu.addSeparator()
         view_menu.addAction(self.window.show_queue_dock_action)
         view_menu.addAction(self.window.show_queue_window_action)
@@ -354,6 +362,7 @@ class WindowUiComposer:
                 self.window.refresh_action,
                 self.window.align_columns_current_panel_tabs_action,
                 self.window.align_columns_all_panels_tabs_action,
+                self.window.align_columns_all_windows_action,
                 self.window.show_queue_dock_action,
                 self.window.show_queue_window_action,
                 self.window.show_widget_map_action,

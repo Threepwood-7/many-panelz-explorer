@@ -23,9 +23,6 @@ from threep_commons.qt.widget_identity import assign_widget_identity
 
 from . import widget_naming
 from ._context import ContextMenuController
-from .panel_tree import (
-    PanelTreeModel,
-)
 from .ui.window import (
     WindowLayoutCoordinator,
     WindowOperationsCoordinator,
@@ -97,6 +94,7 @@ class ExplorerWindow(QMainWindow):
     show_widget_map_action: QAction
     align_columns_current_panel_tabs_action: QAction
     align_columns_all_panels_tabs_action: QAction
+    align_columns_all_windows_action: QAction
     show_queue_dock_action: QAction
     show_queue_window_action: QAction
     settings_action: QAction
@@ -137,8 +135,8 @@ class ExplorerWindow(QMainWindow):
         self.active_panel_id: int | None = None
         self.last_non_source_panel_id: int | None = None
 
-        self.panel_tree = PanelTreeModel()
         self.layout_coordinator = WindowLayoutCoordinator(self)
+        self.panel_tree = self.layout_coordinator.default_startup_tree()
         self.panels_coordinator = WindowPanelsCoordinator(self)
         self.status_coordinator = WindowStatusCoordinator(self)
         self.operations_coordinator = WindowOperationsCoordinator(self)
