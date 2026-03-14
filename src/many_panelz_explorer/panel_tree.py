@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, TypedDict
+from typing import Literal, TypedDict, cast
 
 # Match Qt.Orientation numeric values without importing Qt in this pure model module.
 ORIENTATION_HORIZONTAL = 1
@@ -37,6 +37,32 @@ class RemoveLeafResult(TypedDict):
     removed_last: bool
     remaining_panels: int
     remaining_panel_ids: list[int]
+
+
+class PanelTreeLeafPayload(TypedDict):
+    """Serialized payload for a leaf node."""
+
+    type: Literal["leaf"]
+    panel_id: int
+
+
+class PanelTreeSplitPayload(TypedDict):
+    """Serialized payload for a split node."""
+
+    type: Literal["split"]
+    orientation: str
+    ratio: float
+    left: PanelTreeNodePayload
+    right: PanelTreeNodePayload
+
+
+type PanelTreeNodePayload = PanelTreeLeafPayload | PanelTreeSplitPayload
+
+
+class PanelTreePayload(TypedDict):
+    """Serialized payload for the full panel tree."""
+
+    root: PanelTreeNodePayload | None
 
 
 def _normalize_orientation(orientation: int | str) -> int:
@@ -157,38 +183,53 @@ class PanelTreeModel:
             "remaining_panel_ids": remaining,
         }
 
-    def to_dict(self) -> dict[str, Any]:
-        def encode(node: Node | None) -> dict[str, Any] | None:
+    def to_dict(self) -> PanelTreePayload:
+        """Serialize the current tree into a plain mapping payload."""
+
+        def encode(node: Node | None) -> PanelTreeNodePayload | None:
             if node is None:
                 return None
             if isinstance(node, LeafNode):
-                return {"type": "leaf", "panel_id": node.panel_id}
-            return {
+                leaf_payload: PanelTreeLeafPayload = {
+                    "type": "leaf",
+                    "panel_id": node.panel_id,
+                }
+                return leaf_payload
+            left_payload = encode(node.left)
+            right_payload = encode(node.right)
+            if left_payload is None or right_payload is None:
+                raise ValueError("Split nodes must serialize both child branches")
+            split_payload: PanelTreeSplitPayload = {
                 "type": "split",
                 "orientation": _orientation_name(node.orientation),
                 "ratio": node.ratio,
-                "left": encode(node.left),
-                "right": encode(node.right),
+                "left": left_payload,
+                "right": right_payload,
             }
+            return split_payload
 
         return {"root": encode(self.root)}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> PanelTreeModel:
-        def decode(node_data: dict[str, Any] | None) -> Node | None:
+    def from_dict(cls, data: PanelTreePayload) -> PanelTreeModel:
+        """Restore a tree model from a serialized mapping payload."""
+
+        def decode(node_data: PanelTreeNodePayload | None) -> Node | None:
             if node_data is None:
                 return None
 
-            node_type = node_data.get("type")
+            node_type = node_data["type"]
             if node_type == "leaf":
-                panel_id = int(node_data["panel_id"])
+                leaf_data = cast("PanelTreeLeafPayload", node_data)
+                panel_id = int(leaf_data["panel_id"])
                 return LeafNode(panel_id=panel_id)
 
             if node_type == "split":
-                orientation = _normalize_orientation(node_data["orientation"])
-                ratio = float(node_data.get("ratio", 0.5))
-                left = decode(node_data.get("left"))
-                right = decode(node_data.get("right"))
+                split_data = cast("PanelTreeSplitPayload", node_data)
+                orientation = _normalize_orientation(split_data["orientation"])
+                ratio = float(split_data["ratio"])
+                left = decode(split_data["left"])
+                right = decode(split_data["right"])
                 if left is None or right is None:
                     raise ValueError("Split node requires both left and right children")
                 return SplitNode(

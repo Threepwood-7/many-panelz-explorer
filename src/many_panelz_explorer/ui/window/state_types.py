@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import NotRequired, TypedDict
+from typing import TYPE_CHECKING, NotRequired, TypedDict
+
+if TYPE_CHECKING:
+    from ...panel_tree import PanelTreePayload
 
 
 class TabState(TypedDict):
@@ -35,7 +38,7 @@ class WindowStatePayload(TypedDict):
     """Serialized window state used for cloning and saved views."""
 
     window_id: str
-    panel_tree: dict[str, object]
+    panel_tree: PanelTreePayload
     tabs: TabsState
     active_panel_id: int | None
     on_top: bool

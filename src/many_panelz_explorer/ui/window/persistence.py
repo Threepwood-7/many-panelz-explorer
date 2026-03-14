@@ -13,6 +13,7 @@ from ...panel_tree import PanelTreeModel
 from .panels import serialize_window_tabs_state
 
 if TYPE_CHECKING:
+    from ...panel_tree import PanelTreeNodePayload, PanelTreePayload
     from ...window import ExplorerWindow
     from .state_types import (
         PanelState,
@@ -47,13 +48,60 @@ def _coerce_bool(value: object) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _panel_tree_payload(raw: object) -> dict[str, object] | None:
+def _coerce_float(value: object) -> float | None:
+    """Normalize persisted float-like values when possible."""
+
+    if isinstance(value, bool):
+        return float(int(value))
+    if isinstance(value, int | float):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _panel_tree_node_payload(raw: object) -> PanelTreeNodePayload | None:
+    """Return a validated panel-tree node payload."""
+
+    if not isinstance(raw, Mapping):
+        return None
+
+    mapping = cast("Mapping[object, object]", raw)
+    node_type = str(mapping.get("type", "")).strip().lower()
+    if node_type == "leaf":
+        panel_id = _coerce_int(mapping.get("panel_id"))
+        if panel_id is None:
+            return None
+        return {"type": "leaf", "panel_id": panel_id}
+
+    if node_type == "split":
+        orientation_value = mapping.get("orientation")
+        ratio = _coerce_float(mapping.get("ratio", 0.5))
+        left = _panel_tree_node_payload(mapping.get("left"))
+        right = _panel_tree_node_payload(mapping.get("right"))
+        if orientation_value is None or ratio is None or left is None or right is None:
+            return None
+        return {
+            "type": "split",
+            "orientation": str(orientation_value),
+            "ratio": ratio,
+            "left": left,
+            "right": right,
+        }
+
+    return None
+
+
+def _panel_tree_payload(raw: object) -> PanelTreePayload | None:
     """Return a panel-tree payload when the raw value is a mapping."""
 
     if not isinstance(raw, Mapping):
         return None
     mapping = cast("Mapping[object, object]", raw)
-    return {str(key): value for key, value in mapping.items()}
+    return {"root": _panel_tree_node_payload(mapping.get("root"))}
 
 
 def _tab_state_payload(raw: object) -> TabState | None:
@@ -146,7 +194,7 @@ def _saved_view_state(raw: object) -> SavedViewState:
     if not isinstance(raw, Mapping):
         return {
             "window_id": "",
-            "panel_tree": {},
+            "panel_tree": {"root": None},
             "tabs": {},
             "active_panel_id": None,
             "on_top": False,
@@ -156,7 +204,7 @@ def _saved_view_state(raw: object) -> SavedViewState:
     mapping = cast("Mapping[object, object]", raw)
     payload: SavedViewState = {
         "window_id": str(mapping.get("window_id", "")),
-        "panel_tree": _panel_tree_payload(mapping.get("panel_tree")) or {},
+        "panel_tree": _panel_tree_payload(mapping.get("panel_tree")) or {"root": None},
         "tabs": _tabs_state_from_panels_payload(mapping.get("tabs", {})),
         "active_panel_id": _coerce_int(mapping.get("active_panel_id")),
         "on_top": _coerce_bool(mapping.get("on_top", False)),
