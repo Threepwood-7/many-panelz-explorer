@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QInputDialog, QMenu, QMessageBox
 
@@ -42,12 +42,7 @@ class WindowViewsCoordinator:
 
         self.window.settings.set_saved_view(
             view_name,
-            cast(
-                "dict[str, Any]",
-                self.window.persistence_coordinator.serialize_state(
-                    include_geometry=True
-                ),
-            ),
+            self.window.persistence_coordinator.serialize_state(include_geometry=True),
         )
         self.window.settings.sync()
 
@@ -68,7 +63,7 @@ class WindowViewsCoordinator:
                 f'View "{view_name}" was not found.',
             )
             return
-        self._restore_view_state(cast("SavedViewState", payload))
+        self._restore_view_state(payload)
 
     def replace_view(self) -> None:
         """Replace the current window state with a saved view."""
@@ -132,7 +127,7 @@ class WindowViewsCoordinator:
                 f'View "{selected}" was not found.',
             )
             return None
-        return cast("SavedViewState", payload)
+        return payload
 
     def _restore_view_named_callback(self, view_name: str) -> Callable[[bool], None]:
         """Build a callback that restores a fixed saved view name."""

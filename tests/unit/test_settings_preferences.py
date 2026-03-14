@@ -696,3 +696,31 @@ def test_settings_clear_all_removes_known_and_unknown_keys() -> None:
         else:
             settings.set_value(window_geometry_key, window_geometry_before)
         settings.sync()
+
+
+def test_saved_view_round_trip_normalizes_payload_shape() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    try:
+        settings.set_saved_view(
+            "Legacy View",
+            {
+                "window_id": 9,
+                "panel_tree": {"root": {"type": "leaf", "panel_id": "3"}},
+                "tabs": {"3": {"panel_id": "3", "tabs": [{"path": 123}]}},
+                "active_panel_id": "3",
+                "on_top": "yes",
+                "maximized": "1",
+            },
+        )
+
+        assert settings.get_saved_view("Legacy View") == {
+            "window_id": "9",
+            "panel_tree": {"root": {"type": "leaf", "panel_id": 3}},
+            "tabs": {3: {"panel_id": 3, "tabs": [{"path": "123"}]}},
+            "active_panel_id": 3,
+            "on_top": True,
+            "maximized": True,
+        }
+    finally:
+        _restore(settings, before)

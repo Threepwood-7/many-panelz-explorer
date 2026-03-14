@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import TYPE_CHECKING
 
 from threep_commons.settings import SettingsDomainBase
 
+from many_panelz_explorer.window_state_payloads import (
+    saved_view_state,
+    saved_views_payload,
+    string_list_payload,
+)
+
 from . import normalize
 from .registry import SettingsRegistry
+
+if TYPE_CHECKING:
+    from many_panelz_explorer.ui.window.state_types import SavedViewState
 
 
 class SessionSettingsDomain(SettingsDomainBase, SettingsRegistry):
@@ -17,10 +26,7 @@ class SessionSettingsDomain(SettingsDomainBase, SettingsRegistry):
         return f"ui/windows/{window_id}/{suffix}"
 
     def session_window_ids(self) -> list[str]:
-        data = self._storage.get_json(self.SESSION_WINDOWS_KEY, [])
-        if not isinstance(data, list):
-            return []
-        return [str(item) for item in cast("list[Any]", data)]
+        return string_list_payload(self._storage.get_json(self.SESSION_WINDOWS_KEY, []))
 
     def set_session_window_ids(self, window_ids: list[str]) -> None:
         self._storage.set_json(self.SESSION_WINDOWS_KEY, window_ids)
@@ -65,23 +71,16 @@ class SessionSettingsDomain(SettingsDomainBase, SettingsRegistry):
             ),
         )
 
-    def saved_views(self) -> dict[str, dict[str, Any]]:
-        data = self._storage.get_json(self.SAVED_VIEWS_KEY, {})
-        if not isinstance(data, dict):
-            return {}
-        views: dict[str, dict[str, Any]] = {}
-        for key, value in cast("dict[str, Any]", data).items():
-            if isinstance(value, dict):
-                views[str(key)] = dict(cast("dict[str, Any]", value))
-        return views
+    def saved_views(self) -> dict[str, SavedViewState]:
+        return saved_views_payload(self._storage.get_json(self.SAVED_VIEWS_KEY, {}))
 
     def list_saved_views(self) -> list[str]:
         return sorted(self.saved_views().keys(), key=str.casefold)
 
-    def get_saved_view(self, name: str) -> dict[str, Any] | None:
+    def get_saved_view(self, name: str) -> SavedViewState | None:
         return self.saved_views().get(name)
 
-    def set_saved_view(self, name: str, payload: dict[str, Any]) -> None:
+    def set_saved_view(self, name: str, payload: object) -> None:
         views = self.saved_views()
-        views[name] = payload
+        views[name] = saved_view_state(payload)
         self._storage.set_json(self.SAVED_VIEWS_KEY, views)

@@ -1,24 +1,24 @@
 from __future__ import annotations
 
-from many_panelz_explorer.ui.window.persistence import (
-    _coerce_bool,
-    _coerce_int,
-    _saved_view_state,
-    _tabs_state_from_panels_payload,
-    _window_tabs_payload,
+from many_panelz_explorer.window_state_payloads import (
+    coerce_bool,
+    coerce_int,
+    saved_view_state,
+    tabs_state_from_panels_payload,
+    window_tabs_payload,
 )
 
 
 def test_coerce_int_accepts_supported_values_only() -> None:
-    assert _coerce_int(True) == 1
-    assert _coerce_int(4) == 4
-    assert _coerce_int("5") == 5
-    assert _coerce_int("bad") is None
-    assert _coerce_int(4.2) is None
+    assert coerce_int(True) == 1
+    assert coerce_int(4) == 4
+    assert coerce_int("5") == 5
+    assert coerce_int("bad") is None
+    assert coerce_int(4.2) is None
 
 
 def test_window_tabs_payload_ignores_invalid_rows() -> None:
-    payload = _window_tabs_payload(
+    payload = window_tabs_payload(
         {
             "active_panel_id": "7",
             "panels": {
@@ -36,7 +36,7 @@ def test_window_tabs_payload_ignores_invalid_rows() -> None:
 
 
 def test_tabs_state_from_panels_payload_converts_keys_to_ints() -> None:
-    tabs_state = _tabs_state_from_panels_payload(
+    tabs_state = tabs_state_from_panels_payload(
         {
             "1": {"panel_id": 1, "current_index": 0},
             2: {"panel_id": 2, "current_index": 1},
@@ -51,7 +51,7 @@ def test_tabs_state_from_panels_payload_converts_keys_to_ints() -> None:
 
 
 def test_saved_view_state_normalizes_flags_and_geometry() -> None:
-    payload = _saved_view_state(
+    payload = saved_view_state(
         {
             "window_id": 123,
             "panel_tree": {"root": {"type": "leaf", "panel_id": 1}},
@@ -75,6 +75,6 @@ def test_saved_view_state_normalizes_flags_and_geometry() -> None:
 
 
 def test_coerce_bool_accepts_common_truthy_strings() -> None:
-    assert _coerce_bool(True) is True
-    assert _coerce_bool("on") is True
-    assert _coerce_bool("false") is False
+    assert coerce_bool(True) is True
+    assert coerce_bool("on") is True
+    assert coerce_bool("false") is False

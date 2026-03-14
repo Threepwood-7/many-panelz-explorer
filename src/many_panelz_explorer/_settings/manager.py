@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 from threep_commons.settings import (
     QSettingsValueStore,
@@ -17,6 +17,9 @@ from .ops_domain import OpsSettingsDomain
 from .registry import SettingsRegistry
 from .session_domain import SessionSettingsDomain
 from .ui_domain import UiSettingsDomain
+
+if TYPE_CHECKING:
+    from many_panelz_explorer.ui.window.state_types import SavedViewState
 
 
 class SettingsManager(SettingsManagerBase, SettingsRegistry):
@@ -373,8 +376,8 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
     def list_saved_views(self) -> list[str]:
         return self.session.list_saved_views()
 
-    def get_saved_view(self, name: str) -> dict[str, Any] | None:
+    def get_saved_view(self, name: str) -> SavedViewState | None:
         return self.session.get_saved_view(name)
 
-    def set_saved_view(self, name: str, payload: dict[str, Any]) -> None:
+    def set_saved_view(self, name: str, payload: object) -> None:
         self.session.set_saved_view(name, payload)
