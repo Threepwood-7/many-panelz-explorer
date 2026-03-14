@@ -18,6 +18,7 @@ from ...operation_queue_widgets import OperationQueuePanel
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from ...explorer_tab import ExplorerTab
     from ...window import ExplorerWindow
 
 
@@ -46,7 +47,7 @@ class WindowUiComposer:
         self.window.new_vertical_panel_action = QAction(
             "New &Vertical Panel", self.window
         )
-        self.window.new_vertical_panel_action.setShortcut(QKeySequence("Ctrl+P"))
+        self.window.new_vertical_panel_action.setShortcut(QKeySequence("Ctrl+Shift+P"))
         self.window.new_vertical_panel_action.triggered.connect(
             self._split_panel_callback(Qt.Orientation.Horizontal)
         )
@@ -262,6 +263,84 @@ class WindowUiComposer:
         self.window.menu_focus_shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
         self.window.menu_focus_shortcut.activated.connect(self.window.focus_menu_bar)
 
+        self.window.reread_visible_lists_shortcut = QShortcut(
+            QKeySequence("F2"), self.window
+        )
+        self.window.reread_visible_lists_shortcut.setContext(
+            Qt.ShortcutContext.WindowShortcut
+        )
+        self.window.reread_visible_lists_shortcut.activated.connect(
+            self.window.panels_coordinator.refresh_all_panels
+        )
+
+        self.window.list_files_shortcut = QShortcut(QKeySequence("F3"), self.window)
+        self.window.list_files_shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
+        self.window.list_files_shortcut.activated.connect(
+            self._open_active_selection_default
+        )
+
+        self.window.alt_list_files_shortcut = QShortcut(
+            QKeySequence("Alt+F3"), self.window
+        )
+        self.window.alt_list_files_shortcut.setContext(
+            Qt.ShortcutContext.WindowShortcut
+        )
+        self.window.alt_list_files_shortcut.activated.connect(
+            self._open_active_selection_viewer
+        )
+
+        self.window.edit_files_shortcut = QShortcut(QKeySequence("F4"), self.window)
+        self.window.edit_files_shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
+        self.window.edit_files_shortcut.activated.connect(self._edit_active_selection)
+
+        self.window.new_text_file_shortcut = QShortcut(
+            QKeySequence("Shift+F4"), self.window
+        )
+        self.window.new_text_file_shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
+        self.window.new_text_file_shortcut.activated.connect(
+            self._create_new_text_file_in_active_tab
+        )
+
+        self.window.create_directory_shortcut = QShortcut(
+            QKeySequence("F7"), self.window
+        )
+        self.window.create_directory_shortcut.setContext(
+            Qt.ShortcutContext.WindowShortcut
+        )
+        self.window.create_directory_shortcut.activated.connect(
+            self._create_directory_in_active_tab
+        )
+
+        self.window.pack_files_shortcut = QShortcut(QKeySequence("Alt+F5"), self.window)
+        self.window.pack_files_shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
+        self.window.pack_files_shortcut.activated.connect(
+            self._create_zip_from_active_selection
+        )
+
+        self.window.copy_path_shortcut = QShortcut(QKeySequence("Ctrl+P"), self.window)
+        self.window.copy_path_shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
+        self.window.copy_path_shortcut.activated.connect(
+            self._copy_active_selection_or_panel_path
+        )
+
+        self.window.root_picker_shortcut = QShortcut(
+            QKeySequence("Alt+F1"), self.window
+        )
+        self.window.root_picker_shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
+        self.window.root_picker_shortcut.activated.connect(
+            self._show_active_panel_root_picker
+        )
+
+        self.window.minimize_windows_shortcut = QShortcut(
+            QKeySequence("Shift+Esc"), self.window
+        )
+        self.window.minimize_windows_shortcut.setContext(
+            Qt.ShortcutContext.WindowShortcut
+        )
+        self.window.minimize_windows_shortcut.activated.connect(
+            self.window.minimize_managed_windows
+        )
+
     def build_menus(self) -> None:
         """Build the main menubar and register the exposed actions."""
         menu_bar = self.window.menuBar()
@@ -447,3 +526,49 @@ class WindowUiComposer:
             )
 
         return _handle_triggered
+
+    def _active_tab(self) -> ExplorerTab | None:
+        panel = self.window.panels_coordinator.active_panel()
+        if panel is None:
+            return None
+        return panel.current_tab()
+
+    def _open_active_selection_default(self) -> None:
+        tab = self._active_tab()
+        if tab is not None:
+            tab.open_selected_or_current()
+
+    def _open_active_selection_viewer(self) -> None:
+        tab = self._active_tab()
+        if tab is not None:
+            tab.view_selected_or_current()
+
+    def _edit_active_selection(self) -> None:
+        tab = self._active_tab()
+        if tab is not None:
+            tab.edit_selected_or_current()
+
+    def _create_new_text_file_in_active_tab(self) -> None:
+        tab = self._active_tab()
+        if tab is not None:
+            tab.create_new_text_file_and_edit()
+
+    def _create_directory_in_active_tab(self) -> None:
+        tab = self._active_tab()
+        if tab is not None:
+            tab.create_directory()
+
+    def _create_zip_from_active_selection(self) -> None:
+        tab = self._active_tab()
+        if tab is not None:
+            tab.create_zip_from_selection()
+
+    def _copy_active_selection_or_panel_path(self) -> None:
+        tab = self._active_tab()
+        if tab is not None:
+            tab.copy_selected_item_or_panel_path()
+
+    def _show_active_panel_root_picker(self) -> None:
+        panel = self.window.panels_coordinator.active_panel()
+        if panel is not None:
+            panel.navigation_coordinator.show_root_picker_menu()

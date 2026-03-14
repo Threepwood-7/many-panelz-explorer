@@ -6,7 +6,8 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtGui import QActionGroup
 from PySide6.QtWidgets import QMenu, QPushButton, QSizePolicy
 from threep_commons.fs_paths import (
     coerce_path,
@@ -34,6 +35,14 @@ def _navigation_root_text(path: Path | str) -> str:
         if name:
             return name
     return display_path_text(candidate)
+
+
+def _root_picker_action_text(index: int, root_path: Path) -> str:
+    label = _navigation_root_text(root_path)
+    mnemonic_index = index + 1
+    if 1 <= mnemonic_index <= 9:
+        return f"&{mnemonic_index} {label}"
+    return label
 
 
 class PanelNavigationCoordinator:
@@ -66,16 +75,15 @@ class PanelNavigationCoordinator:
                 widget.deleteLater()
 
         self.panel.root_buttons = []
-        for root_path in roots:
+        active_root_index = self.resolve_active_root_index(current_path, roots)
+        for index, root_path in enumerate(roots):
             button = QPushButton(_navigation_root_text(root_path))
             button.setFont(self.panel.navigation_font)
             button.setMinimumWidth(0)
             button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
             button.setToolTip(display_path_text(root_path))
             button.setCheckable(True)
-            button.setChecked(
-                current_path is not None and is_path_under_root(current_path, root_path)
-            )
+            button.setChecked(index == active_root_index)
             button.clicked.connect(self._navigate_to_root_callback(root_path))
             button.installEventFilter(self.panel.focus_watcher)
             self.panel.root_buttons_layout.addWidget(button)
@@ -88,6 +96,7 @@ class PanelNavigationCoordinator:
         if not self.panel.show_root_dropdown_enabled:
             return
 
+        active_root_index = self.resolve_active_root_index(current_path, roots)
         self.panel.root_combo.blockSignals(True)
         try:
             self.panel.root_combo.clear()
@@ -102,17 +111,9 @@ class PanelNavigationCoordinator:
                     Qt.ItemDataRole.ToolTipRole,
                 )
 
-            if current_path is None:
-                return
-
-            match_index = -1
-            for index, root_path in enumerate(roots):
-                if is_path_under_root(current_path, root_path):
-                    match_index = index
-                    break
-
-            if match_index >= 0:
-                self.panel.root_combo.setCurrentIndex(match_index)
+            self.panel.root_combo.setCurrentIndex(
+                active_root_index if active_root_index is not None else -1
+            )
         finally:
             self.panel.root_combo.blockSignals(False)
 
@@ -179,14 +180,11 @@ class PanelNavigationCoordinator:
             return
 
         current_path = tab.navigation.path
-        matches = [
-            root
-            for root in self.panel.root_paths
-            if is_path_under_root(current_path, root)
-        ]
-        if matches:
-            root_path = max(matches, key=lambda p: len(path_key(p)))
-            tab.navigation.set_path(root_path)
+        active_root_index = self.resolve_active_root_index(
+            current_path, self.panel.root_paths
+        )
+        if active_root_index is not None:
+            tab.navigation.set_path(self.panel.root_paths[active_root_index])
             return
 
         if current_path.anchor:
@@ -327,6 +325,25 @@ class PanelNavigationCoordinator:
             return
         tab.navigation.set_path(root_path)
 
+    def resolve_active_root_index(
+        self, current_path: Path | None, roots: list[Path]
+    ) -> int | None:
+        """Return one active root index, preferring the deepest matching root."""
+
+        if current_path is None:
+            return None
+
+        active_index: int | None = None
+        active_length = -1
+        for index, root_path in enumerate(roots):
+            if not is_path_under_root(current_path, root_path):
+                continue
+            root_length = len(path_key(root_path))
+            if root_length > active_length:
+                active_index = index
+                active_length = root_length
+        return active_index
+
     def show_history_menu(self) -> None:
         tab = self.panel.current_tab()
         if tab is None:
@@ -357,6 +374,42 @@ class PanelNavigationCoordinator:
                 self.panel.address_edit.rect().bottomLeft()
             )
         )
+
+    def show_root_picker_menu(self) -> None:
+        """Show a popup menu that lets the user jump to a discovered root."""
+
+        current_path = self.panel.current_path()
+        roots = self.safe_roots(current_path)
+        if not roots:
+            return
+        active_root_index = self.resolve_active_root_index(current_path, roots)
+
+        existing_menu = self.panel.take_root_picker_menu()
+        if existing_menu is not None:
+            existing_menu.close()
+            existing_menu.deleteLater()
+
+        menu = QMenu(self.panel)
+        action_group = QActionGroup(menu)
+        action_group.setExclusive(True)
+        for index, root_path in enumerate(roots):
+            action = menu.addAction(_root_picker_action_text(index, root_path))
+            action.setToolTip(display_path_text(root_path))
+            action.setCheckable(True)
+            action.setChecked(index == active_root_index)
+            action_group.addAction(action)
+            action.triggered.connect(self._navigate_to_root_callback(root_path))
+
+        self.panel.set_root_picker_menu(menu)
+        menu.popup(self.root_picker_popup_point())
+
+    def root_picker_popup_point(self) -> QPoint:
+        """Return the global popup anchor for the root-picker menu."""
+
+        current_tab = self.panel.current_tab()
+        if current_tab is not None:
+            return current_tab.mapToGlobal(current_tab.rect().topLeft())
+        return self.panel.tabs.mapToGlobal(self.panel.tabs.rect().topLeft())
 
     def _navigate_to_root_callback(self, root_path: Path) -> Callable[[bool], None]:
         """Build a callback that navigates the active tab to a root path."""

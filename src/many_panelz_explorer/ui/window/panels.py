@@ -172,6 +172,31 @@ class WindowPanelsCoordinator:
         if panel is not None:
             panel.navigation_coordinator.refresh_current_path()
 
+    def refresh_all_panels(self) -> None:
+        """Refresh every visible panel in the current window."""
+
+        for panel in self.window.panel_widgets.values():
+            panel.navigation_coordinator.refresh_current_path()
+
+    def first_ordered_panel(self) -> PanelWidget | None:
+        """Return the first ordered panel in the current layout."""
+
+        ordered = WindowLayoutCoordinator.ordered_panel_ids(self.window.layout_rows)
+        if not ordered:
+            return None
+        return self.window.panel_widgets.get(ordered[0])
+
+    def target_panel(self) -> PanelWidget | None:
+        """Return the resolved target panel for the active panel."""
+
+        source_id = self.window.active_panel_id
+        if source_id is None:
+            return None
+        target_id = resolve_window_target_panel_id(self.window, source_id)
+        if target_id is None:
+            return None
+        return self.window.panel_widgets.get(target_id)
+
     def rebuild_from_tree(
         self,
         tabs_state: TabsState,

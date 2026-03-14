@@ -162,6 +162,17 @@ def resolve_open_executable(path: Path, mode: Literal["edit", "view"]) -> str | 
     return _resolve_launch_executable(candidate)
 
 
+def resolve_viewer_executable(path: Path) -> str | None:
+    """Resolve only a dedicated viewer executable for the provided path."""
+
+    extension = _normalize_extension(Path(path).suffix)
+    override = _file_open_overrides.get(extension) or {}
+    candidate = str(override.get("viewer", "") or _default_viewer_executable).strip()
+    if not candidate:
+        return None
+    return _resolve_launch_executable(candidate)
+
+
 def _launch_file_with_executable(executable: str, path: Path) -> None:
     subprocess.Popen([str(executable), str(path)])
 
@@ -179,6 +190,16 @@ def open_with_default(path: Path) -> None:
         return
 
     raise RuntimeError("No default opener available on this platform")
+
+
+def open_with_viewer(path: Path) -> bool:
+    """Open a path with a dedicated viewer executable when configured."""
+
+    configured = resolve_viewer_executable(path)
+    if not configured:
+        return False
+    _launch_file_with_executable(configured, Path(path))
+    return True
 
 
 def _resolve_text_editor_executable_fallback() -> str:
@@ -221,6 +242,18 @@ def rename_path(path: Path, new_name: str) -> Path:
     path = Path(path)
     target = path.with_name(new_name)
     return path.rename(target)
+
+
+def create_text_file(parent: Path, name: str) -> Path:
+    """Create a new empty text file directly inside the provided directory."""
+
+    parent = Path(parent)
+    requested = Path(str(name or "").strip())
+    if requested.name != str(name or "").strip() or requested.name in {"", ".", ".."}:
+        raise RuntimeError("Enter a file name without path separators.")
+    target = parent / requested.name
+    target.touch(exist_ok=False)
+    return target
 
 
 def create_folder(parent: Path, name: str = "New Folder") -> Path:

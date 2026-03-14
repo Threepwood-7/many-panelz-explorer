@@ -113,6 +113,12 @@ python -m many_panelz_explorer
 
 No command-line arguments. The app restores the previous session (windows, panels, tabs) on startup.
 
+### Root Controls
+
+- Only one root may be active at a time.
+- When multiple configured roots contain the current path, the deepest matching root wins.
+- A mount point under a broader drive root suppresses that drive as the active root while the current path is inside the mount point.
+
 ## Configuration
 
 Runtime settings are stored via QSettings:

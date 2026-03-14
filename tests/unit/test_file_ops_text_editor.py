@@ -111,3 +111,42 @@ def test_resolve_open_executable_uses_extension_override(tmp_path: Path) -> None
     )
     resolved = file_ops.resolve_open_executable(tmp_path / "run.cmd", "edit")
     assert resolved == str(special)
+
+
+def test_open_with_viewer_uses_dedicated_viewer(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    viewer = tmp_path / "viewer.exe"
+    viewer.write_text("", encoding="utf-8")
+    sample = tmp_path / "sample.txt"
+    sample.write_text("demo", encoding="utf-8")
+    file_ops.configure_open_routing(
+        default_editor_executable="",
+        default_viewer_executable=str(viewer),
+        overrides_json="{}",
+    )
+    launched: list[list[str]] = []
+    monkeypatch.setattr(
+        file_ops.subprocess, "Popen", lambda args: launched.append(list(args))
+    )
+
+    used_viewer = file_ops.open_with_viewer(sample)
+
+    assert used_viewer is True
+    assert launched == [[str(viewer), str(sample)]]
+
+
+def test_create_text_file_creates_requested_file(tmp_path: Path) -> None:
+    created = file_ops.create_text_file(tmp_path, "notes.txt")
+
+    assert created == tmp_path / "notes.txt"
+    assert created.exists() is True
+    assert created.read_text(encoding="utf-8") == ""
+
+
+def test_create_text_file_raises_on_existing_file(tmp_path: Path) -> None:
+    existing = tmp_path / "notes.txt"
+    existing.write_text("present", encoding="utf-8")
+
+    with pytest.raises(FileExistsError):
+        file_ops.create_text_file(tmp_path, "notes.txt")

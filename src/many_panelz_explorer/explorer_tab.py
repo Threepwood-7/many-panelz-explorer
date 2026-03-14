@@ -8,7 +8,13 @@ from typing import TYPE_CHECKING, cast
 
 from PySide6.QtCore import QEvent, QModelIndex, QObject, Qt
 from PySide6.QtGui import QKeyEvent, QShortcut
-from PySide6.QtWidgets import QAbstractItemView, QTreeView, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QMainWindow,
+    QTreeView,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ._explorer_tab_actions import ExplorerTabActions
 from ._explorer_tab_columns import ExplorerTabColumns
@@ -137,6 +143,41 @@ class ExplorerTab(QWidget):
                 paths.append(Path(file_path))
         return paths
 
+    def open_selected_or_current(self) -> None:
+        """Open selected files, or the current row when nothing is selected."""
+
+        self._actions.open_selected_or_current()
+
+    def view_selected_or_current(self) -> None:
+        """Open selected files with a dedicated viewer when configured."""
+
+        self._actions.view_selected_or_current()
+
+    def edit_selected_or_current(self) -> None:
+        """Edit selected files, or the current row when nothing is selected."""
+
+        self._actions.edit_selected_or_current()
+
+    def create_new_text_file_and_edit(self) -> None:
+        """Create a new text file in the active folder and open it in the editor."""
+
+        self._actions.create_new_text_file_and_edit()
+
+    def create_directory(self) -> None:
+        """Create a new folder in the active path."""
+
+        self._actions.create_directory()
+
+    def create_zip_from_selection(self) -> None:
+        """Launch ZIP creation for the current selection."""
+
+        self._actions.create_zip_from_selection()
+
+    def copy_selected_item_or_panel_path(self) -> None:
+        """Copy a selected item path, or fall back to the active panel path."""
+
+        self._actions.copy_selected_item_or_panel_path()
+
     def _on_item_activated(self, index: QModelIndex) -> None:
         file_path = self.model.filePath(index)
         if not file_path:
@@ -146,12 +187,34 @@ class ExplorerTab(QWidget):
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
         if obj is self.view and event.type() == QEvent.Type.KeyPress:
             key_event = cast("QKeyEvent", event)
+            if self._handle_file_list_shortcut_key(key_event):
+                return True
             if self._handle_navigation_key(key_event):
                 index = self.view.currentIndex()
                 if index.isValid() and key_event.key() == int(Qt.Key.Key_Right):
                     self._on_item_activated(index)
                 return True
         return super().eventFilter(obj, event)
+
+    def _handle_file_list_shortcut_key(self, key_event: QKeyEvent) -> bool:
+        modifiers = key_event.modifiers()
+        key = key_event.key()
+        if modifiers == Qt.KeyboardModifier.NoModifier and key == int(
+            Qt.Key.Key_Delete
+        ):
+            self._trigger_window_action("delete_selection_action")
+            return True
+        if modifiers == Qt.KeyboardModifier.ControlModifier and key == int(
+            Qt.Key.Key_A
+        ):
+            self._actions.select_all_items()
+            return True
+        if modifiers == Qt.KeyboardModifier.ShiftModifier and key == int(
+            Qt.Key.Key_F10
+        ):
+            self._actions.open_context_menu_from_keyboard()
+            return True
+        return False
 
     def _handle_navigation_key(self, key_event: QKeyEvent) -> bool:
         modifiers = key_event.modifiers()
@@ -185,6 +248,15 @@ class ExplorerTab(QWidget):
         return modifiers == Qt.KeyboardModifier.NoModifier and key == int(
             Qt.Key.Key_Right
         )
+
+    def _trigger_window_action(self, action_name: str) -> None:
+        window = self.window()
+        if not isinstance(window, QMainWindow):
+            return
+        action = getattr(window, action_name, None)
+        if action is None:
+            return
+        action.trigger()
 
     def _default_file_list_size_formatter(self, value: int) -> str:
         return f"{int(value):,}"

@@ -117,6 +117,16 @@ class ExplorerWindow(QMainWindow):
     next_pane_shortcut: QShortcut
     previous_pane_shortcut: QShortcut
     menu_focus_shortcut: QShortcut
+    reread_visible_lists_shortcut: QShortcut
+    list_files_shortcut: QShortcut
+    alt_list_files_shortcut: QShortcut
+    edit_files_shortcut: QShortcut
+    new_text_file_shortcut: QShortcut
+    create_directory_shortcut: QShortcut
+    pack_files_shortcut: QShortcut
+    copy_path_shortcut: QShortcut
+    root_picker_shortcut: QShortcut
+    minimize_windows_shortcut: QShortcut
     queue_dock: QDockWidget
     queue_panel: OperationQueuePanel
     source_path_label: QLabel
@@ -284,17 +294,35 @@ class ExplorerWindow(QMainWindow):
         menu_bar.setFocus(Qt.FocusReason.ShortcutFocusReason)
         menu_bar.setActiveAction(self.menu_file_action)
 
+    def minimize_managed_windows(self) -> None:
+        """Minimize this app's managed windows."""
+
+        minimize_all = getattr(self.controller, "minimize_all_windows", None)
+        if callable(minimize_all):
+            minimize_all()
+            return
+        self.showMinimized()
+
     def show_help(self) -> None:
         QMessageBox.information(
             self,
             "Help",
             "Keyboard shortcuts:\n"
+            "F2: Refresh all visible panes\n"
+            "F3 / Alt+F3: View selected file(s)\n"
+            "F4 / Shift+F4: Edit selected file(s) / create text file\n"
             "F5: Copy to target pane\n"
             "F6: Move to target pane\n"
-            "F8: Delete selection\n"
+            "F7: Create directory\n"
+            "F8 / Delete: Delete selection\n"
+            "Alt+F1: Open root picker for active tab\n"
+            "Alt+F5: Create ZIP from selection\n"
             "Tab / Shift+Tab: Switch active pane\n"
+            "Ctrl+A: Select all items in file list\n"
+            "Ctrl+P: Copy selected item path or active pane path\n"
             "Ctrl+, : Open settings\n"
             "Alt or F10: Focus main menu\n"
+            "Shift+Esc: Minimize app windows\n"
             "Ctrl+Q / Alt+X: Exit application",
         )
 

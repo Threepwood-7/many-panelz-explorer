@@ -34,6 +34,13 @@ def _button_for_root(panel: PanelWidget, target: Path):
     raise AssertionError(f"button root not found: {target}")
 
 
+def _action_for_root(menu, target: Path):
+    for action in menu.actions():
+        if _norm(action.toolTip()) == _norm(target):
+            return action
+    raise AssertionError(f"menu root not found: {target}")
+
+
 def test_panel_toolbar_controls_active_tab_navigation(qtbot, tmp_path: Path) -> None:
     root = tmp_path / "root"
     a = root / "a"
@@ -474,6 +481,120 @@ def test_alt_down_shows_current_tab_history_menu(qtbot, tmp_path: Path) -> None:
     assert any(str(b) in text for text in labels)
     assert any(str(a) in text for text in labels)
     assert any(str(root) in text for text in labels)
+
+
+def test_root_picker_menu_uses_top_left_anchor_and_numbered_actions(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "root"
+    source = root / "source"
+    target = root / "target"
+    archive = root / "archive"
+    source.mkdir(parents=True)
+    target.mkdir(parents=True)
+    archive.mkdir(parents=True)
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [source, target, archive],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    tab = panel.add_tab(source)
+
+    popup_point = panel.navigation_coordinator.root_picker_popup_point()
+    assert popup_point == tab.mapToGlobal(tab.rect().topLeft())
+
+    panel.navigation_coordinator.show_root_picker_menu()
+    menu = panel.take_root_picker_menu()
+    assert menu is not None
+
+    actions = menu.actions()
+    assert [action.text() for action in actions] == [
+        "&1 archive",
+        "&2 source",
+        "&3 target",
+    ]
+    assert all(action.isCheckable() for action in actions)
+    assert [action.isChecked() for action in actions] == [False, True, False]
+    action_group = actions[0].actionGroup()
+    assert action_group is not None
+    assert action_group.isExclusive() is True
+    assert all(action.actionGroup() is action_group for action in actions)
+
+
+def test_overlapping_roots_mark_only_most_specific_match_active(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "workspace"
+    mount = root / "M" / "HDD01"
+    mount.mkdir(parents=True)
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        show_root_dropdown=True,
+        roots_provider=lambda _current: [root, mount],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    tab = panel.add_tab(root)
+
+    tab.navigation.set_path(mount)
+    qtbot.waitUntil(lambda: tab.navigation.path == mount)
+    qtbot.waitUntil(lambda: _button_for_root(panel, mount).isChecked() is True)
+
+    assert _button_for_root(panel, root).isChecked() is False
+    assert _button_for_root(panel, mount).isChecked() is True
+    assert panel.root_combo.currentIndex() == _index_for_root(panel, mount)
+
+    panel.navigation_coordinator.show_root_picker_menu()
+    menu = panel.take_root_picker_menu()
+    assert menu is not None
+
+    assert _action_for_root(menu, root).isChecked() is False
+    assert _action_for_root(menu, mount).isChecked() is True
+
+
+def test_deepest_matching_root_wins_when_multiple_roots_overlap(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "workspace"
+    mount = root / "M" / "HDD01"
+    project = mount / "projects"
+    current = project / "demo"
+    current.mkdir(parents=True)
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        show_root_dropdown=True,
+        roots_provider=lambda _current: [root, mount, project],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    tab = panel.add_tab(root)
+
+    tab.navigation.set_path(current)
+    qtbot.waitUntil(lambda: tab.navigation.path == current)
+    qtbot.waitUntil(lambda: _button_for_root(panel, project).isChecked() is True)
+
+    assert _button_for_root(panel, root).isChecked() is False
+    assert _button_for_root(panel, mount).isChecked() is False
+    assert _button_for_root(panel, project).isChecked() is True
+    assert panel.root_combo.currentIndex() == _index_for_root(panel, project)
+
+    panel.navigation_coordinator.show_root_picker_menu()
+    menu = panel.take_root_picker_menu()
+    assert menu is not None
+
+    assert _action_for_root(menu, root).isChecked() is False
+    assert _action_for_root(menu, mount).isChecked() is False
+    assert _action_for_root(menu, project).isChecked() is True
 
 
 def test_column_widths_sync_across_tabs_in_panel(qtbot, tmp_path: Path) -> None:

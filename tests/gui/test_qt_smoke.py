@@ -10,7 +10,7 @@ pytest.importorskip("pytestqt")
 
 from PySide6.QtCore import QDir, Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QWidget
+from PySide6.QtWidgets import QApplication, QMessageBox, QWidget
 
 from many_panelz_explorer._operations.queue_manager import OperationQueueManager
 from many_panelz_explorer._operations.types import OperationExecutionPreferences
@@ -173,6 +173,38 @@ def test_hidden_action_updates_model_filter(qtbot, tmp_path: Path) -> None:
 
     window.show_hidden_action.setChecked(True)
     assert tab.model.filter() & QDir.Hidden
+
+
+def test_help_text_mentions_total_commander_shortcuts(
+    qtbot, tmp_path: Path, monkeypatch
+) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="smoke-help-shortcuts",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    captured: dict[str, str] = {}
+
+    def _capture_information(_parent, title: str, text: str) -> None:
+        captured["title"] = title
+        captured["text"] = text
+        return None
+
+    monkeypatch.setattr(QMessageBox, "information", _capture_information)
+
+    window.show_help()
+
+    assert captured["title"] == "Help"
+    assert "F2: Refresh all visible panes" in captured["text"]
+    assert "Alt+F1: Open root picker for active tab" in captured["text"]
+    assert "Ctrl+P: Copy selected item path or active pane path" in captured["text"]
+    assert "Shift+Esc: Minimize app windows" in captured["text"]
 
 
 def test_menu_activation_from_view_filter_and_address(qtbot, tmp_path: Path) -> None:

@@ -139,6 +139,16 @@ class AppController:
         finally:
             self._is_raising_windows = False
 
+    def minimize_all_windows(self) -> None:
+        """Minimize all managed explorer and queue windows."""
+
+        for window in list(self.windows):
+            if window.isVisible():
+                window.showMinimized()
+        for window in list(self._queue_windows):
+            if window.isVisible():
+                window.showMinimized()
+
     def save_session(self) -> None:
         window_ids: list[str] = []
         for window in list(self.windows):

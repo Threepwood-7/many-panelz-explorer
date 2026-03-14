@@ -9,8 +9,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6")
 pytest.importorskip("pytestqt")
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QInputDialog, QMessageBox
+from PySide6.QtCore import QItemSelectionModel, Qt
+from PySide6.QtTest import QTest
+from PySide6.QtWidgets import QApplication, QInputDialog, QMessageBox
 
 from many_panelz_explorer import mounts
 from many_panelz_explorer._operations.queue_manager import OperationQueueManager
@@ -27,6 +28,7 @@ class _ControllerStub:
     def __init__(self) -> None:
         self.closed_windows: list[ExplorerWindow] = []
         self.broadcast_calls: list[list[object]] = []
+        self.minimize_calls = 0
         self.operation_queue_manager = OperationQueueManager(
             preferences=OperationExecutionPreferences()
         )
@@ -50,6 +52,9 @@ class _ControllerStub:
 
     def show_queue_floating_window(self):
         return None
+
+    def minimize_all_windows(self) -> None:
+        self.minimize_calls += 1
 
 
 class _ControllerBroadcastStub(_ControllerStub):
@@ -109,6 +114,25 @@ def _prepare_tabs_for_column_assertions(
             tab.navigation.path == path and tab.model.rowCount() >= 1 for tab in tabs
         )
     )
+
+
+def _select_paths(tab: ExplorerTab, paths: list[Path]) -> None:
+    selection_model = tab.view.selectionModel()
+    first_flags = (
+        QItemSelectionModel.SelectionFlag.ClearAndSelect
+        | QItemSelectionModel.SelectionFlag.Rows
+    )
+    add_flags = (
+        QItemSelectionModel.SelectionFlag.Select
+        | QItemSelectionModel.SelectionFlag.Rows
+    )
+    for index, path in enumerate(paths):
+        model_index = tab.model.index(str(path))
+        assert model_index.isValid()
+        selection_model.setCurrentIndex(
+            model_index,
+            first_flags if index == 0 else add_flags,
+        )
 
 
 class _ControllerCloneStub(_ControllerStub):
@@ -351,6 +375,272 @@ def test_close_window_action_closes_and_notifies_controller(
 
     assert controller.closed_windows
     assert controller.closed_windows[-1] is window
+
+
+def test_f2_refreshes_all_panels_and_ctrl_r_refreshes_active_panel(
+    qtbot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="shortcut-refresh-window",
+        roots_provider=roots_provider,
+    )
+    window.default_maximize_on_first_show = False
+    qtbot.addWidget(window)
+    window.show()
+    window.new_vertical_panel_action.trigger()
+
+    ordered_ids = [panel_id for row in window.layout_rows for panel_id in row]
+    source_panel = window.panel_widgets[ordered_ids[0]]
+    source_panel.current_tab().view.setFocus()
+    window.panels_coordinator.set_active_panel(source_panel.panel_id)
+
+    refresh_calls: list[int] = []
+    for panel_id, panel in window.panel_widgets.items():
+        monkeypatch.setattr(
+            panel.navigation_coordinator,
+            "refresh_current_path",
+            lambda panel_id=panel_id: refresh_calls.append(panel_id),
+        )
+
+    window.reread_visible_lists_shortcut.activated.emit()
+    qtbot.waitUntil(lambda: len(refresh_calls) == len(window.panel_widgets))
+    assert sorted(refresh_calls) == sorted(window.panel_widgets)
+
+    refresh_calls.clear()
+    window.refresh_action.trigger()
+    qtbot.waitUntil(lambda: refresh_calls == [source_panel.panel_id])
+
+
+def test_file_shortcuts_use_expected_file_actions(
+    qtbot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="shortcut-file-actions",
+        roots_provider=roots_provider,
+    )
+    window.default_maximize_on_first_show = False
+    qtbot.addWidget(window)
+    window.show()
+
+    root = tmp_path / "files-root"
+    root.mkdir()
+    file_path = root / "alpha.txt"
+    file_path.write_text("alpha", encoding="utf-8")
+    directory = root / "folder"
+    directory.mkdir()
+
+    panel = window.panels_coordinator.active_panel()
+    assert panel is not None
+    tab = panel.current_tab()
+    assert tab is not None
+    tab.navigation.set_path(root)
+    qtbot.waitUntil(lambda: tab.model.index(str(file_path)).isValid())
+    tab.view.setFocus()
+
+    opened_default: list[Path] = []
+    opened_viewer: list[Path] = []
+    edited_paths: list[Path] = []
+    monkeypatch.setattr(
+        "many_panelz_explorer._explorer_tab_actions.file_ops.open_with_default",
+        lambda path: opened_default.append(Path(path)),
+    )
+    monkeypatch.setattr(
+        "many_panelz_explorer._explorer_tab_actions.file_ops.open_with_viewer",
+        lambda path: opened_viewer.append(Path(path)) or False,
+    )
+    monkeypatch.setattr(
+        "many_panelz_explorer._explorer_tab_actions.file_ops.open_in_text_editor",
+        lambda path: edited_paths.append(Path(path)),
+    )
+    monkeypatch.setattr(
+        QInputDialog,
+        "getText",
+        lambda *_a, **_k: ("fresh.txt", True),
+    )
+
+    _select_paths(tab, [file_path])
+    QTest.keyClick(tab.view, Qt.Key_F3)
+    assert opened_default == [file_path]
+
+    opened_default.clear()
+    opened_viewer.clear()
+    tab.view.selectionModel().clearSelection()
+    tab.view.setCurrentIndex(tab.model.index(str(file_path)))
+    QTest.keyClick(tab.view, Qt.Key_F3, Qt.AltModifier)
+    qtbot.waitUntil(lambda: opened_viewer == [file_path])
+    assert opened_default == [file_path]
+    assert window.statusBar().currentMessage() == (
+        "No dedicated viewer configured; used default opener."
+    )
+
+    _select_paths(tab, [file_path])
+    QTest.keyClick(tab.view, Qt.Key_F4)
+    assert edited_paths == [file_path]
+
+    QTest.keyClick(tab.view, Qt.Key_F4, Qt.ShiftModifier)
+    created = root / "fresh.txt"
+    qtbot.waitUntil(created.exists)
+    assert edited_paths[-1] == created
+    qtbot.waitUntil(
+        lambda: Path(tab.model.filePath(tab.view.currentIndex())) == created
+    )
+
+    _select_paths(tab, [directory])
+    opened_default.clear()
+    QTest.keyClick(tab.view, Qt.Key_F3)
+    qtbot.waitUntil(lambda: tab.navigation.path == directory)
+    assert opened_default == []
+
+
+def test_file_list_shortcuts_cover_selection_context_and_clipboard(
+    qtbot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="shortcut-file-list",
+        roots_provider=roots_provider,
+    )
+    window.default_maximize_on_first_show = False
+    qtbot.addWidget(window)
+    window.show()
+
+    root = tmp_path / "selection-root"
+    root.mkdir()
+    first_file = root / "one.txt"
+    second_file = root / "two.txt"
+    first_file.write_text("one", encoding="utf-8")
+    second_file.write_text("two", encoding="utf-8")
+
+    panel = window.panels_coordinator.active_panel()
+    assert panel is not None
+    tab = panel.current_tab()
+    assert tab is not None
+    tab.navigation.set_path(root)
+    qtbot.waitUntil(lambda: tab.model.index(str(second_file)).isValid())
+    tab.view.setFocus()
+
+    _select_paths(tab, [first_file])
+    delete_calls: list[str] = []
+    monkeypatch.setattr(
+        window.operations_coordinator,
+        "build_operation_request",
+        lambda **_kwargs: delete_calls.append("delete") or None,
+    )
+    context_calls: list[tuple[int, int]] = []
+    monkeypatch.setattr(
+        tab._actions,
+        "open_context_menu",
+        lambda pos: context_calls.append((pos.x(), pos.y())),
+    )
+    zip_calls: list[tuple[list[Path], Path]] = []
+    monkeypatch.setattr(
+        QInputDialog,
+        "getText",
+        lambda *_a, **_k: ("Created Folder", True),
+    )
+    monkeypatch.setattr(
+        "many_panelz_explorer._explorer_tab_actions.QFileDialog.getSaveFileName",
+        lambda *_a, **_k: (str(root / "archive.zip"), "ZIP Files (*.zip)"),
+    )
+    monkeypatch.setattr(
+        "many_panelz_explorer._explorer_tab_actions.file_ops.zip_create",
+        lambda sources, archive_path: zip_calls.append(
+            ([Path(item) for item in sources], Path(archive_path))
+        ),
+    )
+
+    QTest.keyClick(tab.view, Qt.Key_A, Qt.ControlModifier)
+    selected_after_ctrl_a = {
+        Path(tab.model.filePath(index))
+        for index in tab.view.selectionModel().selectedRows()
+        if not tab.model.is_parent_index(index)
+    }
+    assert selected_after_ctrl_a == {first_file, second_file}
+
+    _select_paths(tab, [first_file])
+    QTest.keyClick(tab.view, Qt.Key_P, Qt.ControlModifier)
+    assert QApplication.clipboard().text() == str(first_file)
+
+    tab.view.selectionModel().clearSelection()
+    QTest.keyClick(tab.view, Qt.Key_P, Qt.ControlModifier)
+    assert QApplication.clipboard().text() == str(root)
+    assert window.statusBar().currentMessage() == "Copied panel path to clipboard."
+
+    _select_paths(tab, [first_file, second_file])
+    QTest.keyClick(tab.view, Qt.Key_P, Qt.ControlModifier)
+    assert QApplication.clipboard().text() == str(root)
+
+    QTest.keyClick(tab.view, Qt.Key_F10, Qt.ShiftModifier)
+    assert len(context_calls) == 1
+
+    _select_paths(tab, [first_file])
+    QTest.keyClick(tab.view, Qt.Key_Delete)
+    window.delete_selection_action.trigger()
+    assert delete_calls == ["delete", "delete"]
+
+    QTest.keyClick(tab.view, Qt.Key_F7)
+    assert (root / "Created Folder").exists() is True
+
+    qtbot.waitUntil(lambda: tab.model.index(str(first_file)).isValid())
+    _select_paths(tab, [first_file])
+    QTest.keyClick(tab.view, Qt.Key_F5, Qt.AltModifier)
+    assert zip_calls == [([first_file], root / "archive.zip")]
+
+
+def test_alt_f1_and_shift_esc_use_active_panel_and_window_helpers(
+    qtbot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    controller = _ControllerStub()
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=controller,
+        settings=settings,
+        window_id="shortcut-root-picker",
+        roots_provider=roots_provider,
+    )
+    window.default_maximize_on_first_show = False
+    qtbot.addWidget(window)
+    window.show()
+    window.new_vertical_panel_action.trigger()
+
+    ordered = _ordered_panels(window)
+    first_panel = ordered[0]
+    active_panel = ordered[-1]
+    window.panels_coordinator.set_active_panel(first_panel.panel_id)
+    window.panels_coordinator.set_active_panel(active_panel.panel_id)
+    active_panel.current_tab().view.setFocus()
+
+    first_calls: list[str] = []
+    active_calls: list[str] = []
+    monkeypatch.setattr(
+        first_panel.navigation_coordinator,
+        "show_root_picker_menu",
+        lambda: first_calls.append("first"),
+    )
+    monkeypatch.setattr(
+        active_panel.navigation_coordinator,
+        "show_root_picker_menu",
+        lambda: active_calls.append("active"),
+    )
+
+    window.root_picker_shortcut.activated.emit()
+    window.minimize_windows_shortcut.activated.emit()
+
+    assert first_calls == []
+    assert active_calls == ["active"]
+    assert controller.minimize_calls == 1
 
 
 def test_root_dropdown_ini_setting_controls_panel_dropdown(

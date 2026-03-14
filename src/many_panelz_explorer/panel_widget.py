@@ -145,6 +145,7 @@ class PanelWidget(QWidget):
         self.column_width_auto_align_mode = self.COLUMN_ALIGN_MODE_CURRENT_PANEL_TABS
         self.root_buttons: list[QPushButton] = []
         self._history_menu: QMenu | None = None
+        self._root_picker_menu: QMenu | None = None
         self.pane_role = "normal"
         self._address_completions_enabled = True
         self.active_role_color = QColor("#A8B6C4")
@@ -334,6 +335,14 @@ class PanelWidget(QWidget):
 
     def set_history_menu(self, menu: QMenu | None) -> None:
         self._history_menu = menu
+
+    def take_root_picker_menu(self) -> QMenu | None:
+        menu = self._root_picker_menu
+        self._root_picker_menu = None
+        return menu
+
+    def set_root_picker_menu(self, menu: QMenu | None) -> None:
+        self._root_picker_menu = menu
 
     def tab_count(self) -> int:
         return self.tabs.count()
