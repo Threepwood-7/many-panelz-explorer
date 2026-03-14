@@ -9,7 +9,7 @@ import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import TypeGuard
 from urllib.parse import urlparse
 
 _PYTHON_MARKER_FILES = {
@@ -28,12 +28,18 @@ _GIT_ALLOWED_REMOTE_HOSTS = {"github.com", "gitlab.com", "bitbucket.org"}
 _GIT_SSH_URL_RE = re.compile(r"^[^@]+@(?P<host>[^:]+):(?P<path>.+)$")
 
 
+def _is_object_dict(value: object) -> TypeGuard[dict[object, object]]:
+    """Return whether the payload is a dictionary with arbitrary object entries."""
+
+    return isinstance(value, dict)
+
+
 def _string_object_mapping(value: object) -> dict[str, object] | None:
     """Normalize decoded config payloads into string-key object mappings."""
 
-    if not isinstance(value, dict):
+    if not _is_object_dict(value):
         return None
-    return {str(key): item for key, item in cast("dict[object, object]", value).items()}
+    return {str(key): item for key, item in value.items()}
 
 
 @dataclass(frozen=True)
@@ -281,11 +287,12 @@ class ContextDetector:
 
     def _detect_node_runner(self, root: Path, package_json_path: Path | None) -> str:
         if package_json_path is not None:
+            payload: object
             try:
                 payload = json.loads(package_json_path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
                 payload = {}
-            payload_map = _string_object_mapping(cast("object", payload))
+            payload_map = _string_object_mapping(payload)
             if payload_map is not None:
                 package_manager = (
                     str(payload_map.get("packageManager", "")).strip().lower()

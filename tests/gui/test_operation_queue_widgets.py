@@ -139,3 +139,13 @@ def test_artifact_path_prefers_script_path_from_artifacts(
     monkeypatch.setattr(panel, "_selected_job", lambda: job)
 
     assert panel._artifact_path("script") == script_path
+
+
+def test_table_model_ignores_invalid_job_signal_payload(qtbot) -> None:
+    panel = _new_panel(qtbot)
+    model = panel.model
+
+    model._on_job_added(object())
+    model._on_job_updated(object())
+
+    assert model.rowCount() == 0

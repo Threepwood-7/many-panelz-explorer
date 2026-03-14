@@ -9,7 +9,7 @@ import subprocess
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal, TypeGuard
 
 from send2trash import send2trash
 from threep_commons.desktop import open_path_in_default_app
@@ -34,12 +34,19 @@ _default_viewer_executable = ""
 _file_open_overrides: dict[str, dict[str, str]] = {}
 
 
+def _is_object_dict(value: object) -> TypeGuard[dict[object, object]]:
+    """Return whether the payload is a dictionary with arbitrary object entries."""
+
+    return isinstance(value, dict)
+
+
 def _string_mapping(value: object) -> dict[str, object]:
-    if not isinstance(value, dict):
+    """Normalize a raw JSON-style mapping into string-keyed objects."""
+
+    if not _is_object_dict(value):
         return {}
     normalized: dict[str, object] = {}
-    mapping = cast("dict[object, object]", value)
-    for key, item in mapping.items():
+    for key, item in value.items():
         normalized[str(key)] = item
     return normalized
 
@@ -115,11 +122,12 @@ def configure_open_routing(
     global _file_open_overrides
     _default_editor_executable = str(default_editor_executable or "").strip()
     _default_viewer_executable = str(default_viewer_executable or "").strip()
+    parsed: object
     try:
         parsed = json.loads(str(overrides_json or "{}"))
     except json.JSONDecodeError:
         parsed = {}
-    _file_open_overrides = _normalize_overrides_payload(cast("object", parsed))
+    _file_open_overrides = _normalize_overrides_payload(parsed)
 
 
 def _resolve_launch_executable(executable: str) -> str:

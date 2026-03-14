@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypeGuard
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPersistentModelIndex, Qt
 from PySide6.QtWidgets import (
@@ -46,6 +46,28 @@ def _fmt_time(value: datetime | None) -> str:
     if value is None:
         return ""
     return value.astimezone().strftime("%H:%M:%S")
+
+
+def _is_operation_job(value: object) -> TypeGuard[OperationJob]:
+    """Return whether the runtime payload matches the queue job contract."""
+
+    job_id = getattr(value, "job_id", None)
+    request = getattr(value, "request", None)
+    status = getattr(value, "status", None)
+    created_at = getattr(value, "created_at", None)
+    message = getattr(value, "message", None)
+    artifacts = getattr(value, "artifacts", None)
+    backend_id = getattr(request, "backend_id", None)
+    kind = getattr(request, "kind", None)
+    return (
+        isinstance(job_id, str)
+        and isinstance(kind, str)
+        and isinstance(backend_id, str)
+        and isinstance(status, str)
+        and (created_at is None or hasattr(created_at, "astimezone"))
+        and isinstance(message, str)
+        and (artifacts is None or hasattr(artifacts, "job_dir"))
+    )
 
 
 class OperationQueueTableModel(QAbstractTableModel):
@@ -131,14 +153,18 @@ class OperationQueueTableModel(QAbstractTableModel):
         return self._jobs[row]
 
     def _on_job_added(self, job_obj: object) -> None:
-        job = cast("OperationJob", job_obj)
+        if not _is_operation_job(job_obj):
+            return
+        job = job_obj
         row = len(self._jobs)
         self.beginInsertRows(QModelIndex(), row, row)
         self._jobs.append(job)
         self.endInsertRows()
 
     def _on_job_updated(self, job_obj: object) -> None:
-        job = cast("OperationJob", job_obj)
+        if not _is_operation_job(job_obj):
+            return
+        job = job_obj
         for row, existing in enumerate(self._jobs):
             if existing.job_id != job.job_id:
                 continue
