@@ -285,6 +285,24 @@ def test_normalize_file_open_override_mapping_normalizes_extensions_and_paths() 
     }
 
 
+def test_normalize_file_open_override_mapping_coerces_non_string_keys() -> None:
+    normalized = settings_normalize.normalize_file_open_override_mapping(
+        {
+            7: {
+                "editor": "C:/tools/editor.exe",
+                "viewer": "C:/tools/viewer.exe",
+            }
+        }
+    )
+
+    assert normalized == {
+        ".7": {
+            "editor": r"C:\tools\editor.exe",
+            "viewer": r"C:\tools\viewer.exe",
+        }
+    }
+
+
 def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
     settings = SettingsManager()
     before = _snapshot(settings)

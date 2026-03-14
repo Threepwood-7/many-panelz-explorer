@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
@@ -42,9 +42,9 @@ class AppController:
         argv_list = list(argv) if argv is not None else []
         configure_qsettings(APP_IDENTITY)
         resolve_app_data_dir(APP_IDENTITY)
-        existing = cast("QApplication | None", QApplication.instance())
+        existing = QApplication.instance()
         self.app: QApplication = (
-            existing if existing is not None else QApplication(argv_list)
+            existing if isinstance(existing, QApplication) else QApplication(argv_list)
         )
         self.app.setApplicationName(SETTINGS_APP_NAME)
         self.app.setOrganizationName(SETTINGS_ORG_NAME)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 from string import Formatter
-from typing import Any, TypedDict, cast
+from typing import Any, TypedDict, TypeGuard
 
 from threep_commons.fs_paths import (
     normalize_windows_path_text as _normalize_windows_path_text,
@@ -320,10 +320,15 @@ def normalize_external_copymove_structured_options(
     return normalize_external_copymove_options(raw)
 
 
+def _is_object_dict(value: object) -> TypeGuard[dict[object, object]]:
+    """Return whether the value is a dictionary with arbitrary object entries."""
+
+    return isinstance(value, dict)
+
+
 def _string_object_mapping(value: object) -> dict[str, object] | None:
     """Return a string-key mapping view for JSON-like dictionary input."""
 
-    if not isinstance(value, dict):
+    if not _is_object_dict(value):
         return None
-    mapping = cast("dict[object, object]", value)
-    return {str(key): item for key, item in mapping.items()}
+    return {str(key): item for key, item in value.items()}

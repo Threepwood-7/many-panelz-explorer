@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import TYPE_CHECKING, Protocol, TypeGuard
 
 from PySide6.QtCore import QEvent, QSignalBlocker, Qt, Signal
 from PySide6.QtWidgets import (
@@ -59,6 +59,15 @@ class _OperationJobRequest(Protocol):
 class _OperationJob(Protocol):
     request: _OperationJobRequest
     status: str
+
+
+def _is_operation_job(value: object) -> TypeGuard[_OperationJob]:
+    """Return whether the runtime payload matches the operation-job contract."""
+
+    request = getattr(value, "request", None)
+    created_by = getattr(request, "created_by", None)
+    status = getattr(value, "status", None)
+    return isinstance(created_by, str) and isinstance(status, str)
 
 
 class ExplorerWindow(QMainWindow):
@@ -249,14 +258,12 @@ class ExplorerWindow(QMainWindow):
             self.show_queue_dock_action.setChecked(bool(visible))
 
     def _on_operation_job_updated(self, job_obj: object) -> None:
-        job = job_obj
-        if not hasattr(job, "request") or not hasattr(job, "status"):
+        if not _is_operation_job(job_obj):
             return
-        typed_job = cast("_OperationJob", job)
-        created_by = str(typed_job.request.created_by)
+        created_by = job_obj.request.created_by
         if not created_by.startswith(f"window:{self.window_id}"):
             return
-        status = str(typed_job.status)
+        status = job_obj.status
         if status not in {"succeeded", "failed", "cancelled"}:
             return
         panel = self.panels_coordinator.active_panel()
