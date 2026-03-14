@@ -37,6 +37,7 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
     column_width_auto_align_mode = delegate_domain_property(
         "ui", "column_width_auto_align_mode"
     )
+    autofit_columns = delegate_domain_property("ui", "autofit_columns")
     show_refresh_button = delegate_domain_property("ui", "show_refresh_button")
     show_root_buttons = delegate_domain_property("ui", "show_root_buttons")
     show_address_bar = delegate_domain_property("ui", "show_address_bar")
@@ -195,6 +196,7 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
             show_root_dropdown=self.show_root_dropdown,
             show_storage_overview_status_row=self.show_storage_overview_status_row,
             column_width_auto_align_mode=self.column_width_auto_align_mode,
+            autofit_columns=self.autofit_columns,
             show_refresh_button=self.show_refresh_button,
             show_root_buttons=self.show_root_buttons,
             show_address_bar=self.show_address_bar,
@@ -265,6 +267,7 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
             preferences.show_storage_overview_status_row
         )
         self.column_width_auto_align_mode = preferences.column_width_auto_align_mode
+        self.autofit_columns = preferences.autofit_columns
         self.show_refresh_button = preferences.show_refresh_button
         self.show_root_buttons = preferences.show_root_buttons
         self.show_address_bar = preferences.show_address_bar

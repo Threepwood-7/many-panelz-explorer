@@ -146,6 +146,7 @@ def _tracked_keys() -> list[str]:
         SettingsManager.SHOW_ROOT_DROPDOWN_KEY,
         SettingsManager.SHOW_STORAGE_OVERVIEW_STATUS_ROW_KEY,
         SettingsManager.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY,
+        SettingsManager.AUTOFIT_COLUMNS_KEY,
         SettingsManager.SHOW_REFRESH_BUTTON_KEY,
         SettingsManager.SHOW_ROOT_BUTTONS_KEY,
         SettingsManager.SHOW_ADDRESS_BAR_KEY,
@@ -305,6 +306,10 @@ def test_settings_search_filters_rows_in_place(
     )
     assert dialog._rows_by_key["show_hidden_default"].isVisible() is False
 
+    dialog.search_edit.setText("autofit columns")
+    qtbot.waitUntil(lambda: dialog._rows_by_key["autofit_columns"].isVisible())
+    assert dialog._rows_by_key["column_width_auto_align_mode"].isVisible() is False
+
 
 def test_settings_column_width_align_combo_exposes_all_scopes(
     qtbot, tmp_path: Path, isolated_settings: SettingsManager
@@ -433,6 +438,7 @@ def test_settings_live_preview_all_windows_and_cancel_revert(
             show_hidden_default=True,
             show_root_dropdown=False,
             column_width_auto_align_mode="current_panel_tabs",
+            autofit_columns=False,
             show_refresh_button=True,
             show_root_buttons=True,
             show_address_bar=True,
@@ -521,6 +527,7 @@ def test_settings_apply_persists_and_new_window_uses_values(
     dialog.target_intensity_slider.setValue(40)
     dialog.show_hidden_checkbox.setChecked(False)
     dialog.show_root_dropdown_checkbox.setChecked(True)
+    dialog.autofit_columns_checkbox.setChecked(True)
     dialog.show_refresh_button_checkbox.setChecked(False)
     dialog.show_root_buttons_checkbox.setChecked(False)
     dialog.show_address_bar_checkbox.setChecked(False)
@@ -547,6 +554,7 @@ def test_settings_apply_persists_and_new_window_uses_values(
     assert persisted.target_panel_tint_intensity_percent == 40
     assert persisted.show_hidden_default is False
     assert persisted.show_root_dropdown is True
+    assert persisted.autofit_columns is True
     assert persisted.show_refresh_button is False
     assert persisted.show_root_buttons is False
     assert persisted.show_address_bar is False
@@ -822,6 +830,7 @@ def test_settings_dialog_reset_section_resets_selected_section_only(
     dialog.show_hidden_checkbox.setChecked(False)
     dialog.show_root_dropdown_checkbox.setChecked(True)
     dialog.set_combo_value(dialog.column_width_auto_align_mode_combo, "none")
+    dialog.autofit_columns_checkbox.setChecked(True)
     dialog.context_scan_cap_spin.setValue(77)
 
     dialog.reset_section_button.click()
@@ -832,6 +841,7 @@ def test_settings_dialog_reset_section_resets_selected_section_only(
         str(dialog.column_width_auto_align_mode_combo.currentData())
         == "current_panel_tabs"
     )
+    assert dialog.autofit_columns_checkbox.isChecked() is False
     assert dialog.context_scan_cap_spin.value() == 77
     assert dialog._pending_full_store_reset is False
 

@@ -82,6 +82,19 @@ class UiBehaviorSettingsMixin(SettingsDomainBase, SettingsRegistry):
         self._storage.set_value(self.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY, normalized)
 
     @property
+    def autofit_columns(self) -> bool:
+        return normalize.normalize_bool(
+            self._storage.value(
+                self.AUTOFIT_COLUMNS_KEY,
+                self.DEFAULT_AUTOFIT_COLUMNS,
+            )
+        )
+
+    @autofit_columns.setter
+    def autofit_columns(self, enabled: bool) -> None:
+        self._storage.set_value(self.AUTOFIT_COLUMNS_KEY, bool(enabled))
+
+    @property
     def show_refresh_button(self) -> bool:
         return normalize.normalize_bool(
             self._storage.value(self.SHOW_REFRESH_BUTTON_KEY, True)

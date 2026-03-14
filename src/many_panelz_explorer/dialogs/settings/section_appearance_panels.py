@@ -404,6 +404,20 @@ def build_panel_layout_rows(
         controls=[dialog.column_width_auto_align_mode_combo],
     )
 
+    dialog.autofit_columns_checkbox = QCheckBox("Fit on startup and resize", dialog)
+    dialog.autofit_columns_checkbox.toggled.connect(dialog.on_controls_changed)
+    add_row(
+        dialog,
+        section=file_list_layout_group,
+        key="autofit_columns",
+        title="Autofit Columns",
+        description=(
+            "Fit all file-list columns in the current window on startup and resize."
+        ),
+        terms="autofit columns fit startup resize current window file list",
+        controls=[dialog.autofit_columns_checkbox],
+    )
+
 
 def build_panel_byte_display_rows(
     dialog: SettingsDialog,

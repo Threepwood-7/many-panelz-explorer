@@ -87,6 +87,11 @@ class WindowPreferencesCoordinator:
         return self._column_width_auto_align_mode
 
     @property
+    def autofit_columns_enabled(self) -> bool:
+        """Return whether column autofit is enabled for this window."""
+        return self._autofit_columns
+
+    @property
     def operation_queue_view_mode(self) -> str:
         """Return the configured queue presentation mode."""
         return self._operation_queue_view_mode
@@ -188,6 +193,7 @@ class WindowPreferencesCoordinator:
             self._show_storage_overview_status_row
         )
         self.window.update_pane_visuals()
+        self.window.panels_coordinator.column_sync_coordinator.schedule_autofit_columns()
 
     def effective_panel_fonts(self) -> tuple[QFont, QFont]:
         """Build the effective file-list and navigation fonts for panels."""
@@ -265,6 +271,7 @@ class WindowPreferencesCoordinator:
             preferences.show_storage_overview_status_row
         )
         self._column_width_auto_align_mode = preferences.column_width_auto_align_mode
+        self._autofit_columns = bool(preferences.autofit_columns)
         self._show_refresh_button = bool(preferences.show_refresh_button)
         self._show_root_buttons = bool(preferences.show_root_buttons)
         self._show_address_bar = bool(preferences.show_address_bar)

@@ -72,6 +72,7 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
             "show_navigation_buttons",
             "show_storage_overview_status_row",
             "column_width_auto_align_mode",
+            "autofit_columns",
             "byte_thousands_separator",
             "byte_decimal_separator",
             "file_list_byte_format_mode",
@@ -126,6 +127,7 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
         active_color_preview: QLabel
         active_intensity_slider: QSlider
         active_intensity_value: QLabel
+        autofit_columns_checkbox: QCheckBox
         app_font_family_combo: QComboBox
         app_font_size_spin: FontSizeSpinBox
         byte_decimal_separator_edit: QLineEdit

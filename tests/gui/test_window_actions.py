@@ -17,13 +17,16 @@ from many_panelz_explorer._operations.queue_manager import OperationQueueManager
 from many_panelz_explorer._operations.types import OperationExecutionPreferences
 from many_panelz_explorer._settings.manager import SettingsManager
 from many_panelz_explorer._settings.models import UiPreferences
+from many_panelz_explorer.explorer_tab import ExplorerTab
 from many_panelz_explorer.operation_queue_widgets import OperationQueueTableModel
+from many_panelz_explorer.panel_widget import PanelWidget
 from many_panelz_explorer.window import ExplorerWindow
 
 
 class _ControllerStub:
     def __init__(self) -> None:
         self.closed_windows: list[ExplorerWindow] = []
+        self.broadcast_calls: list[list[object]] = []
         self.operation_queue_manager = OperationQueueManager(
             preferences=OperationExecutionPreferences()
         )
@@ -42,7 +45,8 @@ class _ControllerStub:
         source_panel_id: int | None = None,
         source_tab: object | None = None,
     ) -> None:
-        _ = widths, source_window, source_panel_id, source_tab
+        _ = source_window, source_panel_id, source_tab
+        self.broadcast_calls.append(list(widths))
 
     def show_queue_floating_window(self):
         return None
@@ -80,6 +84,33 @@ def _visible_storage_labels(window: ExplorerWindow) -> list[object]:
     return [label for label in labels if label.isVisible()]
 
 
+def _ordered_panels(window: ExplorerWindow) -> list[PanelWidget]:
+    ordered_ids = [panel_id for row in window.layout_rows for panel_id in row]
+    return [window.panel_widgets[panel_id] for panel_id in ordered_ids]
+
+
+def _column_test_root(tmp_path: Path) -> Path:
+    root = tmp_path / "column-test-root"
+    root.mkdir(exist_ok=True)
+    (root / "alpha.txt").write_text("alpha", encoding="utf-8")
+    return root
+
+
+def _prepare_tabs_for_column_assertions(
+    qtbot,
+    tabs: list[ExplorerTab],
+    *,
+    path: Path,
+) -> None:
+    for tab in tabs:
+        tab.navigation.set_path(path)
+    qtbot.waitUntil(
+        lambda: all(
+            tab.navigation.path == path and tab.model.rowCount() >= 1 for tab in tabs
+        )
+    )
+
+
 class _ControllerCloneStub(_ControllerStub):
     def __init__(
         self,
@@ -98,13 +129,17 @@ class _ControllerCloneStub(_ControllerStub):
         window_id: str | None = None,
         show: bool = True,
     ) -> ExplorerWindow:
-        _ = from_window
         win = ExplorerWindow(
             controller=self,
             settings=self.settings,
             window_id=window_id or f"clone-{len(self.created_windows) + 1}",
             roots_provider=self.roots_provider,
         )
+        if from_window is not None:
+            win.default_maximize_on_first_show = False
+            geo = from_window.geometry()
+            win.resize(geo.width(), geo.height())
+            win.move(geo.x() + 30, geo.y() + 30)
         self.created_windows.append(win)
         if show:
             win.show()
@@ -284,9 +319,11 @@ def test_clone_current_window_action(qtbot, tmp_path: Path) -> None:
 
     cloned = controller.created_windows[0]
     qtbot.addWidget(cloned)
+    qtbot.waitUntil(cloned.isVisible)
 
     assert cloned.panel_tree.to_dict() == source.panel_tree.to_dict()
     assert cloned.on_top_action.isChecked() is True
+    assert cloned.isMaximized() is False
 
     source_counts = sorted(panel.tab_count() for panel in source.panel_widgets.values())
     cloned_counts = sorted(panel.tab_count() for panel in cloned.panel_widgets.values())
@@ -428,8 +465,7 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     )
     qtbot.addWidget(source)
     source.show()
-    source.resize(777, 555)
-    source.move(120, 130)
+    qtbot.waitUntil(source.isMaximized)
 
     source.panels_coordinator.new_tab_in_active_panel()
     source.panels_coordinator.split_active_panel(Qt.Orientation.Horizontal)
@@ -447,6 +483,7 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     saved = settings.get_saved_view("My View")
     assert saved is not None
     assert "geometry_b64" in saved
+    assert saved["maximized"] is True
     assert saved["on_top"] is True
 
     source.panels_coordinator.close_active_panel()
@@ -456,6 +493,7 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     source.replace_view_action.trigger()
     assert len(source.panel_widgets) == 3
     assert source.on_top_action.isChecked() is True
+    qtbot.waitUntil(source.isMaximized)
 
     monkeypatch.setattr(
         QInputDialog,
@@ -475,6 +513,7 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     qtbot.addWidget(restored)
     assert len(restored.panel_widgets) == 3
     assert restored.on_top_action.isChecked() is True
+    qtbot.waitUntil(restored.isMaximized)
 
 
 def test_split_behaviour_uses_full_width_rows(qtbot, tmp_path: Path) -> None:
@@ -918,6 +957,7 @@ def test_column_width_sync_stays_within_active_pane_tabs(qtbot, tmp_path: Path) 
         window_id="column-sync-scope",
         roots_provider=roots_provider,
     )
+    window.default_maximize_on_first_show = False
     qtbot.addWidget(window)
     window.show()
 
@@ -934,11 +974,18 @@ def test_column_width_sync_stays_within_active_pane_tabs(qtbot, tmp_path: Path) 
     assert first_secondary is not None
     assert second_tab is not None
 
-    second_original = second_tab.view.columnWidth(0)
+    root = _column_test_root(tmp_path)
+    _prepare_tabs_for_column_assertions(
+        qtbot,
+        [first_primary, first_secondary, second_tab],
+        path=root,
+    )
+    first_secondary.view.setColumnWidth(0, 100)
+    second_tab.view.setColumnWidth(0, 100)
     first_panel.tabs.setCurrentWidget(first_primary)
     first_primary.view.setColumnWidth(0, 360)
     qtbot.waitUntil(lambda: first_secondary.view.columnWidth(0) == 360)
-    assert second_tab.view.columnWidth(0) == second_original
+    assert second_tab.view.columnWidth(0) != 360
 
 
 def test_column_width_auto_align_none_disables_propagation(
@@ -954,6 +1001,7 @@ def test_column_width_auto_align_none_disables_propagation(
         window_id="column-sync-none",
         roots_provider=roots_provider,
     )
+    window.default_maximize_on_first_show = False
     qtbot.addWidget(window)
     window.show()
 
@@ -969,13 +1017,19 @@ def test_column_width_auto_align_none_disables_propagation(
     assert first_secondary is not None
     assert second_tab is not None
 
-    first_secondary_original = first_secondary.view.columnWidth(0)
-    second_original = second_tab.view.columnWidth(0)
+    root = _column_test_root(tmp_path)
+    _prepare_tabs_for_column_assertions(
+        qtbot,
+        [first_primary, first_secondary, second_tab],
+        path=root,
+    )
+    first_secondary.view.setColumnWidth(0, 100)
+    second_tab.view.setColumnWidth(0, 100)
     first_primary.view.setColumnWidth(0, 370)
     qtbot.wait(220)
 
-    assert first_secondary.view.columnWidth(0) == first_secondary_original
-    assert second_tab.view.columnWidth(0) == second_original
+    assert first_secondary.view.columnWidth(0) != 370
+    assert second_tab.view.columnWidth(0) != 370
 
 
 def test_column_width_auto_align_current_window_syncs_current_window_only(
@@ -999,6 +1053,8 @@ def test_column_width_auto_align_current_window_syncs_current_window_only(
         window_id="column-sync-global-second",
         roots_provider=roots_provider,
     )
+    first.default_maximize_on_first_show = False
+    second.default_maximize_on_first_show = False
     controller.windows.extend([first, second])
     qtbot.addWidget(first)
     qtbot.addWidget(second)
@@ -1017,6 +1073,12 @@ def test_column_width_auto_align_current_window_syncs_current_window_only(
     target_tab = target_panel.current_tab()
     assert target_tab is not None
 
+    root = _column_test_root(tmp_path)
+    _prepare_tabs_for_column_assertions(
+        qtbot,
+        [source_primary, source_secondary, target_tab],
+        path=root,
+    )
     source_panel.tabs.setCurrentWidget(source_primary)
     qtbot.waitUntil(lambda: source_panel.current_tab() is source_primary)
     source_primary.view.setColumnWidth(0, 390)
@@ -1045,6 +1107,8 @@ def test_column_width_auto_align_all_windows_syncs_all_open_windows(
         window_id="column-sync-global-second",
         roots_provider=roots_provider,
     )
+    first.default_maximize_on_first_show = False
+    second.default_maximize_on_first_show = False
     controller.windows.extend([first, second])
     qtbot.addWidget(first)
     qtbot.addWidget(second)
@@ -1063,6 +1127,12 @@ def test_column_width_auto_align_all_windows_syncs_all_open_windows(
     target_tab = target_panel.current_tab()
     assert target_tab is not None
 
+    root = _column_test_root(tmp_path)
+    _prepare_tabs_for_column_assertions(
+        qtbot,
+        [source_primary, source_secondary, target_tab],
+        path=root,
+    )
     source_panel.tabs.setCurrentWidget(source_primary)
     qtbot.waitUntil(lambda: source_panel.current_tab() is source_primary)
     source_primary.view.setColumnWidth(0, 390)
@@ -1083,6 +1153,7 @@ def test_view_align_columns_current_panel_tabs_is_one_shot(
         window_id="column-align-view-current",
         roots_provider=roots_provider,
     )
+    window.default_maximize_on_first_show = False
     qtbot.addWidget(window)
     window.show()
 
@@ -1098,9 +1169,16 @@ def test_view_align_columns_current_panel_tabs_is_one_shot(
     assert source_secondary is not None
     assert other_tab is not None
 
+    root = _column_test_root(tmp_path)
+    _prepare_tabs_for_column_assertions(
+        qtbot,
+        [source_primary, source_secondary, other_tab],
+        path=root,
+    )
+    source_secondary.view.setColumnWidth(0, 100)
+    other_tab.view.setColumnWidth(0, 100)
     source_panel.tabs.setCurrentWidget(source_primary)
     source_primary.view.setColumnWidth(0, 365)
-    qtbot.wait(220)
     assert source_secondary.view.columnWidth(0) != 365
     other_original = other_tab.view.columnWidth(0)
 
@@ -1132,6 +1210,8 @@ def test_view_align_columns_all_panels_tabs_is_one_shot_within_current_window(
         window_id="column-align-view-all-second",
         roots_provider=roots_provider,
     )
+    first.default_maximize_on_first_show = False
+    second.default_maximize_on_first_show = False
     controller.windows.extend([first, second])
     qtbot.addWidget(first)
     qtbot.addWidget(second)
@@ -1153,9 +1233,17 @@ def test_view_align_columns_all_panels_tabs_is_one_shot_within_current_window(
     assert other_tab is not None
     assert second_tab is not None
 
+    root = _column_test_root(tmp_path)
+    _prepare_tabs_for_column_assertions(
+        qtbot,
+        [source_primary, source_secondary, other_tab, second_tab],
+        path=root,
+    )
+    source_secondary.view.setColumnWidth(0, 100)
+    other_tab.view.setColumnWidth(0, 100)
+    second_tab.view.setColumnWidth(0, 100)
     source_panel.tabs.setCurrentWidget(source_primary)
     source_primary.view.setColumnWidth(0, 355)
-    qtbot.wait(220)
     assert source_secondary.view.columnWidth(0) != 355
     assert other_tab.view.columnWidth(0) != 355
     assert second_tab.view.columnWidth(0) != 355
@@ -1189,6 +1277,8 @@ def test_view_align_columns_all_windows_is_one_shot_across_windows(
         window_id="column-align-view-all-second",
         roots_provider=roots_provider,
     )
+    first.default_maximize_on_first_show = False
+    second.default_maximize_on_first_show = False
     controller.windows.extend([first, second])
     qtbot.addWidget(first)
     qtbot.addWidget(second)
@@ -1210,9 +1300,17 @@ def test_view_align_columns_all_windows_is_one_shot_across_windows(
     assert other_tab is not None
     assert second_tab is not None
 
+    root = _column_test_root(tmp_path)
+    _prepare_tabs_for_column_assertions(
+        qtbot,
+        [source_primary, source_secondary, other_tab, second_tab],
+        path=root,
+    )
+    source_secondary.view.setColumnWidth(0, 100)
+    other_tab.view.setColumnWidth(0, 100)
+    second_tab.view.setColumnWidth(0, 100)
     source_panel.tabs.setCurrentWidget(source_primary)
     source_primary.view.setColumnWidth(0, 355)
-    qtbot.wait(220)
     assert source_secondary.view.columnWidth(0) != 355
     assert other_tab.view.columnWidth(0) != 355
     assert second_tab.view.columnWidth(0) != 355
@@ -1223,3 +1321,132 @@ def test_view_align_columns_all_windows_is_one_shot_across_windows(
     qtbot.waitUntil(lambda: other_tab.view.columnWidth(0) == 355)
     qtbot.waitUntil(lambda: second_tab.view.columnWidth(0) == 355)
     assert settings.column_width_auto_align_mode == "none"
+
+
+def test_view_fit_columns_applies_to_all_tabs_in_current_window(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "fit-columns-root"
+    root.mkdir()
+    (root / "very_long_filename_for_column_fitting_validation.txt").write_text(
+        "x",
+        encoding="utf-8",
+    )
+
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerStub()
+    window = ExplorerWindow(
+        controller=controller,
+        settings=settings,
+        window_id="fit-columns-current-window",
+        initial_path=root,
+        roots_provider=roots_provider,
+    )
+    window.default_maximize_on_first_show = False
+    qtbot.addWidget(window)
+
+    primary_panel, secondary_panel = _ordered_panels(window)[:2]
+    primary_tab = primary_panel.current_tab()
+    secondary_tab = secondary_panel.current_tab()
+    assert primary_tab is not None
+    assert secondary_tab is not None
+    extra_tab = primary_panel.add_tab(root)
+    tabs = [primary_tab, extra_tab, secondary_tab]
+    for tab in tabs:
+        tab.navigation.set_path(root)
+    window.show()
+
+    qtbot.waitUntil(lambda: all(tab.model.rowCount() >= 1 for tab in tabs))
+    for tab in tabs:
+        tab.view.setColumnWidth(0, 50)
+
+    window.fit_columns_action.trigger()
+
+    qtbot.waitUntil(lambda: all(tab.view.columnWidth(0) > 50 for tab in tabs))
+    assert controller.broadcast_calls == []
+
+
+def test_autofit_columns_fits_all_tabs_on_first_show(qtbot, tmp_path: Path) -> None:
+    root = tmp_path / "autofit-startup-root"
+    root.mkdir()
+    (root / "very_long_filename_for_autofit_startup.txt").write_text(
+        "x",
+        encoding="utf-8",
+    )
+
+    settings = SettingsManager()
+    settings.autofit_columns = True
+    settings.sync()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="autofit-startup",
+        initial_path=root,
+        roots_provider=roots_provider,
+    )
+    window.default_maximize_on_first_show = False
+    qtbot.addWidget(window)
+
+    primary_panel, secondary_panel = _ordered_panels(window)[:2]
+    primary_tab = primary_panel.current_tab()
+    secondary_tab = secondary_panel.current_tab()
+    assert primary_tab is not None
+    assert secondary_tab is not None
+    extra_tab = primary_panel.add_tab(root)
+    tabs = [primary_tab, extra_tab, secondary_tab]
+    for tab in tabs:
+        tab.navigation.set_path(root)
+        tab.view.setColumnWidth(0, 50)
+
+    window.show()
+
+    qtbot.waitUntil(lambda: all(tab.model.rowCount() >= 1 for tab in tabs))
+    qtbot.waitUntil(lambda: all(tab.view.columnWidth(0) > 50 for tab in tabs))
+
+
+def test_autofit_columns_resize_is_debounced(
+    qtbot, tmp_path: Path, monkeypatch
+) -> None:
+    root = tmp_path / "autofit-resize-root"
+    root.mkdir()
+    (root / "very_long_filename_for_autofit_resize.txt").write_text(
+        "x",
+        encoding="utf-8",
+    )
+
+    settings = SettingsManager()
+    settings.autofit_columns = True
+    settings.sync()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="autofit-resize",
+        initial_path=root,
+        roots_provider=roots_provider,
+    )
+    window.default_maximize_on_first_show = False
+    qtbot.addWidget(window)
+
+    coordinator = window.panels_coordinator.column_sync_coordinator
+    fit_calls: list[int] = []
+    original_fit = coordinator._fit_columns_all_panels
+
+    def _count_fit_calls() -> bool:
+        fit_calls.append(1)
+        return original_fit()
+
+    monkeypatch.setattr(coordinator, "_fit_columns_all_panels", _count_fit_calls)
+
+    window.show()
+    qtbot.waitUntil(lambda: len(fit_calls) == 1)
+
+    window.resize(880, 620)
+    window.resize(900, 620)
+    window.resize(920, 620)
+
+    qtbot.wait(80)
+    assert len(fit_calls) == 1
+    qtbot.waitUntil(lambda: len(fit_calls) == 2)

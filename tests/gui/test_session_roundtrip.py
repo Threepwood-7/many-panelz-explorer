@@ -52,6 +52,7 @@ def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
     )
     qtbot.addWidget(source)
     source.show()
+    qtbot.waitUntil(source.isMaximized)
 
     source.panels_coordinator.new_tab_in_active_panel()
     source.panels_coordinator.split_active_panel(1)
@@ -67,9 +68,45 @@ def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
     )
     qtbot.addWidget(restored)
     restored.persistence_coordinator.restore_from_settings()
+    restored.show()
 
     assert len(restored.panel_widgets) == 4
     assert restored.on_top_action.isChecked() is True
+    qtbot.waitUntil(restored.isMaximized)
 
     tab_counts = sorted(panel.tab_count() for panel in restored.panel_widgets.values())
     assert tab_counts == [1, 1, 1, 2]
+
+
+def test_session_restore_normal_geometry_overrides_default_maximized(
+    qtbot, tmp_path: Path
+) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+
+    source = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="w-normal",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(source)
+    source.show()
+    qtbot.waitUntil(source.isMaximized)
+    source.showNormal()
+    qtbot.waitUntil(lambda: not source.isMaximized())
+    source.resize(910, 620)
+    source.persistence_coordinator.save_to_settings()
+
+    restored_settings = SettingsManager()
+    restored = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=restored_settings,
+        window_id="w-normal",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(restored)
+    restored.persistence_coordinator.restore_from_settings()
+    restored.show()
+
+    qtbot.waitUntil(lambda: restored.isVisible() and not restored.isMaximized())

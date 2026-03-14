@@ -37,6 +37,7 @@ class UiPreferences:
     show_root_dropdown: bool = False
     show_storage_overview_status_row: bool = True
     column_width_auto_align_mode: str = "current_panel_tabs"
+    autofit_columns: bool = False
     show_refresh_button: bool = True
     show_root_buttons: bool = True
     show_address_bar: bool = True

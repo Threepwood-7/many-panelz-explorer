@@ -48,6 +48,22 @@ class ExplorerTabColumns(QObject):
         self._pending_widths = list(normalized)
         self._apply_widths_once(normalized)
 
+    def fit_to_contents(self) -> tuple[int, ...]:
+        """Fit all visible columns to their current contents."""
+        self._syncing = True
+        try:
+            for column in range(self._model.columnCount()):
+                if self._view.isColumnHidden(column):
+                    continue
+                self._view.resizeColumnToContents(column)
+            fitted_widths = self.widths
+            normalized = self._coerce_widths(fitted_widths)
+            if normalized:
+                self._pending_widths = list(normalized)
+            return fitted_widths
+        finally:
+            self._syncing = False
+
     def preserve_for_reload(self) -> None:
         normalized = self._coerce_widths(self.widths)
         if normalized:

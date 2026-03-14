@@ -39,7 +39,7 @@ from .ui.window.panels import (
 )
 
 if TYPE_CHECKING:
-    from PySide6.QtGui import QAction, QCloseEvent, QShortcut
+    from PySide6.QtGui import QAction, QCloseEvent, QResizeEvent, QShortcut, QShowEvent
 
     from ._settings.manager import SettingsManager
     from .app_controller import AppController
@@ -89,6 +89,7 @@ class ExplorerWindow(QMainWindow):
     close_window_action: QAction
     exit_action: QAction
     refresh_action: QAction
+    fit_columns_action: QAction
     on_top_action: QAction
     show_hidden_action: QAction
     show_widget_map_action: QAction
@@ -160,6 +161,8 @@ class ExplorerWindow(QMainWindow):
         self.central_layout = QVBoxLayout(self._central)
         self.central_layout.setContentsMargins(0, 0, 0, 0)
         self.setCentralWidget(self._central)
+        self.default_maximize_on_first_show = True
+        self._did_schedule_initial_autofit = False
 
         self.ui_composer.build_actions()
         self.ui_composer.build_menus()
@@ -206,10 +209,13 @@ class ExplorerWindow(QMainWindow):
 
     def set_on_top(self, enabled: bool) -> None:
         on_top = bool(enabled)
+        was_maximized = self.isMaximized()
         with QSignalBlocker(self.on_top_action):
             self.on_top_action.setChecked(on_top)
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, on_top)
         self.show()
+        if was_maximized:
+            self.setWindowState(self.windowState() | Qt.WindowState.WindowMaximized)
 
     # ----- QWidget/QWindow events -----
     def event(self, event: QEvent) -> bool:
@@ -221,6 +227,20 @@ class ExplorerWindow(QMainWindow):
     def closeEvent(self, event: QCloseEvent) -> None:
         self.controller.close_window(self)
         super().closeEvent(event)
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        if self.default_maximize_on_first_show and not self.isMaximized():
+            self.default_maximize_on_first_show = False
+            self.showMaximized()
+            return
+        if not self._did_schedule_initial_autofit:
+            self._did_schedule_initial_autofit = True
+            self.panels_coordinator.column_sync_coordinator.schedule_autofit_columns()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self.panels_coordinator.column_sync_coordinator.schedule_autofit_columns()
 
     def toggle_queue_dock(self, enabled: bool) -> None:
         self.queue_dock.setVisible(bool(enabled))

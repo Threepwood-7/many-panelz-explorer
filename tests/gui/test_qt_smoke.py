@@ -114,6 +114,7 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
     )
     assert refresh_action is not None
     assert refresh_action.shortcut().toString() == "Ctrl+R"
+    assert any(action.text() == "&Fit Columns" for action in view_menu.actions())
     assert any(
         action.text().replace("&", "") == "Show Widget Map"
         for action in view_menu.actions()
@@ -135,6 +136,21 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
     )
     assert help_action is not None
     assert help_action.shortcut().toString() == "F1"
+
+
+def test_fresh_window_defaults_to_maximized(qtbot, tmp_path: Path) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="smoke-maximized",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    qtbot.waitUntil(window.isMaximized)
 
 
 def test_hidden_action_updates_model_filter(qtbot, tmp_path: Path) -> None:

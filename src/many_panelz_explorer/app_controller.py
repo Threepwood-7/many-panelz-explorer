@@ -99,13 +99,17 @@ class AppController:
         window.window_activated.connect(self._window_activated_callback(window))
 
         if from_window is not None:
+            window.default_maximize_on_first_show = False
             geo = from_window.geometry()
             window.resize(geo.width(), geo.height())
             window.move(geo.x() + 30, geo.y() + 30)
 
         self.windows.append(window)
         if show:
-            window.show()
+            if from_window is None:
+                window.showMaximized()
+            else:
+                window.show()
         return window
 
     def close_window(self, window: ExplorerWindow) -> None:

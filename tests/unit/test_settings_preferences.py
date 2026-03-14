@@ -20,6 +20,7 @@ def _tracked_keys() -> list[str]:
         SettingsManager.SHOW_ROOT_DROPDOWN_KEY,
         SettingsManager.SHOW_STORAGE_OVERVIEW_STATUS_ROW_KEY,
         SettingsManager.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY,
+        SettingsManager.AUTOFIT_COLUMNS_KEY,
         SettingsManager.SHOW_REFRESH_BUTTON_KEY,
         SettingsManager.SHOW_ROOT_BUTTONS_KEY,
         SettingsManager.SHOW_ADDRESS_BAR_KEY,
@@ -109,6 +110,7 @@ def test_ui_preferences_round_trip() -> None:
             show_root_dropdown=True,
             show_storage_overview_status_row=False,
             column_width_auto_align_mode="all_windows_panels_tabs",
+            autofit_columns=True,
             show_refresh_button=False,
             show_root_buttons=False,
             show_address_bar=False,
@@ -293,6 +295,7 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.set_value(
             SettingsManager.COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY, "invalid-align-mode"
         )
+        settings.remove(SettingsManager.AUTOFIT_COLUMNS_KEY)
         settings.remove(SettingsManager.SHOW_REFRESH_BUTTON_KEY)
         settings.remove(SettingsManager.SHOW_ROOT_BUTTONS_KEY)
         settings.remove(SettingsManager.SHOW_ADDRESS_BAR_KEY)
@@ -375,6 +378,7 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
             loaded.column_width_auto_align_mode
             == SettingsManager.DEFAULT_COLUMN_WIDTH_AUTO_ALIGN_MODE
         )
+        assert loaded.autofit_columns == SettingsManager.DEFAULT_AUTOFIT_COLUMNS
         assert loaded.show_refresh_button is True
         assert loaded.show_root_buttons is True
         assert loaded.show_address_bar is True
@@ -567,6 +571,17 @@ def test_ui_preferences_column_auto_align_mode_defaults_when_unset() -> None:
             loaded.column_width_auto_align_mode
             == SettingsManager.DEFAULT_COLUMN_WIDTH_AUTO_ALIGN_MODE
         )
+    finally:
+        _restore(settings, before)
+
+
+def test_ui_preferences_autofit_columns_defaults_when_unset() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    try:
+        settings.remove(SettingsManager.AUTOFIT_COLUMNS_KEY)
+        loaded = settings.ui_preferences()
+        assert loaded.autofit_columns == SettingsManager.DEFAULT_AUTOFIT_COLUMNS
     finally:
         _restore(settings, before)
 

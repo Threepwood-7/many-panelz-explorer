@@ -40,6 +40,7 @@ class SettingsRegistry:
     SHOW_ROOT_DROPDOWN_KEY = "ui/show_root_dropdown"
     SHOW_STORAGE_OVERVIEW_STATUS_ROW_KEY = "ui/show_storage_overview_status_row"
     COLUMN_WIDTH_AUTO_ALIGN_MODE_KEY = "ui/file_list/column_width_auto_align_mode"
+    AUTOFIT_COLUMNS_KEY = "ui/file_list/autofit_columns"
     SHOW_REFRESH_BUTTON_KEY = "ui/show_refresh_button"
     SHOW_ROOT_BUTTONS_KEY = "ui/show_root_buttons"
     SHOW_ADDRESS_BAR_KEY = "ui/show_address_bar"
@@ -126,6 +127,7 @@ class SettingsRegistry:
     DEFAULT_FILE_LIST_FONT_FAMILY = ""
     DEFAULT_FILE_LIST_FONT_SIZE_PT = 10
     DEFAULT_COLUMN_WIDTH_AUTO_ALIGN_MODE = "current_panel_tabs"
+    DEFAULT_AUTOFIT_COLUMNS = False
     DEFAULT_NAVIGATION_USE_APP_FONT = True
     DEFAULT_NAVIGATION_FONT_FAMILY = ""
     DEFAULT_NAVIGATION_FONT_SIZE_PT = 10

@@ -91,6 +91,11 @@ class WindowUiComposer:
             self.window.panels_coordinator.refresh_active_panel
         )
 
+        self.window.fit_columns_action = QAction("&Fit Columns", self.window)
+        self.window.fit_columns_action.triggered.connect(
+            self.window.panels_coordinator.column_sync_coordinator.fit_columns_current_window
+        )
+
         self.window.align_columns_current_panel_tabs_action = QAction(
             "Align Columns: Current Panel Tabs", self.window
         )
@@ -295,6 +300,7 @@ class WindowUiComposer:
 
         view_menu = QMenu("&View", self.window)
         view_menu.addAction(self.window.refresh_action)
+        view_menu.addAction(self.window.fit_columns_action)
         view_menu.addAction(self.window.align_columns_current_panel_tabs_action)
         view_menu.addAction(self.window.align_columns_all_panels_tabs_action)
         view_menu.addAction(self.window.align_columns_all_windows_action)

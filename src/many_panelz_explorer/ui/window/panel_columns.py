@@ -4,20 +4,28 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+from PySide6.QtCore import QTimer
+
+from ...explorer_tab import ExplorerTab
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
-    from ...explorer_tab import ExplorerTab
     from ...panel_widget import PanelWidget
     from ...window import ExplorerWindow
 
 
 class WindowPanelColumnSyncCoordinator:
-    """Manage manual and debounced column-width synchronization scopes."""
+    """Manage column alignment, fitting, and debounced autofit scopes."""
+
+    AUTOFIT_COLUMNS_DEBOUNCE_MS = 120
 
     def __init__(self, window: ExplorerWindow) -> None:
         """Store the owning window."""
         self.window = window
+        self._autofit_timer = QTimer(window)
+        self._autofit_timer.setSingleShot(True)
+        self._autofit_timer.timeout.connect(self.autofit_columns)
 
     def align_columns_current_panel_tabs(self) -> None:
         """Apply current tab widths across the active panel tabs."""
@@ -62,6 +70,28 @@ class WindowPanelColumnSyncCoordinator:
             "Aligned columns in all panels and tabs in all windows.",
             2000,
         )
+
+    def fit_columns_current_window(self) -> None:
+        """Fit all tab columns in the current window immediately."""
+        if not self._fit_columns_all_panels():
+            return
+        self.window.statusBar().showMessage(
+            "Fitted columns in all tabs in the current window.",
+            2000,
+        )
+
+    def schedule_autofit_columns(self) -> None:
+        """Debounce a window-wide fit pass when autofit is enabled."""
+        if not self.window.preferences_coordinator.autofit_columns_enabled:
+            self._autofit_timer.stop()
+            return
+        self._autofit_timer.start(self.AUTOFIT_COLUMNS_DEBOUNCE_MS)
+
+    def autofit_columns(self) -> None:
+        """Fit all tab columns in the current window when enabled."""
+        if not self.window.preferences_coordinator.autofit_columns_enabled:
+            return
+        self._fit_columns_all_panels()
 
     def panel_widths_sync_callback(
         self,
@@ -128,3 +158,18 @@ class WindowPanelColumnSyncCoordinator:
         if panel is None:
             return None, None
         return panel, panel.current_tab()
+
+    def _fit_columns_all_panels(self) -> bool:
+        """Fit all explorer tabs in the current window."""
+        fitted_any = False
+        for panel in self.window.panel_widgets.values():
+            for index in range(panel.tabs.count()):
+                widget = panel.tabs.widget(index)
+                if not isinstance(widget, ExplorerTab):
+                    continue
+                widget.columns.fit_to_contents()
+                fitted_any = True
+            current_tab = panel.current_tab()
+            if current_tab is not None:
+                panel.column_widths = list(current_tab.columns.widths)
+        return fitted_any

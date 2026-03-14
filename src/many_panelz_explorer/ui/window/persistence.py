@@ -5,7 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, cast
 
-from PySide6.QtCore import QByteArray
+from PySide6.QtCore import QByteArray, Qt
 from PySide6.QtWidgets import QMessageBox
 
 from ...panel_tree import PanelTreeModel
@@ -33,6 +33,7 @@ class WindowPersistenceCoordinator:
     def restore_geometry_from_b64(self, encoded: str) -> None:
         raw = QByteArray.fromBase64(encoded.encode("ascii"))
         if not raw.isEmpty():
+            self.window.default_maximize_on_first_show = False
             self.window.restoreGeometry(raw)
 
     def serialize_state(self, *, include_geometry: bool = False) -> dict[str, Any]:
@@ -43,6 +44,7 @@ class WindowPersistenceCoordinator:
             "tabs": serialize_window_tabs_state(self.window),
             "active_panel_id": self.window.active_panel_id,
             "on_top": self.window.on_top_action.isChecked(),
+            "maximized": self._is_window_maximized(),
         }
         if include_geometry:
             payload["geometry_b64"] = self.encode_geometry()
@@ -69,6 +71,10 @@ class WindowPersistenceCoordinator:
         self.window.settings.set_value(
             self.window.settings.window_key(self.window.window_id, "geometry"),
             self.window.saveGeometry(),
+        )
+        self.window.settings.set_value(
+            self.window.settings.window_key(self.window.window_id, "maximized"),
+            self._is_window_maximized(),
         )
 
     def restore_from_settings(self) -> None:
@@ -147,11 +153,25 @@ class WindowPersistenceCoordinator:
             self.window.settings.window_key(self.window.window_id, "geometry")
         )
         if isinstance(geometry, QByteArray):
+            self.window.default_maximize_on_first_show = False
             self.window.restoreGeometry(geometry)
+        maximized_value = self.window.settings.value(
+            self.window.settings.window_key(self.window.window_id, "maximized"),
+            False,
+        )
+        maximized = (
+            maximized_value
+            if isinstance(maximized_value, bool)
+            else str(maximized_value).strip().lower() in {"1", "true", "yes", "on"}
+        )
+        if geometry is not None or maximized:
+            self.window.default_maximize_on_first_show = False
+            self._apply_maximized_state(maximized)
 
     def apply_cloned_state(
         self, state: dict[str, Any], *, restore_geometry: bool = False
     ) -> None:
+        self.window.default_maximize_on_first_show = False
         panel_tree_data = state.get("panel_tree")
         if isinstance(panel_tree_data, dict):
             self.window.panel_tree = PanelTreeModel.from_dict(
@@ -197,3 +217,27 @@ class WindowPersistenceCoordinator:
             geometry_b64 = state.get("geometry_b64")
             if isinstance(geometry_b64, str) and geometry_b64:
                 self.restore_geometry_from_b64(geometry_b64)
+            self._apply_maximized_state(
+                self._coerce_bool(state.get("maximized", False))
+            )
+
+    def _apply_maximized_state(self, maximized: bool) -> None:
+        """Apply the persisted maximized state to the window."""
+        if maximized:
+            self.window.setWindowState(
+                self.window.windowState() | Qt.WindowState.WindowMaximized
+            )
+            return
+        self.window.setWindowState(
+            self.window.windowState() & ~Qt.WindowState.WindowMaximized
+        )
+
+    def _coerce_bool(self, value: object) -> bool:
+        """Normalize persisted truthy values into a boolean."""
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+    def _is_window_maximized(self) -> bool:
+        """Return whether the window state currently includes maximize."""
+        return bool(self.window.windowState() & Qt.WindowState.WindowMaximized)
