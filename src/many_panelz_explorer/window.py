@@ -45,11 +45,9 @@ if TYPE_CHECKING:
     from .app_controller import AppController
     from .operation_queue_widgets import OperationQueuePanel
     from .panel_widget import PanelWidget
+    from .ui.window.state_types import PanelRows, TabsState
 
 
-type PanelState = dict[str, object]
-type TabsState = dict[int, PanelState]
-type PanelRows = list[list[int]]
 type RootsProvider = Callable[[Path | None], list[Path]]
 
 

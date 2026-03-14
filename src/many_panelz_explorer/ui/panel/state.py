@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 from ...explorer_tab import ExplorerTab
 
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from ...panel_widget import PanelWidget
+    from ..window.state_types import PanelState
 
 
 class PanelStateCoordinator:
@@ -62,7 +63,7 @@ class PanelStateCoordinator:
             return
         self.panel.column_widths = list(tab.columns.widths)
 
-    def serialize_state(self) -> dict[str, object]:
+    def serialize_state(self) -> PanelState:
         """Serialize panel tabs and column widths."""
 
         tabs: list[dict[str, str]] = []
@@ -78,7 +79,7 @@ class PanelStateCoordinator:
             "column_widths": list(self.panel.column_widths),
         }
 
-    def restore_state(self, state: dict[str, Any]) -> None:
+    def restore_state(self, state: PanelState) -> None:
         """Restore tabs, current index, and remembered column widths."""
 
         raw_widths = state.get("column_widths", [])
@@ -99,15 +100,11 @@ class PanelStateCoordinator:
             for tab_state_raw in cast("list[object]", tabs):
                 if not isinstance(tab_state_raw, dict):
                     continue
-                tab_state = cast("dict[str, Any]", tab_state_raw)
+                tab_state = cast("dict[str, object]", tab_state_raw)
                 path_value = tab_state.get("path", str(self.panel.default_path))
                 self.panel.add_tab(Path(str(path_value)))
 
-            current_index_raw = state.get("current_index", 0)
-            try:
-                current_index = int(current_index_raw)
-            except (TypeError, ValueError):
-                current_index = 0
+            current_index = self._coerce_index(state.get("current_index", 0))
             current_index = max(0, min(current_index, self.panel.tabs.count() - 1))
             self.panel.tabs.setCurrentIndex(current_index)
             if self.panel.column_widths:
@@ -230,6 +227,20 @@ class PanelStateCoordinator:
             if value > 0:
                 normalized.append(value)
         return normalized
+
+    def _coerce_index(self, value: object) -> int:
+        """Normalize persisted tab indexes into a usable integer."""
+
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                return 0
+        return 0
 
     def _normalize_column_width_mode(self, mode: str) -> str:
         normalized = str(mode).strip().lower()

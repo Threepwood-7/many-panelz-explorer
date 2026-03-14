@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from ...panel_tree import (
     ORIENTATION_HORIZONTAL,
@@ -15,11 +15,7 @@ from ...panel_tree import (
 
 if TYPE_CHECKING:
     from ...window import ExplorerWindow
-
-
-type PanelState = dict[str, Any]
-type TabsState = dict[int, PanelState]
-type PanelRows = list[list[int]]
+    from .state_types import PanelRows, PanelState, TabsState
 
 
 class WindowLayoutCoordinator:

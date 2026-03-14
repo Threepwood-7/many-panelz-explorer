@@ -13,10 +13,7 @@ from .panels import serialize_window_tabs_state
 
 if TYPE_CHECKING:
     from ...window import ExplorerWindow
-
-
-type PanelState = dict[str, Any]
-type TabsState = dict[int, PanelState]
+    from .state_types import TabsState
 
 
 class WindowPersistenceCoordinator:
