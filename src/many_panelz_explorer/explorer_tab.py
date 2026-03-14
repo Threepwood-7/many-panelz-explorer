@@ -18,6 +18,8 @@ from .fast_dir_model import FastDirModel
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from .ui.window.state_types import TabState
+
 
 class ExplorerTab(QWidget):
     """Combine directory model, view, actions, and navigation for one tab."""
@@ -107,7 +109,7 @@ class ExplorerTab(QWidget):
     def properties_size_formatter(self) -> Callable[[int], str]:
         return self._properties_size_formatter
 
-    def serialize_state(self) -> dict[str, str]:
+    def serialize_state(self) -> TabState:
         return {"path": str(self.navigation.path)}
 
     def set_file_size_formatter(self, formatter: Callable[[int], str] | None) -> None:

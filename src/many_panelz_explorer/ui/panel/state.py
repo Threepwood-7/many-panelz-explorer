@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from ...panel_widget import PanelWidget
-    from ..window.state_types import PanelState
+    from ..window.state_types import PanelState, TabState
 
 
 class PanelStateCoordinator:
@@ -66,7 +66,7 @@ class PanelStateCoordinator:
     def serialize_state(self) -> PanelState:
         """Serialize panel tabs and column widths."""
 
-        tabs: list[dict[str, str]] = []
+        tabs: list[TabState] = []
         for index in range(self.panel.tabs.count()):
             widget = self.panel.tabs.widget(index)
             if isinstance(widget, ExplorerTab):
@@ -83,26 +83,21 @@ class PanelStateCoordinator:
         """Restore tabs, current index, and remembered column widths."""
 
         raw_widths = state.get("column_widths", [])
-        if isinstance(raw_widths, list):
-            self.panel.column_widths = self._coerce_column_widths(
-                cast("list[object]", raw_widths)
-            )
+        self.panel.column_widths = self._coerce_column_widths(
+            cast("list[object]", raw_widths)
+        )
 
         self.panel.restoring_state = True
         try:
             tabs = state.get("tabs", [])
-            if not isinstance(tabs, list) or not tabs:
+            if not tabs:
                 self.panel.add_tab(self.panel.default_path)
                 if self.panel.column_widths:
                     self._apply_column_widths_to_all_tabs(self.panel.column_widths)
                 return
 
-            for tab_state_raw in cast("list[object]", tabs):
-                if not isinstance(tab_state_raw, dict):
-                    continue
-                tab_state = cast("dict[str, object]", tab_state_raw)
-                path_value = tab_state.get("path", str(self.panel.default_path))
-                self.panel.add_tab(Path(str(path_value)))
+            for tab_state in tabs:
+                self.panel.add_tab(Path(tab_state["path"]))
 
             current_index = self._coerce_index(state.get("current_index", 0))
             current_index = max(0, min(current_index, self.panel.tabs.count() - 1))
