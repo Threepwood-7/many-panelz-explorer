@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from .operation_queue_widgets import OperationQueuePanel
     from .panel_widget import PanelWidget
     from .ui.window.state_types import PanelRows, TabsState
+    from .ui.window.status import StorageOverviewLabel
 
 
 type RootsProvider = Callable[[Path | None], list[Path]]
@@ -116,7 +117,7 @@ class ExplorerWindow(QMainWindow):
     storage_overview_row: QWidget
     storage_entries_host: QWidget
     storage_entries_layout: QHBoxLayout
-    storage_overview_labels: list[QLabel]
+    storage_overview_labels: list[StorageOverviewLabel]
 
     def __init__(
         self,

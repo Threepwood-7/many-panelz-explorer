@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QTimer
 
@@ -96,13 +96,13 @@ class WindowPanelColumnSyncCoordinator:
     def panel_widths_sync_callback(
         self,
         panel_id: int,
-    ) -> Callable[[object, object], None]:
+    ) -> Callable[[list[object], ExplorerTab | None], None]:
         """Build the per-panel column width sync callback."""
 
-        def _callback(widths: object, source_tab: object) -> None:
+        def _callback(widths: list[object], source_tab: ExplorerTab | None) -> None:
             self.on_panel_column_widths_sync_requested(
                 panel_id,
-                cast("list[object]", widths),
+                widths,
                 source_tab,
             )
 
@@ -112,7 +112,7 @@ class WindowPanelColumnSyncCoordinator:
         self,
         panel_id: int,
         widths: list[object],
-        source_tab: object,
+        source_tab: ExplorerTab | None,
     ) -> None:
         """Apply debounced column width changes using the configured scope."""
         panel = self.window.panel_widgets.get(panel_id)
@@ -139,14 +139,14 @@ class WindowPanelColumnSyncCoordinator:
         widths: Sequence[object],
         *,
         source_panel_id: int | None = None,
-        source_tab: object | None = None,
+        source_tab: ExplorerTab | None = None,
     ) -> None:
         """Apply a width set to every panel in the current window."""
         for panel_id, panel in self.window.panel_widgets.items():
             panel.state_coordinator.apply_column_widths_to_panel_tabs(
                 widths,
                 source_tab=(
-                    cast("ExplorerTab | None", source_tab)
+                    source_tab
                     if source_panel_id is not None and panel_id == source_panel_id
                     else None
                 ),

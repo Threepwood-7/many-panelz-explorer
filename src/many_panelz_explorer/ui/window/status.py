@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
@@ -59,6 +59,9 @@ class _ElidedStatusLabel(QLabel):
             width,
         )
         super().setText(elided)
+
+
+type StorageOverviewLabel = _ElidedStatusLabel
 
 
 class WindowStatusCoordinator:
@@ -253,7 +256,7 @@ class WindowStatusCoordinator:
         self, entries: list[StorageStatusRenderResult]
     ) -> None:
         self._ensure_storage_overview_labels(len(entries))
-        labels = cast("list[_ElidedStatusLabel]", self.window.storage_overview_labels)
+        labels = self.window.storage_overview_labels
         for index, label in enumerate(labels):
             if index < len(entries):
                 entry = entries[index]
@@ -266,7 +269,7 @@ class WindowStatusCoordinator:
 
     def _ensure_storage_overview_labels(self, count: int) -> None:
         layout = self.window.storage_entries_layout
-        labels = cast("list[_ElidedStatusLabel]", self.window.storage_overview_labels)
+        labels = self.window.storage_overview_labels
         window_widget_id = widget_naming.window_widget_id(self.window.window_id)
         while len(labels) < count:
             index = len(labels)

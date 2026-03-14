@@ -25,6 +25,7 @@ from many_panelz_explorer._operations.types import (
 from many_panelz_explorer._settings.manager import SettingsManager
 from many_panelz_explorer._settings.models import UiPreferences
 from many_panelz_explorer.dialogs.settings_dialog import SettingsDialog
+from many_panelz_explorer.explorer_tab import ExplorerTab
 from many_panelz_explorer.operation_queue_widgets import OperationQueueTableModel
 from many_panelz_explorer.window import ExplorerWindow
 
@@ -111,7 +112,7 @@ class _ControllerSettingsStub:
         *,
         source_window: ExplorerWindow | None = None,
         source_panel_id: int | None = None,
-        source_tab: object | None = None,
+        source_tab: ExplorerTab | None = None,
     ) -> None:
         for window in list(self.windows):
             window.panels_coordinator.column_sync_coordinator.apply_column_widths_all_panels(

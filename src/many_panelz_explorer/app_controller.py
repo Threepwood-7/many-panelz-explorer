@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
     from ._settings.models import UiPreferences
+    from .explorer_tab import ExplorerTab
 
 
 class AppController:
@@ -201,7 +202,7 @@ class AppController:
         *,
         source_window: ExplorerWindow | None = None,
         source_panel_id: int | None = None,
-        source_tab: object | None = None,
+        source_tab: ExplorerTab | None = None,
     ) -> None:
         for window in list(self.windows):
             window.panels_coordinator.column_sync_coordinator.apply_column_widths_all_panels(
