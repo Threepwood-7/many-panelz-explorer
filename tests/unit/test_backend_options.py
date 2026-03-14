@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections import UserDict
+
 from many_panelz_explorer._operations.backend_options import (
     ExternalCopyMoveBackendOptions,
     RobocopyBackendOptions,
@@ -42,6 +44,20 @@ def test_structured_normalization_clamps_ranges() -> None:
     assert options.retry_count == 1_000_000
     assert options.wait_seconds == 0
     assert options.multithread_count == 1
+
+
+def test_teracopy_normalization_normalizes_conflicts_and_mutual_exclusion() -> None:
+    options = normalize_teracopy_options(
+        {
+            "close_on_finish": True,
+            "keep_open": True,
+            "conflict_mode": "renameall",
+        }
+    )
+
+    assert options.close_on_finish is True
+    assert options.keep_open is False
+    assert options.conflict_mode == "/renameall"
 
 
 def test_resolve_uses_structured_generation_only() -> None:
@@ -92,6 +108,24 @@ def test_invalid_payloads_fallback_to_defaults() -> None:
     assert teracopy == TeraCopyBackendOptions()
     assert unstoppable == UnstoppableBackendOptions()
     assert external == ExternalCopyMoveBackendOptions()
+
+
+def test_mapping_payloads_are_supported_and_empty_external_tokens_reset() -> None:
+    options = normalize_external_copymove_options(
+        UserDict[str, object](
+            {
+                "include_operation_token": False,
+                "include_sources": False,
+                "include_target": False,
+                "extra_args": " --fast ",
+            }
+        )
+    )
+
+    assert options.include_operation_token is True
+    assert options.include_sources is True
+    assert options.include_target is True
+    assert options.extra_args == "--fast"
 
 
 def test_backend_generators_include_structured_values() -> None:

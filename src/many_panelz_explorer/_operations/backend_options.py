@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, replace
-from typing import Any, cast
+from collections.abc import Mapping
+from dataclasses import dataclass, replace
+from typing import Literal, cast
 
 from .path_helpers import split_args
 from .types import (
@@ -25,13 +26,33 @@ _TERACOPY_CONFLICT_OPTIONS = {
     "/RENAMEDESTINATION",
 }
 
+type BackendPayloadScalar = bool | int | str
+type BackendOptionsPayload = dict[str, BackendPayloadScalar]
+type CopyMoveKind = Literal["copy", "move"]
+type UnstoppableOptionName = Literal[
+    "keep_attributes",
+    "keep_owner",
+    "keep_time",
+    "overwrite_existing",
+    "recover_and_resume",
+    "power_down_when_done",
+    "copy_newer_only",
+    "skip_damaged",
+    "undamaged_first",
+    "include_subfolders",
+    "overwrite_readonly",
+    "copy_empty_folders",
+    "show_eta",
+]
 
-def _string_object_mapping(value: Any) -> dict[str, Any] | None:
+
+def _string_object_mapping(value: object) -> dict[str, object] | None:
     """Normalize backend-option payloads into string-key mappings."""
 
-    if not isinstance(value, dict):
+    if not isinstance(value, Mapping):
         return None
-    return {str(key): item for key, item in cast("dict[object, object]", value).items()}
+    mapping = cast("Mapping[object, object]", value)
+    return {str(key): item for key, item in mapping.items()}
 
 
 @dataclass(frozen=True)
@@ -85,20 +106,65 @@ class UnstoppableBackendOptions:
     extra_args: str = ""
 
 
-_UNSTOPPABLE_DEFAULT_FLAG_STATES: tuple[tuple[str, bool, str], ...] = (
-    ("a", UnstoppableBackendOptions.keep_attributes, "keep_attributes"),
-    ("o", UnstoppableBackendOptions.keep_owner, "keep_owner"),
-    ("t", UnstoppableBackendOptions.keep_time, "keep_time"),
-    ("e", UnstoppableBackendOptions.overwrite_existing, "overwrite_existing"),
-    ("r", UnstoppableBackendOptions.recover_and_resume, "recover_and_resume"),
-    ("p", UnstoppableBackendOptions.power_down_when_done, "power_down_when_done"),
-    ("c", UnstoppableBackendOptions.copy_newer_only, "copy_newer_only"),
-    ("s", UnstoppableBackendOptions.skip_damaged, "skip_damaged"),
-    ("u", UnstoppableBackendOptions.undamaged_first, "undamaged_first"),
-    ("i", UnstoppableBackendOptions.include_subfolders, "include_subfolders"),
-    ("w", UnstoppableBackendOptions.overwrite_readonly, "overwrite_readonly"),
-    ("f", UnstoppableBackendOptions.copy_empty_folders, "copy_empty_folders"),
-    ("z", UnstoppableBackendOptions.show_eta, "show_eta"),
+@dataclass(frozen=True)
+class _UnstoppableFlagState:
+    """Describe one toggleable Unstoppable Copier flag."""
+
+    code: str
+    default_enabled: bool
+    attribute_name: UnstoppableOptionName
+
+
+_UNSTOPPABLE_DEFAULT_FLAG_STATES: tuple[_UnstoppableFlagState, ...] = (
+    _UnstoppableFlagState(
+        "a",
+        UnstoppableBackendOptions.keep_attributes,
+        "keep_attributes",
+    ),
+    _UnstoppableFlagState("o", UnstoppableBackendOptions.keep_owner, "keep_owner"),
+    _UnstoppableFlagState("t", UnstoppableBackendOptions.keep_time, "keep_time"),
+    _UnstoppableFlagState(
+        "e",
+        UnstoppableBackendOptions.overwrite_existing,
+        "overwrite_existing",
+    ),
+    _UnstoppableFlagState(
+        "r",
+        UnstoppableBackendOptions.recover_and_resume,
+        "recover_and_resume",
+    ),
+    _UnstoppableFlagState(
+        "p",
+        UnstoppableBackendOptions.power_down_when_done,
+        "power_down_when_done",
+    ),
+    _UnstoppableFlagState(
+        "c",
+        UnstoppableBackendOptions.copy_newer_only,
+        "copy_newer_only",
+    ),
+    _UnstoppableFlagState("s", UnstoppableBackendOptions.skip_damaged, "skip_damaged"),
+    _UnstoppableFlagState(
+        "u",
+        UnstoppableBackendOptions.undamaged_first,
+        "undamaged_first",
+    ),
+    _UnstoppableFlagState(
+        "i",
+        UnstoppableBackendOptions.include_subfolders,
+        "include_subfolders",
+    ),
+    _UnstoppableFlagState(
+        "w",
+        UnstoppableBackendOptions.overwrite_readonly,
+        "overwrite_readonly",
+    ),
+    _UnstoppableFlagState(
+        "f",
+        UnstoppableBackendOptions.copy_empty_folders,
+        "copy_empty_folders",
+    ),
+    _UnstoppableFlagState("z", UnstoppableBackendOptions.show_eta, "show_eta"),
 )
 
 
@@ -123,7 +189,9 @@ class ResolvedCopyMoveBackendArgs:
     external_copymove_args_template: str
 
 
-def _normalize_bool(raw: Any, *, fallback: bool) -> bool:
+def _normalize_bool(raw: object, *, fallback: bool) -> bool:
+    """Normalize a raw payload value into a boolean."""
+
     if isinstance(raw, bool):
         return raw
     if isinstance(raw, str):
@@ -133,10 +201,26 @@ def _normalize_bool(raw: Any, *, fallback: bool) -> bool:
     return bool(raw)
 
 
-def _normalize_int(raw: Any, *, fallback: int, minimum: int, maximum: int) -> int:
-    try:
+def _normalize_int(
+    raw: object,
+    *,
+    fallback: int,
+    minimum: int,
+    maximum: int,
+) -> int:
+    """Normalize a raw payload value into a bounded integer."""
+
+    value: int
+    if isinstance(raw, bool):
         value = int(raw)
-    except (TypeError, ValueError):
+    elif isinstance(raw, int):
+        value = raw
+    elif isinstance(raw, str):
+        try:
+            value = int(raw)
+        except ValueError:
+            return fallback
+    else:
         return fallback
     if value < minimum:
         return minimum
@@ -145,7 +229,9 @@ def _normalize_int(raw: Any, *, fallback: int, minimum: int, maximum: int) -> in
     return value
 
 
-def _normalize_text(raw: Any, *, fallback: str = "") -> str:
+def _normalize_text(raw: object, *, fallback: str = "") -> str:
+    """Normalize a raw payload value into a trimmed string."""
+
     if raw is None:
         return fallback
     text = str(raw).strip()
@@ -154,40 +240,92 @@ def _normalize_text(raw: Any, *, fallback: str = "") -> str:
     return fallback
 
 
-def _normalize_conflict_mode(raw: Any) -> str:
+def _normalize_conflict_mode(raw: object) -> str:
+    """Normalize a TeraCopy conflict mode token."""
+
     value = str(raw or "").strip()
     if not value:
         return ""
     normalized = value.upper()
+    if not normalized.startswith("/"):
+        normalized = f"/{normalized.lstrip('/')}"
     if normalized in _TERACOPY_CONFLICT_OPTIONS:
         return value if value.startswith("/") else f"/{value.lstrip('/')}"
     return ""
 
 
-def robocopy_options_payload(options: RobocopyBackendOptions) -> dict[str, Any]:
+def robocopy_options_payload(options: RobocopyBackendOptions) -> BackendOptionsPayload:
     """Serialize Robocopy options into a settings-friendly mapping."""
-    return asdict(options)
+
+    return {
+        "include_subdirectories": options.include_subdirectories,
+        "mirror_target": options.mirror_target,
+        "move_files_for_move": options.move_files_for_move,
+        "restartable_mode": options.restartable_mode,
+        "backup_mode": options.backup_mode,
+        "list_only": options.list_only,
+        "suppress_logs": options.suppress_logs,
+        "retry_count": options.retry_count,
+        "wait_seconds": options.wait_seconds,
+        "use_multithreading": options.use_multithreading,
+        "multithread_count": options.multithread_count,
+        "extra_args": options.extra_args,
+    }
 
 
-def teracopy_options_payload(options: TeraCopyBackendOptions) -> dict[str, Any]:
+def teracopy_options_payload(options: TeraCopyBackendOptions) -> BackendOptionsPayload:
     """Serialize TeraCopy options into a settings-friendly mapping."""
-    return asdict(options)
+
+    return {
+        "close_on_finish": options.close_on_finish,
+        "keep_open": options.keep_open,
+        "verify_after_copy": options.verify_after_copy,
+        "no_sound": options.no_sound,
+        "conflict_mode": options.conflict_mode,
+        "extra_args": options.extra_args,
+    }
 
 
-def unstoppable_options_payload(options: UnstoppableBackendOptions) -> dict[str, Any]:
+def unstoppable_options_payload(
+    options: UnstoppableBackendOptions,
+) -> BackendOptionsPayload:
     """Serialize Unstoppable Copier options into a settings-friendly mapping."""
-    return asdict(options)
+
+    return {
+        "use_defaults": options.use_defaults,
+        "keep_attributes": options.keep_attributes,
+        "keep_owner": options.keep_owner,
+        "keep_time": options.keep_time,
+        "overwrite_existing": options.overwrite_existing,
+        "include_subfolders": options.include_subfolders,
+        "recover_and_resume": options.recover_and_resume,
+        "copy_newer_only": options.copy_newer_only,
+        "skip_damaged": options.skip_damaged,
+        "undamaged_first": options.undamaged_first,
+        "overwrite_readonly": options.overwrite_readonly,
+        "copy_empty_folders": options.copy_empty_folders,
+        "show_eta": options.show_eta,
+        "power_down_when_done": options.power_down_when_done,
+        "extra_args": options.extra_args,
+    }
 
 
 def external_copymove_options_payload(
     options: ExternalCopyMoveBackendOptions,
-) -> dict[str, Any]:
+) -> BackendOptionsPayload:
     """Serialize external copy/move options into a settings-friendly mapping."""
-    return asdict(options)
+
+    return {
+        "include_operation_token": options.include_operation_token,
+        "include_sources": options.include_sources,
+        "include_target": options.include_target,
+        "extra_args": options.extra_args,
+    }
 
 
-def normalize_robocopy_options(raw: Any) -> RobocopyBackendOptions:
+def normalize_robocopy_options(raw: object) -> RobocopyBackendOptions:
     """Normalize stored or UI-provided Robocopy option payloads."""
+
     raw_map = _string_object_mapping(raw)
     if raw_map is None:
         return RobocopyBackendOptions()
@@ -249,8 +387,9 @@ def normalize_robocopy_options(raw: Any) -> RobocopyBackendOptions:
     return replace(options, multithread_count=RobocopyBackendOptions.multithread_count)
 
 
-def normalize_teracopy_options(raw: Any) -> TeraCopyBackendOptions:
+def normalize_teracopy_options(raw: object) -> TeraCopyBackendOptions:
     """Normalize stored or UI-provided TeraCopy option payloads."""
+
     raw_map = _string_object_mapping(raw)
     if raw_map is None:
         return TeraCopyBackendOptions()
@@ -279,8 +418,9 @@ def normalize_teracopy_options(raw: Any) -> TeraCopyBackendOptions:
     return options
 
 
-def normalize_unstoppable_options(raw: Any) -> UnstoppableBackendOptions:
+def normalize_unstoppable_options(raw: object) -> UnstoppableBackendOptions:
     """Normalize stored or UI-provided Unstoppable Copier payloads."""
+
     raw_map = _string_object_mapping(raw)
     if raw_map is None:
         return UnstoppableBackendOptions()
@@ -345,8 +485,9 @@ def normalize_unstoppable_options(raw: Any) -> UnstoppableBackendOptions:
     )
 
 
-def normalize_external_copymove_options(raw: Any) -> ExternalCopyMoveBackendOptions:
+def normalize_external_copymove_options(raw: object) -> ExternalCopyMoveBackendOptions:
     """Normalize stored or UI-provided external command option payloads."""
+
     raw_map = _string_object_mapping(raw)
     if raw_map is None:
         return ExternalCopyMoveBackendOptions()
@@ -379,14 +520,18 @@ def normalize_external_copymove_options(raw: Any) -> ExternalCopyMoveBackendOpti
     return options
 
 
-def generate_robocopy_args(options: RobocopyBackendOptions, *, kind: str) -> str:
+def generate_robocopy_args(
+    options: RobocopyBackendOptions,
+    *,
+    kind: CopyMoveKind,
+) -> str:
     """Render Robocopy options into a command-line argument string."""
     parts: list[str] = []
     if options.include_subdirectories:
         parts.append("/E")
     if options.mirror_target:
         parts.append("/MIR")
-    if str(kind).strip().lower() == "move" and options.move_files_for_move:
+    if kind == "move" and options.move_files_for_move:
         parts.append("/MOVE")
     if options.restartable_mode:
         parts.append("/Z")
@@ -426,6 +571,41 @@ def generate_teracopy_args_template(options: TeraCopyBackendOptions) -> str:
     return " ".join(parts).strip()
 
 
+def _unstoppable_option_enabled(
+    options: UnstoppableBackendOptions,
+    attribute_name: UnstoppableOptionName,
+) -> bool:
+    """Return the current value for one named Unstoppable option."""
+
+    match attribute_name:
+        case "keep_attributes":
+            return options.keep_attributes
+        case "keep_owner":
+            return options.keep_owner
+        case "keep_time":
+            return options.keep_time
+        case "overwrite_existing":
+            return options.overwrite_existing
+        case "recover_and_resume":
+            return options.recover_and_resume
+        case "power_down_when_done":
+            return options.power_down_when_done
+        case "copy_newer_only":
+            return options.copy_newer_only
+        case "skip_damaged":
+            return options.skip_damaged
+        case "undamaged_first":
+            return options.undamaged_first
+        case "include_subfolders":
+            return options.include_subfolders
+        case "overwrite_readonly":
+            return options.overwrite_readonly
+        case "copy_empty_folders":
+            return options.copy_empty_folders
+        case "show_eta":
+            return options.show_eta
+
+
 def generate_unstoppable_switch_args(
     options: UnstoppableBackendOptions,
 ) -> list[str]:
@@ -434,14 +614,14 @@ def generate_unstoppable_switch_args(
     minus_letters: list[str] = []
     if options.use_defaults:
         plus_letters.append("d")
-    for code, default_enabled, attr_name in _UNSTOPPABLE_DEFAULT_FLAG_STATES:
-        enabled = bool(getattr(options, attr_name))
-        if enabled == bool(default_enabled):
+    for flag in _UNSTOPPABLE_DEFAULT_FLAG_STATES:
+        enabled = _unstoppable_option_enabled(options, flag.attribute_name)
+        if enabled == flag.default_enabled:
             continue
         if enabled:
-            plus_letters.append(code)
+            plus_letters.append(flag.code)
         else:
-            minus_letters.append(code)
+            minus_letters.append(flag.code)
 
     tokens: list[str] = []
     if plus_letters:
@@ -480,6 +660,8 @@ def generate_external_copymove_args_template(
 
 
 def _resolve_value(*, generated_value: str, fallback: str) -> str:
+    """Return the generated value, or the configured fallback when empty."""
+
     generated = _normalize_text(generated_value, fallback="")
     if generated:
         return generated
