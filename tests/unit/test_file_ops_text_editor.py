@@ -44,13 +44,13 @@ def test_open_in_text_editor_falls_back_to_notepad_on_windows(
     )
     script = tmp_path / "run.cmd"
     script.write_text("@echo off\n", encoding="utf-8")
-    windir = tmp_path / "Windows"
-    notepad = windir / "System32" / "notepad.exe"
+    system_root = tmp_path / "Windows"
+    notepad = system_root / "System32" / "notepad.exe"
     notepad.parent.mkdir(parents=True, exist_ok=True)
     notepad.write_text("", encoding="utf-8")
 
     monkeypatch.setattr(file_ops.os, "name", "nt", raising=False)
-    monkeypatch.setenv("WINDIR", str(windir))
+    monkeypatch.setenv("SYSTEMROOT", str(system_root))
     launched: list[list[str]] = []
     monkeypatch.setattr(
         file_ops.subprocess, "Popen", lambda args: launched.append(list(args))
@@ -72,8 +72,7 @@ def test_open_in_text_editor_raises_when_editor_is_unavailable(
     script = tmp_path / "run.cmd"
     script.write_text("@echo off\n", encoding="utf-8")
     monkeypatch.setattr(file_ops.os, "name", "nt", raising=False)
-    monkeypatch.setenv("WINDIR", str(tmp_path / "missing"))
-    monkeypatch.setattr(file_ops.shutil, "which", lambda _name: None)
+    monkeypatch.setenv("SYSTEMROOT", str(tmp_path / "missing"))
 
     with pytest.raises(RuntimeError, match="No text editor available"):
         file_ops.open_in_text_editor(script, editor_executable="")

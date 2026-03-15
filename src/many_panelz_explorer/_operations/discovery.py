@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import shutil
 from dataclasses import replace
 from pathlib import Path
@@ -10,6 +9,11 @@ from pathlib import Path
 from ..external_file_managers import (
     DOUBLE_COMMANDER_DISCOVERY_CANDIDATES,
     TOTAL_COMMANDER_DISCOVERY_CANDIDATES,
+)
+from ..windows_system_paths import (
+    get_comspec_path,
+    get_system_root_path,
+    get_windows_env_path,
 )
 from .types import (
     BACKEND_CMD_DELETE,
@@ -23,8 +27,6 @@ from .types import (
     BACKEND_UNSTOPPABLE,
     COMPANION_TOOL_NOT_FOUND,
     DEFAULT_RIMRAF_EXE,
-    DEFAULT_SYSTEM_CMD_FALLBACK,
-    DEFAULT_SYSTEM_ROBOCOPY_FALLBACK,
     DEFAULT_TERA_COPY_EXE,
     DEFAULT_UNSTOPPABLE_EXE,
     OperationExecutionPreferences,
@@ -33,24 +35,32 @@ from .types import (
 
 def common_tool_search_dirs() -> list[Path]:
     """Return the common Windows directories searched for companion tools."""
-    dirs: list[Path] = [Path(r"C:\bin")]
+    dirs: list[Path] = []
     env_vars = [
         "ProgramFiles",
         "ProgramFiles(x86)",
+        "ProgramData",
         "LOCALAPPDATA",
-        "APPDATA",
     ]
     for env_name in env_vars:
-        raw = os.environ.get(env_name, "").strip()
-        if not raw:
+        base = get_windows_env_path(env_name)
+        if base is None:
             continue
-        base = Path(raw)
-        dirs.append(base)
-        dirs.append(base / "Programs")
-        dirs.append(base / "Tools")
-        dirs.append(base / "Utilities")
-        dirs.append(base / "npm")
+        if base not in dirs:
+            dirs.append(base)
     return dirs
+
+
+def _candidate_install_roots(directory: Path, executable_name: str) -> list[Path]:
+    """Return env-root-relative install directories for one executable name."""
+
+    return [
+        directory,
+        directory / "TeraCopy",
+        directory / "Roadkil's Unstoppable Copier",
+        directory / "nodejs",
+        *tool_specific_search_roots(directory, executable_name),
+    ]
 
 
 def candidate_executable_paths(executable_name: str) -> list[Path]:
@@ -67,26 +77,13 @@ def candidate_executable_paths(executable_name: str) -> list[Path]:
     if raw_path.is_absolute():
         candidates.append(raw_path)
     for directory in common_tool_search_dirs():
-        # Typical Windows companion install subdirectories.
-        roots = [
-            directory,
-            directory / "TeraCopy",
-            directory / "Roadkil's Unstoppable Copier",
-            directory / "nodejs",
-            *tool_specific_search_roots(directory, exe_key),
-        ]
+        roots = _candidate_install_roots(directory, exe_key)
         for root in roots:
             candidates.append(root / exe)
     # Common Windows command wrappers for bare command names.
     if raw_path.suffix.lower() != ".cmd":
         for directory in common_tool_search_dirs():
-            roots = [
-                directory,
-                directory / "TeraCopy",
-                directory / "Roadkil's Unstoppable Copier",
-                directory / "nodejs",
-                *tool_specific_search_roots(directory, exe_key),
-            ]
+            roots = _candidate_install_roots(directory, exe_key)
             for root in roots:
                 candidates.append(root / f"{exe}.cmd")
                 candidates.append(root / f"{exe}.exe")
@@ -170,25 +167,10 @@ def is_scripted_backend(backend_id: str) -> bool:
 
 def resolve_system_command_paths() -> tuple[str, str]:
     """Resolve the current system `cmd.exe` and `robocopy.exe` paths."""
-    comspec_raw = str(os.environ.get("COMSPEC", "")).strip()
-    windir_raw = str(os.environ.get("WINDIR", r"C:\Windows")).strip() or r"C:\Windows"
-    cmd_candidates: list[Path] = []
-    robocopy_candidates: list[Path] = []
-    if comspec_raw:
-        cmd_candidates.append(Path(comspec_raw))
-    cmd_candidates.append(Path(windir_raw) / "System32" / "cmd.exe")
-    cmd_candidates.append(Path(DEFAULT_SYSTEM_CMD_FALLBACK))
-    robocopy_candidates.append(Path(windir_raw) / "System32" / "robocopy.exe")
-    robocopy_candidates.append(Path(DEFAULT_SYSTEM_ROBOCOPY_FALLBACK))
-
-    resolved_cmd = next(
-        (str(candidate) for candidate in cmd_candidates if candidate.exists()),
-        str(cmd_candidates[0]),
-    )
-    resolved_robocopy = next(
-        (str(candidate) for candidate in robocopy_candidates if candidate.exists()),
-        str(robocopy_candidates[0]),
-    )
+    comspec_path = get_comspec_path()
+    robocopy_path = get_system_root_path("System32", "robocopy.exe")
+    resolved_cmd = str(comspec_path) if comspec_path is not None else ""
+    resolved_robocopy = str(robocopy_path) if robocopy_path is not None else ""
     return resolved_cmd, resolved_robocopy
 
 

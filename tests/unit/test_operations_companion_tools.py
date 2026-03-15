@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from many_panelz_explorer._operations.discovery import (
     common_tool_search_dirs,
@@ -22,6 +22,9 @@ from many_panelz_explorer.external_file_managers import (
     TOTAL_COMMANDER_DISCOVERY_CANDIDATES,
 )
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 def test_companion_resolution_uses_common_locations(
     monkeypatch, tmp_path: Path
@@ -41,8 +44,8 @@ def test_companion_resolution_uses_common_locations(
 
     monkeypatch.setenv("ProgramFiles", str(program_files))
     monkeypatch.setenv("ProgramFiles(x86)", "")
+    monkeypatch.setenv("ProgramData", "")
     monkeypatch.setenv("LOCALAPPDATA", "")
-    monkeypatch.setenv("APPDATA", "")
     monkeypatch.setenv("PATH", "")
     monkeypatch.setattr(
         "many_panelz_explorer._operations.discovery.common_tool_search_dirs",
@@ -60,8 +63,8 @@ def test_companion_resolution_sets_placeholder_when_missing(
 ) -> None:
     monkeypatch.setenv("ProgramFiles", str(tmp_path / "missing"))
     monkeypatch.setenv("ProgramFiles(x86)", "")
+    monkeypatch.setenv("ProgramData", "")
     monkeypatch.setenv("LOCALAPPDATA", "")
-    monkeypatch.setenv("APPDATA", "")
     monkeypatch.setenv("PATH", "")
     monkeypatch.setattr(
         "many_panelz_explorer._operations.discovery.common_tool_search_dirs",
@@ -87,36 +90,55 @@ def test_companion_resolution_keeps_user_defined_custom_path() -> None:
     assert resolved.rimraf_executable == r"D:\tools\rimraf.cmd"
 
 
-def test_resolve_system_command_paths_uses_comspec_and_windir(
+def test_resolve_system_command_paths_uses_comspec_and_systemroot(
     monkeypatch, tmp_path: Path
 ) -> None:
     cmd_path = tmp_path / "cmd.exe"
-    windir = tmp_path / "Windows"
-    robocopy_path = windir / "System32" / "robocopy.exe"
+    system_root = tmp_path / "Windows"
+    robocopy_path = system_root / "System32" / "robocopy.exe"
     cmd_path.write_text("", encoding="utf-8")
     robocopy_path.parent.mkdir(parents=True, exist_ok=True)
     robocopy_path.write_text("", encoding="utf-8")
 
     monkeypatch.setenv("ComSpec", str(cmd_path))
-    monkeypatch.setenv("WINDIR", str(windir))
+    monkeypatch.setenv("SYSTEMROOT", str(system_root))
 
     resolved_cmd, resolved_robocopy = resolve_system_command_paths()
     assert resolved_cmd == str(cmd_path)
     assert resolved_robocopy == str(robocopy_path)
 
 
-def test_resolve_system_command_paths_has_fallbacks(monkeypatch) -> None:
+def test_resolve_system_command_paths_returns_empty_when_env_is_missing(
+    monkeypatch,
+) -> None:
     monkeypatch.setenv("ComSpec", "")
-    monkeypatch.setenv("WINDIR", "")
+    monkeypatch.setenv("SYSTEMROOT", "")
     resolved_cmd, resolved_robocopy = resolve_system_command_paths()
     assert resolved_cmd == DEFAULT_SYSTEM_CMD_FALLBACK
     assert resolved_robocopy == DEFAULT_SYSTEM_ROBOCOPY_FALLBACK
 
 
-def test_common_tool_search_dirs_starts_with_windows_bin() -> None:
+def test_common_tool_search_dirs_uses_only_allowed_env_roots(
+    monkeypatch, tmp_path: Path
+) -> None:
+    program_files = tmp_path / "ProgramFiles"
+    program_files_x86 = tmp_path / "ProgramFilesX86"
+    program_data = tmp_path / "ProgramData"
+    local_app_data = tmp_path / "LocalAppData"
+    monkeypatch.setenv("ProgramFiles", str(program_files))
+    monkeypatch.setenv("ProgramFiles(x86)", str(program_files_x86))
+    monkeypatch.setenv("ProgramData", str(program_data))
+    monkeypatch.setenv("LOCALAPPDATA", str(local_app_data))
+    monkeypatch.setenv("APPDATA", str(tmp_path / "Roaming"))
+
     dirs = common_tool_search_dirs()
 
-    assert dirs[0] == Path(r"C:\bin")
+    assert dirs == [
+        program_files,
+        program_files_x86,
+        program_data,
+        local_app_data,
+    ]
 
 
 def test_external_file_manager_resolution_uses_common_locations(
@@ -136,8 +158,8 @@ def test_external_file_manager_resolution_uses_common_locations(
 
     monkeypatch.setenv("ProgramFiles", str(program_files))
     monkeypatch.setenv("ProgramFiles(x86)", "")
+    monkeypatch.setenv("ProgramData", "")
     monkeypatch.setenv("LOCALAPPDATA", "")
-    monkeypatch.setenv("APPDATA", "")
     monkeypatch.setenv("PATH", "")
     monkeypatch.setattr(
         "many_panelz_explorer._operations.discovery.common_tool_search_dirs",

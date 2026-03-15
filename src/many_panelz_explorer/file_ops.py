@@ -16,6 +16,8 @@ from threep_commons.desktop import open_path_in_default_app
 from threep_commons.executables import resolve_executable_path
 from threep_commons.fs_paths import is_explicit_path_text, normalize_windows_path_text
 
+from .windows_system_paths import get_system_root_path
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
@@ -204,13 +206,9 @@ def open_with_viewer(path: Path) -> bool:
 
 def _resolve_text_editor_executable_fallback() -> str:
     if os.name == "nt":
-        windir = Path(str(os.environ.get("WINDIR") or r"C:\Windows"))
-        notepad = windir / "System32" / "notepad.exe"
-        if notepad.exists():
+        notepad = get_system_root_path("System32", "notepad.exe")
+        if notepad is not None:
             return str(notepad)
-        discovered = shutil.which("notepad.exe")
-        if discovered:
-            return str(Path(discovered))
         raise RuntimeError("No text editor available. Configure one in Settings.")
 
     discovered = shutil.which("xdg-open") or shutil.which("open")

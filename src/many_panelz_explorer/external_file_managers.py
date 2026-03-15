@@ -14,6 +14,8 @@ from threep_commons.subprocess_helpers import (
     windows_no_window_popen_kwargs,
 )
 
+from .windows_system_paths import get_system_root_path
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -26,13 +28,13 @@ TOTAL_COMMANDER_DISCOVERY_CANDIDATES = (
     DEFAULT_TOTAL_COMMANDER_EXECUTABLE,
     "TOTALCMD.EXE",
 )
-DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE = "/O /A /L={source}"
-DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE = "/O /A /L={source} /R={target}"
+DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE = "/O /T /A /L={source}"
+DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE = "/O /T /A /L={source} /R={target}"
 
 DEFAULT_DOUBLE_COMMANDER_EXECUTABLE = "doublecmd.exe"
 DOUBLE_COMMANDER_DISCOVERY_CANDIDATES = (DEFAULT_DOUBLE_COMMANDER_EXECUTABLE,)
-DEFAULT_DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE = "-C -L {source}"
-DEFAULT_DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE = "-C -L {source} -R {target}"
+DEFAULT_DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE = "--no-splash -C -T -L {source}"
+DEFAULT_DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE = "--no-splash -C -T -L {source} -R {target}"
 
 type LaunchTargetKind = Literal["directory", "file"]
 
@@ -201,10 +203,21 @@ class ExternalFileManagerLauncher:
     def _launch_explorer_target(self, target: FileManagerLaunchTarget) -> None:
         """Launch Windows Explorer for one target path."""
 
+        explorer_executable = get_system_root_path("explorer.exe")
+        if explorer_executable is None:
+            QMessageBox.warning(
+                self._window,
+                "Explorer",
+                (
+                    "Explorer is unavailable because "
+                    "%SYSTEMROOT%\\explorer.exe could not be found."
+                ),
+            )
+            return
         if target.kind == "file":
-            args = ["explorer.exe", f"/select,{target.path}"]
+            args = [str(explorer_executable), f"/select,{target.path}"]
         else:
-            args = ["explorer.exe", str(target.path)]
+            args = [str(explorer_executable), str(target.path)]
         self._launch_process(args, tool_name="Explorer")
 
     def _launch_external_manager(

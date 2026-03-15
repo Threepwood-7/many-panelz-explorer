@@ -220,6 +220,11 @@ def test_external_file_manager_actions_launch_expected_commands(
     qtbot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     settings = SettingsManager()
+    system_root = tmp_path / "Windows"
+    explorer_exe = system_root / "explorer.exe"
+    explorer_exe.parent.mkdir(parents=True, exist_ok=True)
+    explorer_exe.write_text("", encoding="utf-8")
+    monkeypatch.setenv("SYSTEMROOT", str(system_root))
     roots_provider = _test_roots_provider(tmp_path)
     window = ExplorerWindow(
         controller=_ControllerStub(),
@@ -278,11 +283,11 @@ def test_external_file_manager_actions_launch_expected_commands(
     )
 
     window.explorer_here_source_action.trigger()
-    assert recorded[-1] == ["explorer.exe", f"/select,{source_file}"]
+    assert recorded[-1] == [str(explorer_exe), f"/select,{source_file}"]
 
     window.explorer_here_source_target_action.trigger()
-    assert recorded[-2] == ["explorer.exe", f"/select,{source_file}"]
-    assert recorded[-1] == ["explorer.exe", f"/select,{target_file}"]
+    assert recorded[-2] == [str(explorer_exe), f"/select,{source_file}"]
+    assert recorded[-1] == [str(explorer_exe), f"/select,{target_file}"]
 
     window.total_commander_here_source_target_action.trigger()
     assert recorded[-1] == [
@@ -303,7 +308,7 @@ def test_external_file_manager_actions_launch_expected_commands(
 
     _select_paths(source_tab, [source_file, source_second_file])
     window.explorer_here_source_action.trigger()
-    assert recorded[-1] == ["explorer.exe", str(source_root)]
+    assert recorded[-1] == [str(explorer_exe), str(source_root)]
 
 
 def test_split_tab_close_actions(qtbot, tmp_path: Path) -> None:
