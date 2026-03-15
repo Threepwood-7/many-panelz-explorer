@@ -7,6 +7,10 @@ import shutil
 from dataclasses import replace
 from pathlib import Path
 
+from ..external_file_managers import (
+    DOUBLE_COMMANDER_DISCOVERY_CANDIDATES,
+    TOTAL_COMMANDER_DISCOVERY_CANDIDATES,
+)
 from .types import (
     BACKEND_CMD_DELETE,
     BACKEND_EXPLORER,
@@ -54,6 +58,7 @@ def candidate_executable_paths(executable_name: str) -> list[Path]:
     exe = str(executable_name or "").strip().strip('"')
     if not exe:
         return []
+    exe_key = exe.lower()
     candidates: list[Path] = []
     which_hit = shutil.which(exe)
     if which_hit:
@@ -68,6 +73,7 @@ def candidate_executable_paths(executable_name: str) -> list[Path]:
             directory / "TeraCopy",
             directory / "Roadkil's Unstoppable Copier",
             directory / "nodejs",
+            *tool_specific_search_roots(directory, exe_key),
         ]
         for root in roots:
             candidates.append(root / exe)
@@ -79,6 +85,7 @@ def candidate_executable_paths(executable_name: str) -> list[Path]:
                 directory / "TeraCopy",
                 directory / "Roadkil's Unstoppable Copier",
                 directory / "nodejs",
+                *tool_specific_search_roots(directory, exe_key),
             ]
             for root in roots:
                 candidates.append(root / f"{exe}.cmd")
@@ -86,19 +93,34 @@ def candidate_executable_paths(executable_name: str) -> list[Path]:
     return candidates
 
 
+def tool_specific_search_roots(directory: Path, executable_name: str) -> list[Path]:
+    """Return tool-specific installation roots for one executable name."""
+
+    exe_key = str(executable_name or "").strip().lower()
+    if exe_key in {"totalcmd64.exe", "totalcmd.exe"}:
+        return [
+            directory / "Total Commander",
+            directory / "totalcmd",
+        ]
+    if exe_key == "doublecmd.exe":
+        return [
+            directory / "Double Commander",
+            directory / "doublecmd",
+        ]
+    return []
+
+
 def resolve_if_missing(configured: str, default_name: str) -> str:
     """Resolve a configured tool path when it is unset or still defaulted."""
     configured_text = str(configured or "").strip()
+    default_keys = {str(default_name).casefold(), Path(default_name).name.casefold()}
     if configured_text == COMPANION_TOOL_NOT_FOUND:
         return COMPANION_TOOL_NOT_FOUND
     if configured_text and Path(configured_text).is_absolute():
         return configured_text
 
     # Only auto-discover when unset or using simple default command name.
-    if configured_text and configured_text not in {
-        default_name,
-        Path(default_name).name,
-    }:
+    if configured_text and configured_text.casefold() not in default_keys:
         return configured_text
 
     for candidate in candidate_executable_paths(default_name):
@@ -107,6 +129,27 @@ def resolve_if_missing(configured: str, default_name: str) -> str:
     for candidate in candidate_executable_paths(configured_text or default_name):
         if candidate.exists():
             return str(candidate)
+    return COMPANION_TOOL_NOT_FOUND
+
+
+def resolve_if_missing_any(
+    configured: str,
+    default_names: tuple[str, ...],
+) -> str:
+    """Resolve the first available tool path from a preferred name list."""
+
+    configured_text = str(configured or "").strip()
+    default_keys = {str(name).casefold() for name in default_names}
+    if configured_text == COMPANION_TOOL_NOT_FOUND:
+        return COMPANION_TOOL_NOT_FOUND
+    if configured_text and Path(configured_text).is_absolute():
+        return configured_text
+    if configured_text and configured_text.casefold() not in default_keys:
+        return configured_text
+    for default_name in default_names:
+        resolved = resolve_if_missing(configured_text, default_name)
+        if resolved != COMPANION_TOOL_NOT_FOUND:
+            return resolved
     return COMPANION_TOOL_NOT_FOUND
 
 
@@ -180,3 +223,32 @@ def discover_single_companion_tool(
 ) -> str:
     """Resolve one configured companion tool path by itself."""
     return resolve_if_missing(configured, default_executable)
+
+
+def discover_preferred_companion_tool(
+    *,
+    configured: str,
+    default_executables: tuple[str, ...],
+) -> str:
+    """Resolve the first available executable from a preferred candidate list."""
+
+    return resolve_if_missing_any(configured, default_executables)
+
+
+def resolve_external_file_manager_paths(
+    *,
+    total_commander_executable: str,
+    double_commander_executable: str,
+) -> tuple[str, str]:
+    """Resolve Total Commander and Double Commander tool paths."""
+
+    return (
+        resolve_if_missing_any(
+            total_commander_executable,
+            TOTAL_COMMANDER_DISCOVERY_CANDIDATES,
+        ),
+        resolve_if_missing_any(
+            double_commander_executable,
+            DOUBLE_COMMANDER_DISCOVERY_CANDIDATES,
+        ),
+    )

@@ -131,6 +131,24 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
     file_open_overrides_json = delegate_domain_property(
         "ops", "file_open_overrides_json"
     )
+    total_commander_executable = delegate_domain_property(
+        "ops", "total_commander_executable"
+    )
+    total_commander_source_args_template = delegate_domain_property(
+        "ops", "total_commander_source_args_template"
+    )
+    total_commander_source_target_args_template = delegate_domain_property(
+        "ops", "total_commander_source_target_args_template"
+    )
+    double_commander_executable = delegate_domain_property(
+        "ops", "double_commander_executable"
+    )
+    double_commander_source_args_template = delegate_domain_property(
+        "ops", "double_commander_source_args_template"
+    )
+    double_commander_source_target_args_template = delegate_domain_property(
+        "ops", "double_commander_source_target_args_template"
+    )
     use_extended_paths_robocopy = delegate_domain_property(
         "ops", "use_extended_paths_robocopy"
     )
@@ -239,6 +257,18 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
             default_editor_executable=self.default_editor_executable,
             default_viewer_executable=self.default_viewer_executable,
             file_open_overrides_json=self.file_open_overrides_json,
+            total_commander_executable=self.total_commander_executable,
+            total_commander_source_args_template=self.total_commander_source_args_template,
+            total_commander_source_target_args_template=(
+                self.total_commander_source_target_args_template
+            ),
+            double_commander_executable=self.double_commander_executable,
+            double_commander_source_args_template=(
+                self.double_commander_source_args_template
+            ),
+            double_commander_source_target_args_template=(
+                self.double_commander_source_target_args_template
+            ),
             use_extended_paths_robocopy=self.use_extended_paths_robocopy,
             use_extended_paths_teracopy=self.use_extended_paths_teracopy,
             use_extended_paths_unstoppable=self.use_extended_paths_unstoppable,
@@ -334,6 +364,20 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
         self.default_editor_executable = preferences.default_editor_executable
         self.default_viewer_executable = preferences.default_viewer_executable
         self.file_open_overrides_json = preferences.file_open_overrides_json
+        self.total_commander_executable = preferences.total_commander_executable
+        self.total_commander_source_args_template = (
+            preferences.total_commander_source_args_template
+        )
+        self.total_commander_source_target_args_template = (
+            preferences.total_commander_source_target_args_template
+        )
+        self.double_commander_executable = preferences.double_commander_executable
+        self.double_commander_source_args_template = (
+            preferences.double_commander_source_args_template
+        )
+        self.double_commander_source_target_args_template = (
+            preferences.double_commander_source_target_args_template
+        )
         self.use_extended_paths_robocopy = preferences.use_extended_paths_robocopy
         self.use_extended_paths_teracopy = preferences.use_extended_paths_teracopy
         self.use_extended_paths_unstoppable = preferences.use_extended_paths_unstoppable

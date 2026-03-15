@@ -173,3 +173,123 @@ class OpsDefaultSettingsMixin(SettingsDomainBase, SettingsRegistry):
                 fallback=self.DEFAULT_FILE_OPEN_OVERRIDES_JSON,
             ),
         )
+
+    @property
+    def total_commander_executable(self) -> str:
+        return normalize.normalize_windows_path_text(
+            self._storage.value(
+                self.TOTAL_COMMANDER_EXECUTABLE_KEY,
+                self.DEFAULT_TOTAL_COMMANDER_EXECUTABLE,
+            ),
+            fallback=self.DEFAULT_TOTAL_COMMANDER_EXECUTABLE,
+        )
+
+    @total_commander_executable.setter
+    def total_commander_executable(self, value: str) -> None:
+        self._storage.set_value(
+            self.TOTAL_COMMANDER_EXECUTABLE_KEY,
+            normalize.normalize_windows_path_text(
+                value,
+                fallback=self.DEFAULT_TOTAL_COMMANDER_EXECUTABLE,
+            ),
+        )
+
+    @property
+    def total_commander_source_args_template(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY,
+                self.DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE,
+        )
+
+    @total_commander_source_args_template.setter
+    def total_commander_source_args_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY,
+            normalize.normalize_text(
+                value,
+                fallback=self.DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE,
+            ),
+        )
+
+    @property
+    def total_commander_source_target_args_template(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE_KEY,
+                self.DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
+        )
+
+    @total_commander_source_target_args_template.setter
+    def total_commander_source_target_args_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE_KEY,
+            normalize.normalize_text(
+                value,
+                fallback=self.DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
+            ),
+        )
+
+    @property
+    def double_commander_executable(self) -> str:
+        return normalize.normalize_windows_path_text(
+            self._storage.value(
+                self.DOUBLE_COMMANDER_EXECUTABLE_KEY,
+                self.DEFAULT_DOUBLE_COMMANDER_EXECUTABLE,
+            ),
+            fallback=self.DEFAULT_DOUBLE_COMMANDER_EXECUTABLE,
+        )
+
+    @double_commander_executable.setter
+    def double_commander_executable(self, value: str) -> None:
+        self._storage.set_value(
+            self.DOUBLE_COMMANDER_EXECUTABLE_KEY,
+            normalize.normalize_windows_path_text(
+                value,
+                fallback=self.DEFAULT_DOUBLE_COMMANDER_EXECUTABLE,
+            ),
+        )
+
+    @property
+    def double_commander_source_args_template(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY,
+                self.DEFAULT_DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE,
+        )
+
+    @double_commander_source_args_template.setter
+    def double_commander_source_args_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY,
+            normalize.normalize_text(
+                value,
+                fallback=self.DEFAULT_DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE,
+            ),
+        )
+
+    @property
+    def double_commander_source_target_args_template(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE_KEY,
+                self.DEFAULT_DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
+        )
+
+    @double_commander_source_target_args_template.setter
+    def double_commander_source_target_args_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE_KEY,
+            normalize.normalize_text(
+                value,
+                fallback=self.DEFAULT_DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
+            ),
+        )

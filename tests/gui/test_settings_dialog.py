@@ -187,6 +187,12 @@ def _tracked_keys() -> list[str]:
         SettingsManager.DEFAULT_EDITOR_EXECUTABLE_KEY,
         SettingsManager.DEFAULT_VIEWER_EXECUTABLE_KEY,
         SettingsManager.FILE_OPEN_OVERRIDES_JSON_KEY,
+        SettingsManager.TOTAL_COMMANDER_EXECUTABLE_KEY,
+        SettingsManager.TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY,
+        SettingsManager.TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE_KEY,
+        SettingsManager.DOUBLE_COMMANDER_EXECUTABLE_KEY,
+        SettingsManager.DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY,
+        SettingsManager.DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE_KEY,
         SettingsManager.USE_EXTENDED_PATHS_ROBOCOPY_KEY,
         SettingsManager.USE_EXTENDED_PATHS_TERACOPY_KEY,
         SettingsManager.USE_EXTENDED_PATHS_UNSTOPPABLE_KEY,
@@ -1029,6 +1035,14 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
     dialog.context_code_editor_args_edit.setText("--folder {folder}")
     dialog.context_git_gui_executable_edit.setText(r"C:\tools\gitgui.exe")
     dialog.context_git_gui_args_edit.setText("--path {folder}")
+    dialog.total_commander_executable_edit.setText(r"C:\tools\totalcmd64.exe")
+    dialog.total_commander_source_args_edit.setText("/N /L={source}")
+    dialog.total_commander_source_target_args_edit.setText("/N /L={source} /R={target}")
+    dialog.double_commander_executable_edit.setText(r"C:\tools\doublecmd.exe")
+    dialog.double_commander_source_args_edit.setText("--client -L {source}")
+    dialog.double_commander_source_target_args_edit.setText(
+        "--client -L {source} -R {target}"
+    )
     dialog.show_storage_overview_status_row_checkbox.setChecked(False)
     dialog.add_override_row_btn.click()
     row = dialog.file_open_overrides_table.rowCount() - 1
@@ -1047,6 +1061,18 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
     assert persisted.context_tool_code_editor_args_template == "--folder {folder}"
     assert persisted.context_tool_git_gui_exe_path == r"C:\tools\gitgui.exe"
     assert persisted.context_tool_git_gui_args_template == "--path {folder}"
+    assert persisted.total_commander_executable == r"C:\tools\totalcmd64.exe"
+    assert persisted.total_commander_source_args_template == "/N /L={source}"
+    assert (
+        persisted.total_commander_source_target_args_template
+        == "/N /L={source} /R={target}"
+    )
+    assert persisted.double_commander_executable == r"C:\tools\doublecmd.exe"
+    assert persisted.double_commander_source_args_template == "--client -L {source}"
+    assert (
+        persisted.double_commander_source_target_args_template
+        == "--client -L {source} -R {target}"
+    )
     assert persisted.show_storage_overview_status_row is False
     assert '".log"' in persisted.file_open_overrides_json
     assert persisted.use_extended_paths_robocopy is True

@@ -23,6 +23,7 @@ from threep_commons.qt.widget_identity import assign_widget_identity
 
 from . import widget_naming
 from ._context import ContextMenuController
+from .external_file_managers import ExternalFileManagerLauncher
 from .ui.window import (
     WindowLayoutCoordinator,
     WindowOperationsCoordinator,
@@ -87,6 +88,12 @@ class ExplorerWindow(QMainWindow):
     move_to_target_configure_action: QAction
     delete_selection_action: QAction
     delete_selection_configure_action: QAction
+    explorer_here_source_action: QAction
+    explorer_here_source_target_action: QAction
+    total_commander_here_source_action: QAction
+    total_commander_here_source_target_action: QAction
+    double_commander_here_source_action: QAction
+    double_commander_here_source_target_action: QAction
     new_window_action: QAction
     clone_window_action: QAction
     save_view_action: QAction
@@ -159,6 +166,7 @@ class ExplorerWindow(QMainWindow):
         self.panels_coordinator = WindowPanelsCoordinator(self)
         self.status_coordinator = WindowStatusCoordinator(self)
         self.operations_coordinator = WindowOperationsCoordinator(self)
+        self.external_file_manager_launcher = ExternalFileManagerLauncher(self)
         self.persistence_coordinator = WindowPersistenceCoordinator(self)
         ui_preferences = self.settings.ui_preferences()
         self.preferences_coordinator = WindowPreferencesCoordinator(

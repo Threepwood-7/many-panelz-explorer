@@ -170,6 +170,142 @@ class _ControllerCloneStub(_ControllerStub):
         return win
 
 
+def test_external_file_manager_actions_visibility_tracks_tool_resolution(
+    qtbot, tmp_path: Path
+) -> None:
+    settings = SettingsManager()
+    settings.total_commander_executable = str(tmp_path / "missing-totalcmd.exe")
+    settings.double_commander_executable = str(tmp_path / "missing-doublecmd.exe")
+    settings.sync()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="external-manager-visibility",
+        roots_provider=roots_provider,
+    )
+    window.default_maximize_on_first_show = False
+    qtbot.addWidget(window)
+    window.show()
+
+    window.ui_composer._sync_external_file_manager_actions()
+    assert window.explorer_here_source_action.isVisible() is True
+    assert window.explorer_here_source_target_action.isVisible() is True
+    assert window.total_commander_here_source_action.isVisible() is False
+    assert window.double_commander_here_source_action.isVisible() is False
+
+    total_commander_exe = tmp_path / "totalcmd64.exe"
+    double_commander_exe = tmp_path / "doublecmd.exe"
+    total_commander_exe.write_text("", encoding="utf-8")
+    double_commander_exe.write_text("", encoding="utf-8")
+    settings.total_commander_executable = str(total_commander_exe)
+    settings.double_commander_executable = str(double_commander_exe)
+    settings.sync()
+
+    window.ui_composer._sync_external_file_manager_actions()
+    assert window.total_commander_here_source_action.isVisible() is True
+    assert window.total_commander_here_source_target_action.isVisible() is True
+    assert window.double_commander_here_source_action.isVisible() is True
+    assert window.double_commander_here_source_target_action.isVisible() is True
+
+    ordered_ids = [panel_id for row in window.layout_rows for panel_id in row]
+    window.panels_coordinator.close_panel_by_id(ordered_ids[1])
+    window.ui_composer._sync_external_file_manager_actions()
+    assert window.explorer_here_source_target_action.isEnabled() is False
+    assert window.total_commander_here_source_target_action.isEnabled() is False
+    assert window.double_commander_here_source_target_action.isEnabled() is False
+
+
+def test_external_file_manager_actions_launch_expected_commands(
+    qtbot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="external-manager-launch",
+        roots_provider=roots_provider,
+    )
+    window.default_maximize_on_first_show = False
+    qtbot.addWidget(window)
+    window.show()
+
+    ordered_ids = [panel_id for row in window.layout_rows for panel_id in row]
+    source_panel = window.panel_widgets[ordered_ids[0]]
+    target_panel = window.panel_widgets[ordered_ids[1]]
+    window.panels_coordinator.set_active_panel(source_panel.panel_id)
+
+    source_root = tmp_path / "source root"
+    target_root = tmp_path / "target root"
+    source_root.mkdir()
+    target_root.mkdir()
+    source_file = source_root / "alpha one.txt"
+    source_second_file = source_root / "beta two.txt"
+    target_file = target_root / "gamma three.txt"
+    source_file.write_text("alpha", encoding="utf-8")
+    source_second_file.write_text("beta", encoding="utf-8")
+    target_file.write_text("gamma", encoding="utf-8")
+
+    source_tab = source_panel.current_tab()
+    target_tab = target_panel.current_tab()
+    assert source_tab is not None
+    assert target_tab is not None
+    source_tab.navigation.set_path(source_root)
+    target_tab.navigation.set_path(target_root)
+    qtbot.waitUntil(lambda: source_tab.model.index(str(source_file)).isValid())
+    qtbot.waitUntil(lambda: target_tab.model.index(str(target_file)).isValid())
+    _select_paths(source_tab, [source_file])
+    _select_paths(target_tab, [target_file])
+
+    total_commander_exe = tmp_path / "totalcmd64.exe"
+    double_commander_exe = tmp_path / "doublecmd.exe"
+    total_commander_exe.write_text("", encoding="utf-8")
+    double_commander_exe.write_text("", encoding="utf-8")
+    settings.total_commander_executable = str(total_commander_exe)
+    settings.double_commander_executable = str(double_commander_exe)
+    settings.sync()
+
+    recorded: list[list[str]] = []
+
+    def _record_popen(args: list[str], **_kwargs: object) -> None:
+        recorded.append(list(args))
+        return None
+
+    monkeypatch.setattr(
+        "many_panelz_explorer.external_file_managers.subprocess.Popen",
+        _record_popen,
+    )
+
+    window.explorer_here_source_action.trigger()
+    assert recorded[-1] == ["explorer.exe", f"/select,{source_file}"]
+
+    window.explorer_here_source_target_action.trigger()
+    assert recorded[-2] == ["explorer.exe", f"/select,{source_file}"]
+    assert recorded[-1] == ["explorer.exe", f"/select,{target_file}"]
+
+    window.total_commander_here_source_target_action.trigger()
+    assert recorded[-1] == [
+        str(total_commander_exe),
+        "/O",
+        "/A",
+        f"/L={source_file}",
+        f"/R={target_file}",
+    ]
+
+    window.double_commander_here_source_action.trigger()
+    assert recorded[-1] == [
+        str(double_commander_exe),
+        "-C",
+        "-L",
+        str(source_file),
+    ]
+
+    _select_paths(source_tab, [source_file, source_second_file])
+    window.explorer_here_source_action.trigger()
+    assert recorded[-1] == ["explorer.exe", str(source_root)]
+
+
 def test_split_tab_close_actions(qtbot, tmp_path: Path) -> None:
     settings = SettingsManager()
     roots_provider = _test_roots_provider(tmp_path)

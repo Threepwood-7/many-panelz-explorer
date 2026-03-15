@@ -60,6 +60,24 @@ def find_executable(
     dialog.on_controls_changed()
 
 
+def find_first_executable(
+    dialog: SettingsDialog,
+    edit: QLineEdit,
+    *,
+    default_executables: tuple[str, ...],
+) -> None:
+    """Resolve the first available executable from a preferred candidate list."""
+
+    from ..._operations.discovery import discover_preferred_companion_tool
+
+    resolved = discover_preferred_companion_tool(
+        configured=edit.text().strip(),
+        default_executables=default_executables,
+    )
+    edit.setText(resolved)
+    dialog.on_controls_changed()
+
+
 def reset_command_controls(
     dialog: SettingsDialog,
     executable_edit: QLineEdit,
@@ -72,6 +90,24 @@ def reset_command_controls(
 
     executable_edit.setText(default_executable)
     args_edit.setText(default_args)
+    dialog.on_controls_changed()
+
+
+def reset_dual_template_controls(
+    dialog: SettingsDialog,
+    executable_edit: QLineEdit,
+    source_args_edit: QLineEdit,
+    source_target_args_edit: QLineEdit,
+    *,
+    default_executable: str,
+    default_source_args: str,
+    default_source_target_args: str,
+) -> None:
+    """Reset one executable row with source and source-target templates."""
+
+    executable_edit.setText(default_executable)
+    source_args_edit.setText(default_source_args)
+    source_target_args_edit.setText(default_source_target_args)
     dialog.on_controls_changed()
 
 

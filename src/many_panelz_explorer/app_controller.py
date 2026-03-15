@@ -14,6 +14,7 @@ from . import file_ops
 from ._operations.backend_options import resolve_copy_move_backend_args
 from ._operations.discovery import (
     resolve_companion_tool_paths,
+    resolve_external_file_manager_paths,
     resolve_system_command_paths,
 )
 from ._operations.queue_manager import OperationQueueManager
@@ -360,6 +361,18 @@ class AppController:
             changed = True
         if preferences.rimraf_executable != resolved.rimraf_executable:
             self.settings.rimraf_executable = resolved.rimraf_executable
+            changed = True
+        resolved_total_commander, resolved_double_commander = (
+            resolve_external_file_manager_paths(
+                total_commander_executable=preferences.total_commander_executable,
+                double_commander_executable=preferences.double_commander_executable,
+            )
+        )
+        if preferences.total_commander_executable != resolved_total_commander:
+            self.settings.total_commander_executable = resolved_total_commander
+            changed = True
+        if preferences.double_commander_executable != resolved_double_commander:
+            self.settings.double_commander_executable = resolved_double_commander
             changed = True
         self.settings.ops_companion_bootstrap_done = True
         changed = True

@@ -96,6 +96,12 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
             "context_tool_code_editor_args_template",
             "context_tool_git_gui_exe_path",
             "context_tool_git_gui_args_template",
+            "total_commander_executable",
+            "total_commander_source_args_template",
+            "total_commander_source_target_args_template",
+            "double_commander_executable",
+            "double_commander_source_args_template",
+            "double_commander_source_target_args_template",
             "file_open_overrides_json",
             "teracopy_executable",
             "use_extended_paths_teracopy",
@@ -210,6 +216,9 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
         target_color_preview: QLabel
         target_intensity_slider: QSlider
         target_intensity_value: QLabel
+        total_commander_executable_edit: QLineEdit
+        total_commander_source_args_edit: QLineEdit
+        total_commander_source_target_args_edit: QLineEdit
         teracopy_executable_edit: QLineEdit
         teracopy_preview_label: QLabel
         teracopy_reset_backend_btn: QPushButton
@@ -239,6 +248,9 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
         unstoppable_struct_skip_damaged_checkbox: QCheckBox
         unstoppable_struct_undamaged_first_checkbox: QCheckBox
         unstoppable_test_btn: QPushButton
+        double_commander_executable_edit: QLineEdit
+        double_commander_source_args_edit: QLineEdit
+        double_commander_source_target_args_edit: QLineEdit
         use_extended_paths_cmd_delete_checkbox: QCheckBox
         use_extended_paths_external_copymove_checkbox: QCheckBox
         use_extended_paths_external_delete_checkbox: QCheckBox

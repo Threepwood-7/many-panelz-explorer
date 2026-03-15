@@ -158,6 +158,54 @@ class WindowUiComposer:
             self._delete_selected_items_callback(configure=True)
         )
 
+        self.window.explorer_here_source_action = QAction(
+            "Explorer Here (Source)",
+            self.window,
+        )
+        self.window.explorer_here_source_action.triggered.connect(
+            self.window.external_file_manager_launcher.launch_explorer_source
+        )
+
+        self.window.explorer_here_source_target_action = QAction(
+            "Explorer Here (Source, Target)",
+            self.window,
+        )
+        self.window.explorer_here_source_target_action.triggered.connect(
+            self.window.external_file_manager_launcher.launch_explorer_source_target
+        )
+
+        self.window.total_commander_here_source_action = QAction(
+            "TC Here (Source)",
+            self.window,
+        )
+        self.window.total_commander_here_source_action.triggered.connect(
+            self.window.external_file_manager_launcher.launch_total_commander_source
+        )
+
+        self.window.total_commander_here_source_target_action = QAction(
+            "TC Here (Source, Target)",
+            self.window,
+        )
+        self.window.total_commander_here_source_target_action.triggered.connect(
+            self.window.external_file_manager_launcher.launch_total_commander_source_target
+        )
+
+        self.window.double_commander_here_source_action = QAction(
+            "DC Here (Source)",
+            self.window,
+        )
+        self.window.double_commander_here_source_action.triggered.connect(
+            self.window.external_file_manager_launcher.launch_double_commander_source
+        )
+
+        self.window.double_commander_here_source_target_action = QAction(
+            "DC Here (Source, Target)",
+            self.window,
+        )
+        self.window.double_commander_here_source_target_action.triggered.connect(
+            self.window.external_file_manager_launcher.launch_double_commander_source_target
+        )
+
     def _build_window_actions(self) -> None:
         self.window.new_window_action = QAction("New &Window", self.window)
         self.window.new_window_action.setShortcut(QKeySequence("Ctrl+N"))
@@ -360,6 +408,14 @@ class WindowUiComposer:
         file_menu.addAction(self.window.delete_selection_action)
         file_menu.addAction(self.window.delete_selection_configure_action)
         file_menu.addSeparator()
+        file_menu.addAction(self.window.explorer_here_source_action)
+        file_menu.addAction(self.window.explorer_here_source_target_action)
+        file_menu.addAction(self.window.total_commander_here_source_action)
+        file_menu.addAction(self.window.total_commander_here_source_target_action)
+        file_menu.addAction(self.window.double_commander_here_source_action)
+        file_menu.addAction(self.window.double_commander_here_source_target_action)
+        file_menu.aboutToShow.connect(self._sync_external_file_manager_actions)
+        file_menu.addSeparator()
         file_menu.addAction(self.window.new_window_action)
         file_menu.addAction(self.window.clone_window_action)
         file_menu.addSeparator()
@@ -417,6 +473,12 @@ class WindowUiComposer:
                 self.window.move_to_target_configure_action,
                 self.window.delete_selection_action,
                 self.window.delete_selection_configure_action,
+                self.window.explorer_here_source_action,
+                self.window.explorer_here_source_target_action,
+                self.window.total_commander_here_source_action,
+                self.window.total_commander_here_source_target_action,
+                self.window.double_commander_here_source_action,
+                self.window.double_commander_here_source_target_action,
                 self.window.new_window_action,
                 self.window.clone_window_action,
                 self.window.save_view_action,
@@ -479,6 +541,37 @@ class WindowUiComposer:
     def _populate_restore_view_menu(self) -> None:
         self.window.views_coordinator.populate_restore_view_menu(
             self.window.restore_view_menu
+        )
+
+    def _sync_external_file_manager_actions(self) -> None:
+        """Refresh visibility and enabled state for external manager actions."""
+
+        launcher = self.window.external_file_manager_launcher
+        has_target_panel = launcher.has_target_panel()
+        self.window.explorer_here_source_action.setVisible(True)
+        self.window.explorer_here_source_target_action.setVisible(True)
+        self.window.explorer_here_source_target_action.setEnabled(has_target_panel)
+
+        total_commander_available = launcher.total_commander_available()
+        self.window.total_commander_here_source_action.setVisible(
+            total_commander_available
+        )
+        self.window.total_commander_here_source_target_action.setVisible(
+            total_commander_available
+        )
+        self.window.total_commander_here_source_target_action.setEnabled(
+            total_commander_available and has_target_panel
+        )
+
+        double_commander_available = launcher.double_commander_available()
+        self.window.double_commander_here_source_action.setVisible(
+            double_commander_available
+        )
+        self.window.double_commander_here_source_target_action.setVisible(
+            double_commander_available
+        )
+        self.window.double_commander_here_source_target_action.setEnabled(
+            double_commander_available and has_target_panel
         )
 
     def _split_panel_callback(self, orientation: Qt.Orientation) -> Callable[[], None]:

@@ -26,6 +26,14 @@ from many_panelz_explorer._operations.types import (
     QUEUE_VIEW_DOCK,
     SHORTCUT_BEHAVIOR_DIRECT,
 )
+from many_panelz_explorer.external_file_managers import (
+    DEFAULT_DOUBLE_COMMANDER_EXECUTABLE,
+    DEFAULT_DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE,
+    DEFAULT_DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
+    DEFAULT_TOTAL_COMMANDER_EXECUTABLE,
+    DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE,
+    DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
+)
 
 
 @dataclass(frozen=True)
@@ -79,6 +87,20 @@ class UiPreferences:
     default_editor_executable: str = ""
     default_viewer_executable: str = ""
     file_open_overrides_json: str = "{}"
+    total_commander_executable: str = DEFAULT_TOTAL_COMMANDER_EXECUTABLE
+    total_commander_source_args_template: str = (
+        DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE
+    )
+    total_commander_source_target_args_template: str = (
+        DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE
+    )
+    double_commander_executable: str = DEFAULT_DOUBLE_COMMANDER_EXECUTABLE
+    double_commander_source_args_template: str = (
+        DEFAULT_DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE
+    )
+    double_commander_source_target_args_template: str = (
+        DEFAULT_DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE
+    )
     use_extended_paths_robocopy: bool = False
     use_extended_paths_teracopy: bool = False
     use_extended_paths_unstoppable: bool = False

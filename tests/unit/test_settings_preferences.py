@@ -11,6 +11,14 @@ from many_panelz_explorer._operations.backend_options import (
 from many_panelz_explorer._settings import normalize as settings_normalize
 from many_panelz_explorer._settings.manager import SettingsManager
 from many_panelz_explorer._settings.models import UiPreferences
+from many_panelz_explorer.external_file_managers import (
+    DEFAULT_DOUBLE_COMMANDER_EXECUTABLE,
+    DEFAULT_DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE,
+    DEFAULT_DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
+    DEFAULT_TOTAL_COMMANDER_EXECUTABLE,
+    DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE,
+    DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
+)
 
 
 def _tracked_keys() -> list[str]:
@@ -60,6 +68,12 @@ def _tracked_keys() -> list[str]:
         SettingsManager.DEFAULT_EDITOR_EXECUTABLE_KEY,
         SettingsManager.DEFAULT_VIEWER_EXECUTABLE_KEY,
         SettingsManager.FILE_OPEN_OVERRIDES_JSON_KEY,
+        SettingsManager.TOTAL_COMMANDER_EXECUTABLE_KEY,
+        SettingsManager.TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY,
+        SettingsManager.TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE_KEY,
+        SettingsManager.DOUBLE_COMMANDER_EXECUTABLE_KEY,
+        SettingsManager.DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY,
+        SettingsManager.DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE_KEY,
         SettingsManager.USE_EXTENDED_PATHS_ROBOCOPY_KEY,
         SettingsManager.USE_EXTENDED_PATHS_TERACOPY_KEY,
         SettingsManager.USE_EXTENDED_PATHS_UNSTOPPABLE_KEY,
@@ -154,6 +168,14 @@ def test_ui_preferences_round_trip() -> None:
             file_open_overrides_json=(
                 '{".txt": {"editor": "txtedit.exe", "viewer": "txtview.exe"}}'
             ),
+            total_commander_executable=r"C:\tools\totalcmd64.exe",
+            total_commander_source_args_template="/N /L={source}",
+            total_commander_source_target_args_template=("/N /L={source} /R={target}"),
+            double_commander_executable=r"C:\tools\doublecmd.exe",
+            double_commander_source_args_template="--client -L {source}",
+            double_commander_source_target_args_template=(
+                "--client -L {source} -R {target}"
+            ),
             use_extended_paths_robocopy=True,
             use_extended_paths_teracopy=True,
             use_extended_paths_unstoppable=True,
@@ -237,6 +259,14 @@ def test_windows_executable_paths_normalize_to_backslashes() -> None:
             "C:/tools/editor.exe",
         )
         settings.set_value(
+            SettingsManager.TOTAL_COMMANDER_EXECUTABLE_KEY,
+            "C:/tools/totalcmd64.exe",
+        )
+        settings.set_value(
+            SettingsManager.DOUBLE_COMMANDER_EXECUTABLE_KEY,
+            "C:/tools/doublecmd.exe",
+        )
+        settings.set_value(
             SettingsManager.FILE_OPEN_OVERRIDES_JSON_KEY,
             json.dumps(
                 {
@@ -254,6 +284,8 @@ def test_windows_executable_paths_normalize_to_backslashes() -> None:
             == r"C:\bin\roadkil\UnstopCpy_5_2_Win2K_UP.exe"
         )
         assert settings.default_editor_executable == r"C:\tools\editor.exe"
+        assert settings.total_commander_executable == r"C:\tools\totalcmd64.exe"
+        assert settings.double_commander_executable == r"C:\tools\doublecmd.exe"
         overrides = json.loads(settings.file_open_overrides_json)
         assert overrides[".log"]["editor"] == r"C:\tools\logedit.exe"
         assert overrides[".log"]["viewer"] == r"C:\tools\logview.exe"
@@ -361,6 +393,14 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.remove(SettingsManager.DEFAULT_EDITOR_EXECUTABLE_KEY)
         settings.remove(SettingsManager.DEFAULT_VIEWER_EXECUTABLE_KEY)
         settings.set_value(SettingsManager.FILE_OPEN_OVERRIDES_JSON_KEY, "not-json")
+        settings.remove(SettingsManager.TOTAL_COMMANDER_EXECUTABLE_KEY)
+        settings.remove(SettingsManager.TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY)
+        settings.remove(SettingsManager.TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE_KEY)
+        settings.remove(SettingsManager.DOUBLE_COMMANDER_EXECUTABLE_KEY)
+        settings.remove(SettingsManager.DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY)
+        settings.remove(
+            SettingsManager.DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE_KEY
+        )
         settings.set_value(SettingsManager.USE_EXTENDED_PATHS_ROBOCOPY_KEY, "")
         settings.set_value(SettingsManager.USE_EXTENDED_PATHS_TERACOPY_KEY, "")
         settings.set_value(SettingsManager.USE_EXTENDED_PATHS_UNSTOPPABLE_KEY, "")
@@ -531,6 +571,24 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         assert (
             loaded.file_open_overrides_json
             == SettingsManager.DEFAULT_FILE_OPEN_OVERRIDES_JSON
+        )
+        assert loaded.total_commander_executable == DEFAULT_TOTAL_COMMANDER_EXECUTABLE
+        assert (
+            loaded.total_commander_source_args_template
+            == DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE
+        )
+        assert (
+            loaded.total_commander_source_target_args_template
+            == DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE
+        )
+        assert loaded.double_commander_executable == DEFAULT_DOUBLE_COMMANDER_EXECUTABLE
+        assert (
+            loaded.double_commander_source_args_template
+            == DEFAULT_DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE
+        )
+        assert (
+            loaded.double_commander_source_target_args_template
+            == DEFAULT_DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE
         )
         assert loaded.use_extended_paths_robocopy is False
         assert loaded.use_extended_paths_teracopy is False

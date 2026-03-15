@@ -15,6 +15,14 @@ from PySide6.QtWidgets import (
 
 from ..._settings.manager import SettingsManager
 from ...constants import APP_DISPLAY_NAME, APP_VERSION
+from ...external_file_managers import (
+    DEFAULT_DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE,
+    DEFAULT_DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
+    DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE,
+    DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
+    DOUBLE_COMMANDER_DISCOVERY_CANDIDATES,
+    TOTAL_COMMANDER_DISCOVERY_CANDIDATES,
+)
 from . import control_builders, open_overrides_controls
 from .section_structure import add_row
 
@@ -254,6 +262,10 @@ def build_operation_open_tools_rows(
         dialog,
         open_tools_group=open_tools_group,
     )
+    build_external_manager_tool_rows(
+        dialog,
+        open_tools_group=open_tools_group,
+    )
     build_file_open_override_rows(
         dialog,
         open_tools_group=open_tools_group,
@@ -354,6 +366,79 @@ def build_context_tool_rows(
         description="Executable and args template for context actions using Git GUI.",
         terms="context tool git gui executable args template",
         controls=[context_git_gui_controls],
+    )
+
+
+def build_external_manager_tool_rows(
+    dialog: SettingsDialog,
+    *,
+    open_tools_group: SubsectionEntry,
+) -> None:
+    """Build rows for Total Commander and Double Commander launchers."""
+
+    dialog.total_commander_executable_edit = QLineEdit(dialog)
+    dialog.total_commander_source_args_edit = QLineEdit(dialog)
+    dialog.total_commander_source_target_args_edit = QLineEdit(dialog)
+    total_commander_controls = (
+        control_builders.build_executable_with_source_target_templates_controls(
+            dialog,
+            executable_edit=dialog.total_commander_executable_edit,
+            source_args_edit=dialog.total_commander_source_args_edit,
+            source_target_args_edit=dialog.total_commander_source_target_args_edit,
+            default_executable=SettingsManager.DEFAULT_TOTAL_COMMANDER_EXECUTABLE,
+            default_source_args=DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE,
+            default_source_target_args=(
+                DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE
+            ),
+            discover_default_executables=TOTAL_COMMANDER_DISCOVERY_CANDIDATES,
+            tool_name="Total Commander",
+        )
+    )
+    add_row(
+        dialog,
+        section=open_tools_group,
+        key="total_commander_tool",
+        title="Total Commander Launcher",
+        description=(
+            "Executable plus source/source-target args templates. "
+            "Add /N to force a new Total Commander instance."
+        ),
+        terms=(
+            "total commander tc totalcmd source target args template "
+            "focus selected file /n"
+        ),
+        controls=[total_commander_controls],
+    )
+
+    dialog.double_commander_executable_edit = QLineEdit(dialog)
+    dialog.double_commander_source_args_edit = QLineEdit(dialog)
+    dialog.double_commander_source_target_args_edit = QLineEdit(dialog)
+    double_commander_controls = (
+        control_builders.build_executable_with_source_target_templates_controls(
+            dialog,
+            executable_edit=dialog.double_commander_executable_edit,
+            source_args_edit=dialog.double_commander_source_args_edit,
+            source_target_args_edit=dialog.double_commander_source_target_args_edit,
+            default_executable=SettingsManager.DEFAULT_DOUBLE_COMMANDER_EXECUTABLE,
+            default_source_args=DEFAULT_DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE,
+            default_source_target_args=(
+                DEFAULT_DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE
+            ),
+            discover_default_executables=DOUBLE_COMMANDER_DISCOVERY_CANDIDATES,
+            tool_name="Double Commander",
+        )
+    )
+    add_row(
+        dialog,
+        section=open_tools_group,
+        key="double_commander_tool",
+        title="Double Commander Launcher",
+        description=(
+            "Executable plus source/source-target args templates with "
+            "{source} and {target} tokens."
+        ),
+        terms=("double commander dc source target args template focus selected file"),
+        controls=[double_commander_controls],
     )
 
 

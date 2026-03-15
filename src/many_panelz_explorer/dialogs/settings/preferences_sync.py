@@ -136,6 +136,24 @@ def load_operations_preferences(
     dialog.context_git_gui_args_edit.setText(
         preferences.context_tool_git_gui_args_template
     )
+    dialog.total_commander_executable_edit.setText(
+        preferences.total_commander_executable
+    )
+    dialog.total_commander_source_args_edit.setText(
+        preferences.total_commander_source_args_template
+    )
+    dialog.total_commander_source_target_args_edit.setText(
+        preferences.total_commander_source_target_args_template
+    )
+    dialog.double_commander_executable_edit.setText(
+        preferences.double_commander_executable
+    )
+    dialog.double_commander_source_args_edit.setText(
+        preferences.double_commander_source_args_template
+    )
+    dialog.double_commander_source_target_args_edit.setText(
+        preferences.double_commander_source_target_args_template
+    )
     open_overrides_state.load_file_open_overrides(
         dialog,
         preferences.file_open_overrides_json,
@@ -288,6 +306,12 @@ def collect_preferences_from_controls(dialog: SettingsDialog) -> UiPreferences:
         context_tool_code_editor_args_template=dialog.context_code_editor_args_edit.text().strip(),
         context_tool_git_gui_exe_path=dialog.context_git_gui_executable_edit.text().strip(),
         context_tool_git_gui_args_template=dialog.context_git_gui_args_edit.text().strip(),
+        total_commander_executable=dialog.total_commander_executable_edit.text().strip(),
+        total_commander_source_args_template=dialog.total_commander_source_args_edit.text().strip(),
+        total_commander_source_target_args_template=dialog.total_commander_source_target_args_edit.text().strip(),
+        double_commander_executable=dialog.double_commander_executable_edit.text().strip(),
+        double_commander_source_args_template=dialog.double_commander_source_args_edit.text().strip(),
+        double_commander_source_target_args_template=dialog.double_commander_source_target_args_edit.text().strip(),
         file_open_overrides_json=open_overrides_state.serialize_file_open_overrides(
             dialog
         ),

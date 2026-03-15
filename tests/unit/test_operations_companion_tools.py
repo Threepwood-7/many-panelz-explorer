@@ -5,6 +5,7 @@ from pathlib import Path
 from many_panelz_explorer._operations.discovery import (
     common_tool_search_dirs,
     resolve_companion_tool_paths,
+    resolve_external_file_manager_paths,
     resolve_system_command_paths,
 )
 from many_panelz_explorer._operations.types import (
@@ -15,6 +16,10 @@ from many_panelz_explorer._operations.types import (
     DEFAULT_TERA_COPY_EXE,
     DEFAULT_UNSTOPPABLE_EXE,
     OperationExecutionPreferences,
+)
+from many_panelz_explorer.external_file_managers import (
+    DEFAULT_DOUBLE_COMMANDER_EXECUTABLE,
+    TOTAL_COMMANDER_DISCOVERY_CANDIDATES,
 )
 
 
@@ -112,3 +117,38 @@ def test_common_tool_search_dirs_starts_with_windows_bin() -> None:
     dirs = common_tool_search_dirs()
 
     assert dirs[0] == Path(r"C:\bin")
+
+
+def test_external_file_manager_resolution_uses_common_locations(
+    monkeypatch, tmp_path: Path
+) -> None:
+    program_files = tmp_path / "ProgramFiles"
+    total_commander_path = (
+        program_files / "totalcmd" / TOTAL_COMMANDER_DISCOVERY_CANDIDATES[0]
+    )
+    double_commander_path = (
+        program_files / "Double Commander" / DEFAULT_DOUBLE_COMMANDER_EXECUTABLE
+    )
+    total_commander_path.parent.mkdir(parents=True, exist_ok=True)
+    double_commander_path.parent.mkdir(parents=True, exist_ok=True)
+    total_commander_path.write_text("", encoding="utf-8")
+    double_commander_path.write_text("", encoding="utf-8")
+
+    monkeypatch.setenv("ProgramFiles", str(program_files))
+    monkeypatch.setenv("ProgramFiles(x86)", "")
+    monkeypatch.setenv("LOCALAPPDATA", "")
+    monkeypatch.setenv("APPDATA", "")
+    monkeypatch.setenv("PATH", "")
+    monkeypatch.setattr(
+        "many_panelz_explorer._operations.discovery.common_tool_search_dirs",
+        lambda: [program_files],
+    )
+
+    resolved_total_commander, resolved_double_commander = (
+        resolve_external_file_manager_paths(
+            total_commander_executable=TOTAL_COMMANDER_DISCOVERY_CANDIDATES[0],
+            double_commander_executable=DEFAULT_DOUBLE_COMMANDER_EXECUTABLE,
+        )
+    )
+    assert resolved_total_commander == str(total_commander_path)
+    assert resolved_double_commander == str(double_commander_path)

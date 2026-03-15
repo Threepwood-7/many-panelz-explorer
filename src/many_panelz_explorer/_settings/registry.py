@@ -30,6 +30,14 @@ from many_panelz_explorer._operations.types import (
     QUEUE_VIEW_DOCK,
     SHORTCUT_BEHAVIOR_DIRECT,
 )
+from many_panelz_explorer.external_file_managers import (
+    DEFAULT_DOUBLE_COMMANDER_EXECUTABLE,
+    DEFAULT_DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE,
+    DEFAULT_DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
+    DEFAULT_TOTAL_COMMANDER_EXECUTABLE,
+    DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE,
+    DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
+)
 
 
 class SettingsRegistry:
@@ -82,6 +90,20 @@ class SettingsRegistry:
     DEFAULT_EDITOR_EXECUTABLE_KEY = "ops/open/default_editor_executable"
     DEFAULT_VIEWER_EXECUTABLE_KEY = "ops/open/default_viewer_executable"
     FILE_OPEN_OVERRIDES_JSON_KEY = "ops/open/file_open_overrides_json"
+    TOTAL_COMMANDER_EXECUTABLE_KEY = "ops/open/total_commander/executable"
+    TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY = (
+        "ops/open/total_commander/source_args_template"
+    )
+    TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE_KEY = (
+        "ops/open/total_commander/source_target_args_template"
+    )
+    DOUBLE_COMMANDER_EXECUTABLE_KEY = "ops/open/double_commander/executable"
+    DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY = (
+        "ops/open/double_commander/source_args_template"
+    )
+    DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE_KEY = (
+        "ops/open/double_commander/source_target_args_template"
+    )
     USE_EXTENDED_PATHS_ROBOCOPY_KEY = "ops/backends/robocopy/use_extended_paths"
     USE_EXTENDED_PATHS_TERACOPY_KEY = "ops/backends/teracopy/use_extended_paths"
     USE_EXTENDED_PATHS_UNSTOPPABLE_KEY = "ops/backends/unstoppable/use_extended_paths"
@@ -157,6 +179,20 @@ class SettingsRegistry:
     DEFAULT_DEFAULT_EDITOR_EXECUTABLE = ""
     DEFAULT_DEFAULT_VIEWER_EXECUTABLE = ""
     DEFAULT_FILE_OPEN_OVERRIDES_JSON = "{}"
+    DEFAULT_TOTAL_COMMANDER_EXECUTABLE = DEFAULT_TOTAL_COMMANDER_EXECUTABLE
+    DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE = (
+        DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE
+    )
+    DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE = (
+        DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE
+    )
+    DEFAULT_DOUBLE_COMMANDER_EXECUTABLE = DEFAULT_DOUBLE_COMMANDER_EXECUTABLE
+    DEFAULT_DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE = (
+        DEFAULT_DOUBLE_COMMANDER_SOURCE_ARGS_TEMPLATE
+    )
+    DEFAULT_DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE = (
+        DEFAULT_DOUBLE_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE
+    )
     DEFAULT_USE_EXTENDED_PATHS_ROBOCOPY = False
     DEFAULT_USE_EXTENDED_PATHS_TERACOPY = False
     DEFAULT_USE_EXTENDED_PATHS_UNSTOPPABLE = False
