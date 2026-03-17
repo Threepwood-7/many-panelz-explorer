@@ -166,25 +166,25 @@ def open_terminal(
     if os.name != "nt":
         _open_posix_terminal(folder, command=command)
         return
-    argv = build_windows_terminal_launch_argv(
+    launch_spec = build_windows_terminal_launch_spec(
         target_folder=folder,
         launcher_id=launcher_id,
         command=command,
         python_project=python_project,
         settings=settings,
     )
-    subprocess.Popen(argv)
+    subprocess.Popen(launch_spec)
 
 
-def build_windows_terminal_launch_argv(
+def build_windows_terminal_launch_spec(
     *,
     target_folder: Path,
     launcher_id: TerminalLauncherId | None = None,
     command: str | None = None,
     python_project: bool = False,
     settings: TerminalLauncherSettings | None = None,
-) -> list[str]:
-    """Build the Windows process argv for a terminal launch request."""
+) -> str | list[str]:
+    """Build the Windows `subprocess.Popen` launch value for one terminal request."""
 
     active_settings = settings or _terminal_launcher_settings
     resolved_launcher = launcher_id or active_settings.default_terminal_launcher
@@ -206,6 +206,13 @@ def build_windows_terminal_launch_argv(
     else:
         shell_command = ""
         template = _open_args_template(active_settings, resolved_launcher)
+    if resolved_launcher == TERMINAL_LAUNCHER_COMSPEC:
+        return _build_comspec_command_line(
+            executable=availability.resolved_executable,
+            template=template,
+            target_folder=folder,
+            shell_command=shell_command,
+        )
     rendered_args = _render_windows_args_template(
         template=template,
         launcher_id=resolved_launcher,
@@ -213,6 +220,31 @@ def build_windows_terminal_launch_argv(
         shell_command=shell_command,
     )
     return [availability.resolved_executable, *rendered_args]
+
+
+def build_windows_terminal_launch_argv(
+    *,
+    target_folder: Path,
+    launcher_id: TerminalLauncherId | None = None,
+    command: str | None = None,
+    python_project: bool = False,
+    settings: TerminalLauncherSettings | None = None,
+) -> list[str]:
+    """Build the Windows process argv for a terminal launch request."""
+
+    launch_spec = build_windows_terminal_launch_spec(
+        target_folder=target_folder,
+        launcher_id=launcher_id,
+        command=command,
+        python_project=python_project,
+        settings=settings,
+    )
+    if isinstance(launch_spec, str):
+        raise RuntimeError(
+            "Command Prompt launches require an exact command line. "
+            "Use build_windows_terminal_launch_spec()."
+        )
+    return launch_spec
 
 
 def build_terminal_shell_command(
@@ -265,6 +297,44 @@ def _render_windows_args_template(
         if value:
             rendered.append(value)
     return rendered
+
+
+def _build_comspec_command_line(
+    *,
+    executable: str,
+    template: str,
+    target_folder: Path,
+    shell_command: str,
+) -> str:
+    """Build the exact `cmd.exe` command line required by `%ComSpec%` launches."""
+
+    rendered_args = _render_windows_template_text(
+        template=template,
+        launcher_id=TERMINAL_LAUNCHER_COMSPEC,
+        target_folder=target_folder,
+        shell_command=shell_command,
+    )
+    command_parts = [subprocess.list2cmdline([executable])]
+    if rendered_args:
+        command_parts.append(rendered_args)
+    return " ".join(command_parts)
+
+
+def _render_windows_template_text(
+    *,
+    template: str,
+    launcher_id: TerminalLauncherId,
+    target_folder: Path,
+    shell_command: str,
+) -> str:
+    """Render one persisted Windows template into plain command-line text."""
+
+    return (
+        str(template)
+        .replace("{folder}", _folder_token(launcher_id, Path(target_folder)))
+        .replace("{shell_command}", shell_command)
+        .strip()
+    )
 
 
 def _split_windows_args_template(template: str) -> list[str]:

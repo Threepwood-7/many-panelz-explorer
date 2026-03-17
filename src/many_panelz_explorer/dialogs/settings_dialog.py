@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, TypedDict, cast
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QByteArray, QTimer
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -35,15 +35,56 @@ from .settings import (
 from .settings.dialog_runtime import SettingsDialogRuntimeMixin
 
 if TYPE_CHECKING:
+    from PySide6.QtGui import QCloseEvent, QShowEvent
     from PySide6.QtWidgets import QTreeWidgetItem
 
     from ..app_controller import AppController
+
+
+class _DialogGeometryPayload(TypedDict):
+    """Typed settings payload for persisted settings-dialog bounds."""
+
+    x: int
+    y: int
+    width: int
+    height: int
+
+
+def _dialog_geometry_payload(value: object) -> _DialogGeometryPayload | None:
+    """Normalize a raw settings value into dialog position and size data."""
+
+    if not isinstance(value, dict):
+        return None
+    raw_mapping = cast("dict[object, object]", value)
+    normalized: dict[str, object] = {}
+    for raw_key, raw_value in raw_mapping.items():
+        normalized[str(raw_key)] = raw_value
+    x = normalized.get("x")
+    y = normalized.get("y")
+    width = normalized.get("width")
+    height = normalized.get("height")
+    if not isinstance(x, int):
+        return None
+    if not isinstance(y, int):
+        return None
+    if not isinstance(width, int):
+        return None
+    if not isinstance(height, int):
+        return None
+    payload: _DialogGeometryPayload = {
+        "x": x,
+        "y": y,
+        "width": width,
+        "height": height,
+    }
+    return payload
 
 
 class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
     """Edit persisted UI, panel, and operation preferences."""
 
     LIVE_PREVIEW_DEBOUNCE_MS = 140
+    WINDOW_ID: ClassVar[str] = "settings_dialog"
     RESETTABLE_FIELDS_BY_SECTION: ClassVar[dict[str, tuple[str, ...]]] = {
         "appearance": (
             "active_panel_tint_color_hex",
@@ -291,6 +332,7 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
         sections: dict[str, SectionEntry]
         subsection_tree_items: dict[str, QTreeWidgetItem]
         subsections: dict[str, SubsectionEntry]
+        _did_restore_window_geometry: bool
 
     def __init__(
         self, controller: AppController, parent: QWidget | None = None
@@ -330,6 +372,7 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
         self._active_subsection_key = ""
         self._tree_sync_in_progress = False
         self._pending_full_store_reset = False
+        self._did_restore_window_geometry = False
 
     def _configure_dialog_window(self) -> None:
         """Apply the top-level dialog window configuration."""
@@ -513,3 +556,51 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
         """Assign deterministic identity metadata to a dialog widget."""
 
         assign_widget_identity(widget, widget_id=widget_id, widget_alias=alias)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        """Persist dialog geometry when the settings window closes."""
+
+        self._save_window_geometry()
+        super().closeEvent(event)
+
+    def showEvent(self, event: QShowEvent) -> None:
+        """Restore persisted dialog geometry after the dialog first appears."""
+
+        super().showEvent(event)
+        if self._did_restore_window_geometry:
+            return
+        self._did_restore_window_geometry = True
+        QTimer.singleShot(0, self._restore_window_geometry)
+
+    def _window_geometry_key(self) -> str:
+        """Return the settings key used for settings-dialog geometry."""
+
+        return self.controller.settings.window_key(self.WINDOW_ID, "geometry")
+
+    def _restore_window_geometry(self) -> None:
+        """Restore the previously persisted dialog geometry when available."""
+
+        geometry_key = self._window_geometry_key()
+        geometry_payload = _dialog_geometry_payload(
+            self.controller.settings.get_json(geometry_key, None)
+        )
+        if geometry_payload is not None:
+            self.resize(geometry_payload["width"], geometry_payload["height"])
+            self.move(geometry_payload["x"], geometry_payload["y"])
+            return
+        geometry = self.controller.settings.value(geometry_key, None)
+        if isinstance(geometry, QByteArray) and not geometry.isEmpty():
+            self.restoreGeometry(geometry)
+
+    def _save_window_geometry(self) -> None:
+        """Persist the current dialog geometry into the shared settings store."""
+
+        self.controller.settings.set_json(
+            self._window_geometry_key(),
+            {
+                "x": int(self.x()),
+                "y": int(self.y()),
+                "width": int(self.width()),
+                "height": int(self.height()),
+            },
+        )

@@ -259,6 +259,7 @@ def _tracked_keys() -> list[str]:
         SettingsManager.RIMRAF_ARGS_TEMPLATE_KEY,
         SettingsManager.SETTINGS_DIALOG_LAST_SECTION_KEY,
         SettingsManager.SETTINGS_DIALOG_LAST_SUBSECTION_KEY,
+        f"ui/windows/{SettingsDialog.WINDOW_ID}/geometry",
     ]
 
 
@@ -266,7 +267,9 @@ def _tracked_keys() -> list[str]:
 def isolated_settings() -> SettingsManager:
     settings = SettingsManager()
     keys = _tracked_keys()
-    snapshot = {key: settings.value(key, None) for key in keys}
+    geometry_key = f"ui/windows/{SettingsDialog.WINDOW_ID}/geometry"
+    snapshot = {key: settings.value(key, None) for key in keys if key != geometry_key}
+    geometry_snapshot = settings.get_json(geometry_key, None)
     app = QApplication.instance()
     assert app is not None
     app_font_snapshot = QFont(app.font())
@@ -279,6 +282,10 @@ def isolated_settings() -> SettingsManager:
                 settings.remove(key)
             else:
                 settings.set_value(key, value)
+        if geometry_snapshot is None:
+            settings.remove(geometry_key)
+        else:
+            settings.set_json(geometry_key, geometry_snapshot)
         settings.sync()
         app.setFont(app_font_snapshot)
         configure_terminal_launchers(terminal_snapshot)
@@ -361,6 +368,53 @@ def test_settings_search_filters_rows_in_place(
     dialog.search_edit.setText("autofit columns")
     qtbot.waitUntil(lambda: dialog._rows_by_key["autofit_columns"].isVisible())
     assert dialog._rows_by_key["column_width_auto_align_mode"].isVisible() is False
+
+
+def test_settings_dialog_restores_saved_window_geometry(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-geometry",
+        roots_provider=roots_provider,
+    )
+
+    first = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(first)
+    first.show()
+    qtbot.waitUntil(first.isVisible)
+    first.resize(1320, 900)
+    first.move(54, 63)
+    qtbot.waitUntil(
+        lambda: (
+            first.width() == 1320
+            and first.height() == 900
+            and first.x() == 54
+            and first.y() == 63
+        )
+    )
+    first.close()
+
+    second = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(second)
+    second.show()
+    qtbot.waitUntil(
+        lambda: (
+            second.width() == 1320
+            and second.height() == 900
+            and second.x() == 54
+            and second.y() == 63
+        )
+    )
+
+    assert second.width() == 1320
+    assert second.height() == 900
+    assert second.x() == 54
+    assert second.y() == 63
 
 
 def test_settings_column_width_align_combo_exposes_all_scopes(
@@ -1112,9 +1166,7 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
     dialog.pwsh_terminal_open_args_edit.setText(
         "-NoExit -Command Set-Location -LiteralPath {folder}"
     )
-    dialog.pwsh_terminal_command_args_edit.setText(
-        "-NoExit -Command {shell_command}"
-    )
+    dialog.pwsh_terminal_command_args_edit.setText("-NoExit -Command {shell_command}")
     dialog.powershell5_terminal_executable_edit.setText(
         r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
     )
@@ -1155,8 +1207,7 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
     assert persisted.comspec_terminal_open_args_template == "/K cd /d {folder}"
     assert persisted.comspec_terminal_command_args_template == "/K {shell_command}"
     assert (
-        persisted.pwsh_terminal_executable
-        == r"C:\Program Files\PowerShell\7\pwsh.exe"
+        persisted.pwsh_terminal_executable == r"C:\Program Files\PowerShell\7\pwsh.exe"
     )
     assert (
         persisted.pwsh_terminal_open_args_template
