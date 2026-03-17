@@ -6,6 +6,8 @@ import os
 import shlex
 import shutil
 import subprocess
+import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,10 +23,12 @@ from ._operations.types import (
     DEFAULT_PWSH_TERMINAL_EXECUTABLE,
     DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE,
     DEFAULT_TERMINAL_LAUNCHER,
+    DEFAULT_TERMINAL_STARTUP_POSITION,
     TERMINAL_LAUNCHER_COMSPEC,
     TERMINAL_LAUNCHER_POWERSHELL5,
     TERMINAL_LAUNCHER_PWSH,
     TerminalLauncherId,
+    TerminalStartupPosition,
 )
 
 
@@ -50,10 +54,16 @@ class TerminalLauncherSettings:
     comspec_terminal_command_args_template: str = (
         DEFAULT_COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE
     )
+    comspec_terminal_startup_position: TerminalStartupPosition = (
+        DEFAULT_TERMINAL_STARTUP_POSITION
+    )
     pwsh_terminal_executable: str = DEFAULT_PWSH_TERMINAL_EXECUTABLE
     pwsh_terminal_open_args_template: str = DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE
     pwsh_terminal_command_args_template: str = (
         DEFAULT_PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE
+    )
+    pwsh_terminal_startup_position: TerminalStartupPosition = (
+        DEFAULT_TERMINAL_STARTUP_POSITION
     )
     powershell5_terminal_executable: str = DEFAULT_POWERSHELL5_TERMINAL_EXECUTABLE
     powershell5_terminal_open_args_template: str = (
@@ -61,6 +71,9 @@ class TerminalLauncherSettings:
     )
     powershell5_terminal_command_args_template: str = (
         DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE
+    )
+    powershell5_terminal_startup_position: TerminalStartupPosition = (
+        DEFAULT_TERMINAL_STARTUP_POSITION
     )
 
 
@@ -163,6 +176,7 @@ def open_terminal(
     """Open a terminal at one folder using the configured shared launcher."""
 
     folder = Path(target_folder)
+    active_settings = settings or _terminal_launcher_settings
     if os.name != "nt":
         _open_posix_terminal(folder, command=command)
         return
@@ -171,9 +185,16 @@ def open_terminal(
         launcher_id=launcher_id,
         command=command,
         python_project=python_project,
-        settings=settings,
+        settings=active_settings,
     )
-    subprocess.Popen(launch_spec)
+    resolved_launcher = launcher_id or active_settings.default_terminal_launcher
+    startup_position = _startup_position(active_settings, resolved_launcher)
+    startupinfo = _windows_startupinfo(startup_position)
+    if startupinfo is None:
+        process = subprocess.Popen(launch_spec)
+    else:
+        process = subprocess.Popen(launch_spec, startupinfo=startupinfo)
+    _apply_windows_terminal_startup_position_async(process, startup_position)
 
 
 def build_windows_terminal_launch_spec(
@@ -405,6 +426,191 @@ def _default_executable(launcher_id: TerminalLauncherId) -> str:
     if launcher_id == TERMINAL_LAUNCHER_PWSH:
         return DEFAULT_PWSH_TERMINAL_EXECUTABLE
     return DEFAULT_POWERSHELL5_TERMINAL_EXECUTABLE
+
+
+def _startup_position(
+    settings: TerminalLauncherSettings,
+    launcher_id: TerminalLauncherId,
+) -> TerminalStartupPosition:
+    """Return the configured startup position for one launcher."""
+
+    if launcher_id == TERMINAL_LAUNCHER_COMSPEC:
+        return settings.comspec_terminal_startup_position
+    if launcher_id == TERMINAL_LAUNCHER_PWSH:
+        return settings.pwsh_terminal_startup_position
+    return settings.powershell5_terminal_startup_position
+
+
+def _windows_startupinfo(
+    startup_position: TerminalStartupPosition,
+) -> subprocess.STARTUPINFO | None:
+    """Build Windows-specific startup info for one terminal launch."""
+
+    if startup_position not in {"maximized", "minimized"}:
+        return None
+    startupinfo_type = getattr(subprocess, "STARTUPINFO", None)
+    if startupinfo_type is None:
+        return None
+    startupinfo = startupinfo_type()
+    startupinfo.dwFlags |= int(getattr(subprocess, "STARTF_USESHOWWINDOW", 1))
+    startupinfo.wShowWindow = 3 if startup_position == "maximized" else 2
+    return startupinfo
+
+
+def _apply_windows_terminal_startup_position_async(
+    process: object,
+    startup_position: TerminalStartupPosition,
+) -> None:
+    """Apply best-effort post-launch terminal window placement on Windows."""
+
+    if os.name != "nt" or startup_position == "normal":
+        return
+    process_id = getattr(process, "pid", None)
+    if not isinstance(process_id, int) or process_id <= 0:
+        return
+    worker = threading.Thread(
+        target=_apply_windows_terminal_startup_position_worker,
+        args=(process_id, startup_position),
+        daemon=True,
+    )
+    worker.start()
+
+
+def _apply_windows_terminal_startup_position_worker(
+    process_id: int,
+    startup_position: TerminalStartupPosition,
+) -> None:
+    """Wait for a launched terminal window and apply its target placement."""
+
+    window_handle = _wait_for_main_window(process_id)
+    if window_handle is None:
+        return
+    if startup_position == "maximized":
+        _show_window(window_handle, 3)
+        return
+    if startup_position == "minimized":
+        _show_window(window_handle, 2)
+        return
+    rect = _startup_rect_for_window(window_handle, startup_position)
+    if rect is None:
+        return
+    _show_window(window_handle, 9)
+    _set_window_rect(window_handle, rect)
+
+
+def _wait_for_main_window(process_id: int) -> int | None:
+    """Return the first visible top-level window for a process."""
+
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline:
+        window_handle = _find_main_window(process_id)
+        if window_handle is not None:
+            return window_handle
+        time.sleep(0.05)
+    return None
+
+
+def _find_main_window(process_id: int) -> int | None:
+    """Find the main visible top-level window for one process id."""
+
+    from ctypes import WINFUNCTYPE, WinDLL, byref, c_bool
+    from ctypes.wintypes import BOOL, DWORD, HWND, LPARAM
+
+    user32 = WinDLL("user32", use_last_error=True)
+    found_window: int | None = None
+
+    @WINFUNCTYPE(BOOL, HWND, LPARAM)
+    def _callback(window_handle: int, _lparam: int) -> bool:
+        nonlocal found_window
+        pid = DWORD(0)
+        user32.GetWindowThreadProcessId(HWND(window_handle), byref(pid))
+        if pid.value != process_id:
+            return True
+        if not c_bool(user32.IsWindowVisible(HWND(window_handle))).value:
+            return True
+        if int(user32.GetWindow(HWND(window_handle), 4)) != 0:
+            return True
+        found_window = int(window_handle)
+        return False
+
+    user32.EnumWindows(_callback, 0)
+    return found_window
+
+
+def _show_window(window_handle: int, command: int) -> None:
+    """Apply one Win32 show-state command to a top-level window."""
+
+    from ctypes import WinDLL
+    from ctypes.wintypes import HWND
+
+    user32 = WinDLL("user32", use_last_error=True)
+    user32.ShowWindow(HWND(window_handle), command)
+
+
+def _startup_rect_for_window(
+    window_handle: int,
+    startup_position: TerminalStartupPosition,
+) -> tuple[int, int, int, int] | None:
+    """Return the target rectangle for side-of-screen startup positions."""
+
+    if startup_position not in {"left_of_screen", "right_of_screen"}:
+        return None
+    work_area = _monitor_work_area(window_handle)
+    if work_area is None:
+        return None
+    left, top, right, bottom = work_area
+    width = right - left
+    height = bottom - top
+    half_width = max(1, width // 2)
+    if startup_position == "left_of_screen":
+        return (left, top, half_width, height)
+    return (left + half_width, top, width - half_width, height)
+
+
+def _monitor_work_area(window_handle: int) -> tuple[int, int, int, int] | None:
+    """Return the working area for the monitor nearest one window."""
+
+    import ctypes
+    from ctypes import WinDLL, byref
+    from ctypes.wintypes import DWORD, HWND, RECT
+
+    class _MonitorInfo(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", DWORD),
+            ("rcMonitor", RECT),
+            ("rcWork", RECT),
+            ("dwFlags", DWORD),
+        ]
+
+    user32 = WinDLL("user32", use_last_error=True)
+    monitor_handle = user32.MonitorFromWindow(HWND(window_handle), 2)
+    if monitor_handle == 0:
+        return None
+    monitor_info = _MonitorInfo()
+    monitor_info.cbSize = DWORD(ctypes.sizeof(_MonitorInfo))
+    if not user32.GetMonitorInfoW(monitor_handle, byref(monitor_info)):
+        return None
+    work = monitor_info.rcWork
+    return (int(work.left), int(work.top), int(work.right), int(work.bottom))
+
+
+def _set_window_rect(window_handle: int, rect: tuple[int, int, int, int]) -> None:
+    """Move and resize one top-level window to the requested rectangle."""
+
+    from ctypes import WinDLL
+    from ctypes.wintypes import HWND
+
+    x, y, width, height = rect
+    user32 = WinDLL("user32", use_last_error=True)
+    user32.SetWindowPos(
+        HWND(window_handle),
+        0,
+        x,
+        y,
+        width,
+        height,
+        0x0004 | 0x0010 | 0x0040,
+    )
 
 
 def _quote_cmd_path(path: Path) -> str:

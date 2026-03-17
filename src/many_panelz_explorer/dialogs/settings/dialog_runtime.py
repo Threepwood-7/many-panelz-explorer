@@ -378,6 +378,7 @@ class SettingsDialogRuntimeMixin:
             dialog
         )
         self.update_backend_generated_previews()
+        preferences_sync.sync_operation_diagnostics(dialog)
         self._pending_live_preview = True
         self._live_preview_timer.start(self.LIVE_PREVIEW_DEBOUNCE_MS)
 

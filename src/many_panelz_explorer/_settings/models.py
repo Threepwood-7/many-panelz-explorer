@@ -31,6 +31,7 @@ from many_panelz_explorer._operations.types import (
     DEFAULT_RIMRAF_EXE,
     DEFAULT_TERA_COPY_EXE,
     DEFAULT_TERMINAL_LAUNCHER,
+    DEFAULT_TERMINAL_STARTUP_POSITION,
     DEFAULT_UNSTOPPABLE_EXE,
     DISPATCH_MODE_QUEUE,
     QUEUE_VIEW_DOCK,
@@ -104,11 +105,13 @@ class UiPreferences:
     comspec_terminal_command_args_template: str = (
         DEFAULT_COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE
     )
+    comspec_terminal_startup_position: str = DEFAULT_TERMINAL_STARTUP_POSITION
     pwsh_terminal_executable: str = DEFAULT_PWSH_TERMINAL_EXECUTABLE
     pwsh_terminal_open_args_template: str = DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE
     pwsh_terminal_command_args_template: str = (
         DEFAULT_PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE
     )
+    pwsh_terminal_startup_position: str = DEFAULT_TERMINAL_STARTUP_POSITION
     powershell5_terminal_executable: str = DEFAULT_POWERSHELL5_TERMINAL_EXECUTABLE
     powershell5_terminal_open_args_template: str = (
         DEFAULT_POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE
@@ -116,6 +119,7 @@ class UiPreferences:
     powershell5_terminal_command_args_template: str = (
         DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE
     )
+    powershell5_terminal_startup_position: str = DEFAULT_TERMINAL_STARTUP_POSITION
     file_open_overrides_json: str = "{}"
     total_commander_executable: str = DEFAULT_TOTAL_COMMANDER_EXECUTABLE
     total_commander_source_args_template: str = (

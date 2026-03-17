@@ -12,6 +12,7 @@ from many_panelz_explorer._operations.normalize import (
     normalize_queue_view_mode,
     normalize_shortcut_behavior,
     normalize_terminal_launcher,
+    normalize_terminal_startup_position,
 )
 
 from . import normalize
@@ -235,6 +236,25 @@ class OpsDefaultSettingsMixin(SettingsDomainBase, SettingsRegistry):
         )
 
     @property
+    def comspec_terminal_startup_position(self) -> str:
+        return normalize_terminal_startup_position(
+            self._storage.value(
+                self.COMSPEC_TERMINAL_STARTUP_POSITION_KEY,
+                self.DEFAULT_COMSPEC_TERMINAL_STARTUP_POSITION,
+            )
+        )
+
+    @comspec_terminal_startup_position.setter
+    def comspec_terminal_startup_position(self, value: str) -> None:
+        self._storage.set_value(
+            self.COMSPEC_TERMINAL_STARTUP_POSITION_KEY,
+            normalize_terminal_startup_position(
+                value,
+                fallback=self.DEFAULT_COMSPEC_TERMINAL_STARTUP_POSITION,
+            ),
+        )
+
+    @property
     def pwsh_terminal_executable(self) -> str:
         return normalize.normalize_windows_path_text(
             self._storage.value(
@@ -295,6 +315,25 @@ class OpsDefaultSettingsMixin(SettingsDomainBase, SettingsRegistry):
         )
 
     @property
+    def pwsh_terminal_startup_position(self) -> str:
+        return normalize_terminal_startup_position(
+            self._storage.value(
+                self.PWSH_TERMINAL_STARTUP_POSITION_KEY,
+                self.DEFAULT_PWSH_TERMINAL_STARTUP_POSITION,
+            )
+        )
+
+    @pwsh_terminal_startup_position.setter
+    def pwsh_terminal_startup_position(self, value: str) -> None:
+        self._storage.set_value(
+            self.PWSH_TERMINAL_STARTUP_POSITION_KEY,
+            normalize_terminal_startup_position(
+                value,
+                fallback=self.DEFAULT_PWSH_TERMINAL_STARTUP_POSITION,
+            ),
+        )
+
+    @property
     def powershell5_terminal_executable(self) -> str:
         return normalize.normalize_windows_path_text(
             self._storage.value(
@@ -351,6 +390,25 @@ class OpsDefaultSettingsMixin(SettingsDomainBase, SettingsRegistry):
             normalize.normalize_text(
                 value,
                 fallback=self.DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE,
+            ),
+        )
+
+    @property
+    def powershell5_terminal_startup_position(self) -> str:
+        return normalize_terminal_startup_position(
+            self._storage.value(
+                self.POWERSHELL5_TERMINAL_STARTUP_POSITION_KEY,
+                self.DEFAULT_POWERSHELL5_TERMINAL_STARTUP_POSITION,
+            )
+        )
+
+    @powershell5_terminal_startup_position.setter
+    def powershell5_terminal_startup_position(self, value: str) -> None:
+        self._storage.set_value(
+            self.POWERSHELL5_TERMINAL_STARTUP_POSITION_KEY,
+            normalize_terminal_startup_position(
+                value,
+                fallback=self.DEFAULT_POWERSHELL5_TERMINAL_STARTUP_POSITION,
             ),
         )
 

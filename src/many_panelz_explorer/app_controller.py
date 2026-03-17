@@ -17,7 +17,10 @@ from ._operations.discovery import (
     resolve_external_file_manager_paths,
     resolve_system_command_paths,
 )
-from ._operations.normalize import normalize_terminal_launcher
+from ._operations.normalize import (
+    normalize_terminal_launcher,
+    normalize_terminal_startup_position,
+)
 from ._operations.queue_manager import OperationQueueManager
 from ._operations.types import OperationExecutionPreferences
 from ._settings.manager import SettingsManager
@@ -259,12 +262,22 @@ class AppController:
                 comspec_terminal_command_args_template=(
                     preferences.comspec_terminal_command_args_template
                 ),
+                comspec_terminal_startup_position=(
+                    normalize_terminal_startup_position(
+                        preferences.comspec_terminal_startup_position
+                    )
+                ),
                 pwsh_terminal_executable=preferences.pwsh_terminal_executable,
                 pwsh_terminal_open_args_template=(
                     preferences.pwsh_terminal_open_args_template
                 ),
                 pwsh_terminal_command_args_template=(
                     preferences.pwsh_terminal_command_args_template
+                ),
+                pwsh_terminal_startup_position=(
+                    normalize_terminal_startup_position(
+                        preferences.pwsh_terminal_startup_position
+                    )
                 ),
                 powershell5_terminal_executable=(
                     preferences.powershell5_terminal_executable
@@ -274,6 +287,11 @@ class AppController:
                 ),
                 powershell5_terminal_command_args_template=(
                     preferences.powershell5_terminal_command_args_template
+                ),
+                powershell5_terminal_startup_position=(
+                    normalize_terminal_startup_position(
+                        preferences.powershell5_terminal_startup_position
+                    )
                 ),
             )
         )

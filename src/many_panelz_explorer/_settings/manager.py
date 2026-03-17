@@ -140,6 +140,9 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
     comspec_terminal_command_args_template = delegate_domain_property(
         "ops", "comspec_terminal_command_args_template"
     )
+    comspec_terminal_startup_position = delegate_domain_property(
+        "ops", "comspec_terminal_startup_position"
+    )
     pwsh_terminal_executable = delegate_domain_property(
         "ops", "pwsh_terminal_executable"
     )
@@ -149,6 +152,9 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
     pwsh_terminal_command_args_template = delegate_domain_property(
         "ops", "pwsh_terminal_command_args_template"
     )
+    pwsh_terminal_startup_position = delegate_domain_property(
+        "ops", "pwsh_terminal_startup_position"
+    )
     powershell5_terminal_executable = delegate_domain_property(
         "ops", "powershell5_terminal_executable"
     )
@@ -157,6 +163,9 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
     )
     powershell5_terminal_command_args_template = delegate_domain_property(
         "ops", "powershell5_terminal_command_args_template"
+    )
+    powershell5_terminal_startup_position = delegate_domain_property(
+        "ops", "powershell5_terminal_startup_position"
     )
     file_open_overrides_json = delegate_domain_property(
         "ops", "file_open_overrides_json"
@@ -292,17 +301,22 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
             comspec_terminal_command_args_template=(
                 self.comspec_terminal_command_args_template
             ),
+            comspec_terminal_startup_position=self.comspec_terminal_startup_position,
             pwsh_terminal_executable=self.pwsh_terminal_executable,
             pwsh_terminal_open_args_template=self.pwsh_terminal_open_args_template,
             pwsh_terminal_command_args_template=(
                 self.pwsh_terminal_command_args_template
             ),
+            pwsh_terminal_startup_position=self.pwsh_terminal_startup_position,
             powershell5_terminal_executable=self.powershell5_terminal_executable,
             powershell5_terminal_open_args_template=(
                 self.powershell5_terminal_open_args_template
             ),
             powershell5_terminal_command_args_template=(
                 self.powershell5_terminal_command_args_template
+            ),
+            powershell5_terminal_startup_position=(
+                self.powershell5_terminal_startup_position
             ),
             file_open_overrides_json=self.file_open_overrides_json,
             total_commander_executable=self.total_commander_executable,
@@ -419,6 +433,9 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
         self.comspec_terminal_command_args_template = (
             preferences.comspec_terminal_command_args_template
         )
+        self.comspec_terminal_startup_position = (
+            preferences.comspec_terminal_startup_position
+        )
         self.pwsh_terminal_executable = preferences.pwsh_terminal_executable
         self.pwsh_terminal_open_args_template = (
             preferences.pwsh_terminal_open_args_template
@@ -426,6 +443,7 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
         self.pwsh_terminal_command_args_template = (
             preferences.pwsh_terminal_command_args_template
         )
+        self.pwsh_terminal_startup_position = preferences.pwsh_terminal_startup_position
         self.powershell5_terminal_executable = (
             preferences.powershell5_terminal_executable
         )
@@ -434,6 +452,9 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
         )
         self.powershell5_terminal_command_args_template = (
             preferences.powershell5_terminal_command_args_template
+        )
+        self.powershell5_terminal_startup_position = (
+            preferences.powershell5_terminal_startup_position
         )
         self.file_open_overrides_json = preferences.file_open_overrides_json
         self.total_commander_executable = preferences.total_commander_executable

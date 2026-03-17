@@ -71,12 +71,15 @@ def _tracked_keys() -> list[str]:
         SettingsManager.COMSPEC_TERMINAL_EXECUTABLE_KEY,
         SettingsManager.COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
         SettingsManager.COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+        SettingsManager.COMSPEC_TERMINAL_STARTUP_POSITION_KEY,
         SettingsManager.PWSH_TERMINAL_EXECUTABLE_KEY,
         SettingsManager.PWSH_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
         SettingsManager.PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+        SettingsManager.PWSH_TERMINAL_STARTUP_POSITION_KEY,
         SettingsManager.POWERSHELL5_TERMINAL_EXECUTABLE_KEY,
         SettingsManager.POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
         SettingsManager.POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+        SettingsManager.POWERSHELL5_TERMINAL_STARTUP_POSITION_KEY,
         SettingsManager.FILE_OPEN_OVERRIDES_JSON_KEY,
         SettingsManager.TOTAL_COMMANDER_EXECUTABLE_KEY,
         SettingsManager.TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY,
@@ -179,11 +182,13 @@ def test_ui_preferences_round_trip() -> None:
             comspec_terminal_executable="%ComSpec%",
             comspec_terminal_open_args_template="/K cd /d {folder}",
             comspec_terminal_command_args_template="/K {shell_command}",
+            comspec_terminal_startup_position="maximized",
             pwsh_terminal_executable=r"C:\Program Files\PowerShell\7\pwsh.exe",
             pwsh_terminal_open_args_template=(
                 "-NoExit -Command Set-Location -LiteralPath {folder}"
             ),
             pwsh_terminal_command_args_template="-NoExit -Command {shell_command}",
+            pwsh_terminal_startup_position="right_of_screen",
             powershell5_terminal_executable=(
                 r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
             ),
@@ -193,6 +198,7 @@ def test_ui_preferences_round_trip() -> None:
             powershell5_terminal_command_args_template=(
                 "-NoExit -Command {shell_command}"
             ),
+            powershell5_terminal_startup_position="left_of_screen",
             file_open_overrides_json=(
                 '{".txt": {"editor": "txtedit.exe", "viewer": "txtview.exe"}}'
             ),
@@ -432,12 +438,24 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.remove(SettingsManager.COMSPEC_TERMINAL_EXECUTABLE_KEY)
         settings.remove(SettingsManager.COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE_KEY)
         settings.remove(SettingsManager.COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY)
+        settings.set_value(
+            SettingsManager.COMSPEC_TERMINAL_STARTUP_POSITION_KEY,
+            "invalid",
+        )
         settings.remove(SettingsManager.PWSH_TERMINAL_EXECUTABLE_KEY)
         settings.remove(SettingsManager.PWSH_TERMINAL_OPEN_ARGS_TEMPLATE_KEY)
         settings.remove(SettingsManager.PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY)
+        settings.set_value(
+            SettingsManager.PWSH_TERMINAL_STARTUP_POSITION_KEY,
+            "invalid",
+        )
         settings.remove(SettingsManager.POWERSHELL5_TERMINAL_EXECUTABLE_KEY)
         settings.remove(SettingsManager.POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE_KEY)
         settings.remove(SettingsManager.POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY)
+        settings.set_value(
+            SettingsManager.POWERSHELL5_TERMINAL_STARTUP_POSITION_KEY,
+            "invalid",
+        )
         settings.set_value(SettingsManager.FILE_OPEN_OVERRIDES_JSON_KEY, "not-json")
         settings.remove(SettingsManager.TOTAL_COMMANDER_EXECUTABLE_KEY)
         settings.remove(SettingsManager.TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY)
@@ -631,6 +649,10 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
             == SettingsManager.DEFAULT_COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE
         )
         assert (
+            loaded.comspec_terminal_startup_position
+            == SettingsManager.DEFAULT_COMSPEC_TERMINAL_STARTUP_POSITION
+        )
+        assert (
             loaded.pwsh_terminal_executable
             == SettingsManager.DEFAULT_PWSH_TERMINAL_EXECUTABLE
         )
@@ -643,6 +665,10 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
             == SettingsManager.DEFAULT_PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE
         )
         assert (
+            loaded.pwsh_terminal_startup_position
+            == SettingsManager.DEFAULT_PWSH_TERMINAL_STARTUP_POSITION
+        )
+        assert (
             loaded.powershell5_terminal_executable
             == SettingsManager.DEFAULT_POWERSHELL5_TERMINAL_EXECUTABLE
         )
@@ -653,6 +679,10 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         assert (
             loaded.powershell5_terminal_command_args_template
             == SettingsManager.DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE
+        )
+        assert (
+            loaded.powershell5_terminal_startup_position
+            == SettingsManager.DEFAULT_POWERSHELL5_TERMINAL_STARTUP_POSITION
         )
         assert (
             loaded.file_open_overrides_json

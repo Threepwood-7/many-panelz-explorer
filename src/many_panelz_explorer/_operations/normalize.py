@@ -17,6 +17,7 @@ from .types import (
     BACKEND_ROBOCOPY,
     BACKEND_TERACOPY,
     BACKEND_UNSTOPPABLE,
+    DEFAULT_TERMINAL_STARTUP_POSITION,
     DISPATCH_MODE_LAUNCH_NO_WAIT,
     DISPATCH_MODE_QUEUE,
     DISPATCH_MODE_RUN_WAIT,
@@ -32,6 +33,7 @@ from .types import (
     OperationDispatchMode,
     OperationKind,
     TerminalLauncherId,
+    TerminalStartupPosition,
 )
 
 
@@ -133,4 +135,23 @@ def normalize_terminal_launcher(
         TERMINAL_LAUNCHER_POWERSHELL5,
     }:
         return cast("TerminalLauncherId", normalized)
+    return fallback
+
+
+def normalize_terminal_startup_position(
+    value: str,
+    *,
+    fallback: TerminalStartupPosition = DEFAULT_TERMINAL_STARTUP_POSITION,
+) -> TerminalStartupPosition:
+    """Normalize a raw terminal startup-position identifier."""
+
+    normalized = str(value).strip().lower()
+    if normalized in {
+        "normal",
+        "maximized",
+        "minimized",
+        "right_of_screen",
+        "left_of_screen",
+    }:
+        return cast("TerminalStartupPosition", normalized)
     return fallback

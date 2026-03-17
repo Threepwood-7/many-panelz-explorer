@@ -131,8 +131,18 @@ def load_operations_preferences(
         dialog.default_terminal_launcher_combo,
         preferences.default_terminal_launcher,
     )
+    resolved_comspec, resolved_pwsh, resolved_powershell5 = (
+        resolve_terminal_launcher_paths(
+            comspec_executable=preferences.comspec_terminal_executable,
+            pwsh_executable=preferences.pwsh_terminal_executable,
+            powershell5_executable=preferences.powershell5_terminal_executable,
+        )
+    )
     dialog.comspec_terminal_executable_edit.setText(
-        preferences.comspec_terminal_executable
+        _preferred_terminal_executable_text(
+            configured=preferences.comspec_terminal_executable,
+            resolved=resolved_comspec,
+        )
     )
     dialog.comspec_terminal_open_args_edit.setText(
         preferences.comspec_terminal_open_args_template
@@ -140,21 +150,41 @@ def load_operations_preferences(
     dialog.comspec_terminal_command_args_edit.setText(
         preferences.comspec_terminal_command_args_template
     )
-    dialog.pwsh_terminal_executable_edit.setText(preferences.pwsh_terminal_executable)
+    dialog.set_combo_value(
+        dialog.comspec_terminal_startup_position_combo,
+        preferences.comspec_terminal_startup_position,
+    )
+    dialog.pwsh_terminal_executable_edit.setText(
+        _preferred_terminal_executable_text(
+            configured=preferences.pwsh_terminal_executable,
+            resolved=resolved_pwsh,
+        )
+    )
     dialog.pwsh_terminal_open_args_edit.setText(
         preferences.pwsh_terminal_open_args_template
     )
     dialog.pwsh_terminal_command_args_edit.setText(
         preferences.pwsh_terminal_command_args_template
     )
+    dialog.set_combo_value(
+        dialog.pwsh_terminal_startup_position_combo,
+        preferences.pwsh_terminal_startup_position,
+    )
     dialog.powershell5_terminal_executable_edit.setText(
-        preferences.powershell5_terminal_executable
+        _preferred_terminal_executable_text(
+            configured=preferences.powershell5_terminal_executable,
+            resolved=resolved_powershell5,
+        )
     )
     dialog.powershell5_terminal_open_args_edit.setText(
         preferences.powershell5_terminal_open_args_template
     )
     dialog.powershell5_terminal_command_args_edit.setText(
         preferences.powershell5_terminal_command_args_template
+    )
+    dialog.set_combo_value(
+        dialog.powershell5_terminal_startup_position_combo,
+        preferences.powershell5_terminal_startup_position,
     )
     dialog.context_code_editor_executable_edit.setText(
         preferences.context_tool_code_editor_exe_path
@@ -237,30 +267,7 @@ def load_operations_preferences(
     dialog.powershell_delete_args_edit.setText(preferences.powershell_delete_args)
     dialog.rimraf_executable_edit.setText(preferences.rimraf_executable)
     dialog.rimraf_args_edit.setText(preferences.rimraf_args_template)
-    resolved_comspec, resolved_pwsh, resolved_powershell5 = (
-        resolve_terminal_launcher_paths(
-            comspec_executable=preferences.comspec_terminal_executable,
-            pwsh_executable=preferences.pwsh_terminal_executable,
-            powershell5_executable=preferences.powershell5_terminal_executable,
-        )
-    )
-    dialog.resolved_comspec_terminal_path_label.setText(
-        f"ComSpec: {resolved_comspec}"
-    )
-    dialog.resolved_pwsh_terminal_path_label.setText(f"PowerShell 7: {resolved_pwsh}")
-    dialog.resolved_powershell5_terminal_path_label.setText(
-        f"Windows PowerShell 5.1: {resolved_powershell5}"
-    )
-    dialog.resolved_comspec_terminal_path_label.setToolTip(resolved_comspec)
-    dialog.resolved_pwsh_terminal_path_label.setToolTip(resolved_pwsh)
-    dialog.resolved_powershell5_terminal_path_label.setToolTip(
-        resolved_powershell5
-    )
-    resolved_cmd, resolved_robocopy = resolve_system_command_paths()
-    dialog.resolved_cmd_path_label.setText(f"ComSpec: {resolved_cmd}")
-    dialog.resolved_robocopy_path_label.setText(f"Robocopy: {resolved_robocopy}")
-    dialog.resolved_cmd_path_label.setToolTip(resolved_cmd)
-    dialog.resolved_robocopy_path_label.setToolTip(resolved_robocopy)
+    sync_operation_diagnostics(dialog)
 
 
 def load_typography_preferences(
@@ -301,6 +308,42 @@ def sync_color_preview(target: QLabel, color_hex: str) -> None:
     target.setStyleSheet(f"background: {color_hex}; border: 1px solid #777;")
     target.setText(color_hex)
     target.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+
+def sync_operation_diagnostics(dialog: SettingsDialog) -> None:
+    """Refresh read-only diagnostics for terminals and core shell tools."""
+
+    resolved_comspec, resolved_pwsh, resolved_powershell5 = (
+        resolve_terminal_launcher_paths(
+            comspec_executable=dialog.comspec_terminal_executable_edit.text().strip(),
+            pwsh_executable=dialog.pwsh_terminal_executable_edit.text().strip(),
+            powershell5_executable=(
+                dialog.powershell5_terminal_executable_edit.text().strip()
+            ),
+        )
+    )
+    dialog.resolved_comspec_terminal_path_label.setText(f"ComSpec: {resolved_comspec}")
+    dialog.resolved_pwsh_terminal_path_label.setText(f"PowerShell 7: {resolved_pwsh}")
+    dialog.resolved_powershell5_terminal_path_label.setText(
+        f"Windows PowerShell 5.1: {resolved_powershell5}"
+    )
+    dialog.resolved_comspec_terminal_path_label.setToolTip(resolved_comspec)
+    dialog.resolved_pwsh_terminal_path_label.setToolTip(resolved_pwsh)
+    dialog.resolved_powershell5_terminal_path_label.setToolTip(resolved_powershell5)
+    resolved_cmd, resolved_robocopy = resolve_system_command_paths()
+    dialog.resolved_cmd_path_label.setText(f"ComSpec: {resolved_cmd}")
+    dialog.resolved_robocopy_path_label.setText(f"Robocopy: {resolved_robocopy}")
+    dialog.resolved_cmd_path_label.setToolTip(resolved_cmd)
+    dialog.resolved_robocopy_path_label.setToolTip(resolved_robocopy)
+
+
+def _preferred_terminal_executable_text(*, configured: str, resolved: str) -> str:
+    """Return the terminal executable text shown in editable settings controls."""
+
+    resolved_text = str(resolved).strip()
+    if resolved_text:
+        return resolved_text
+    return str(configured).strip()
 
 
 def collect_preferences_from_controls(dialog: SettingsDialog) -> UiPreferences:
@@ -359,12 +402,21 @@ def collect_preferences_from_controls(dialog: SettingsDialog) -> UiPreferences:
         comspec_terminal_executable=dialog.comspec_terminal_executable_edit.text().strip(),
         comspec_terminal_open_args_template=dialog.comspec_terminal_open_args_edit.text().strip(),
         comspec_terminal_command_args_template=dialog.comspec_terminal_command_args_edit.text().strip(),
+        comspec_terminal_startup_position=str(
+            dialog.comspec_terminal_startup_position_combo.currentData()
+        ),
         pwsh_terminal_executable=dialog.pwsh_terminal_executable_edit.text().strip(),
         pwsh_terminal_open_args_template=dialog.pwsh_terminal_open_args_edit.text().strip(),
         pwsh_terminal_command_args_template=dialog.pwsh_terminal_command_args_edit.text().strip(),
+        pwsh_terminal_startup_position=str(
+            dialog.pwsh_terminal_startup_position_combo.currentData()
+        ),
         powershell5_terminal_executable=dialog.powershell5_terminal_executable_edit.text().strip(),
         powershell5_terminal_open_args_template=dialog.powershell5_terminal_open_args_edit.text().strip(),
         powershell5_terminal_command_args_template=dialog.powershell5_terminal_command_args_edit.text().strip(),
+        powershell5_terminal_startup_position=str(
+            dialog.powershell5_terminal_startup_position_combo.currentData()
+        ),
         context_tool_code_editor_exe_path=dialog.context_code_editor_executable_edit.text().strip(),
         context_tool_code_editor_args_template=dialog.context_code_editor_args_edit.text().strip(),
         context_tool_git_gui_exe_path=dialog.context_git_gui_executable_edit.text().strip(),

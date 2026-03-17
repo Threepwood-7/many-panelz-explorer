@@ -69,12 +69,18 @@ class _ControllerSettingsStub:
                 comspec_terminal_command_args_template=(
                     preferences.comspec_terminal_command_args_template
                 ),
+                comspec_terminal_startup_position=(
+                    preferences.comspec_terminal_startup_position
+                ),
                 pwsh_terminal_executable=preferences.pwsh_terminal_executable,
                 pwsh_terminal_open_args_template=(
                     preferences.pwsh_terminal_open_args_template
                 ),
                 pwsh_terminal_command_args_template=(
                     preferences.pwsh_terminal_command_args_template
+                ),
+                pwsh_terminal_startup_position=(
+                    preferences.pwsh_terminal_startup_position
                 ),
                 powershell5_terminal_executable=(
                     preferences.powershell5_terminal_executable
@@ -84,6 +90,9 @@ class _ControllerSettingsStub:
                 ),
                 powershell5_terminal_command_args_template=(
                     preferences.powershell5_terminal_command_args_template
+                ),
+                powershell5_terminal_startup_position=(
+                    preferences.powershell5_terminal_startup_position
                 ),
             )
         )
@@ -223,12 +232,15 @@ def _tracked_keys() -> list[str]:
         SettingsManager.COMSPEC_TERMINAL_EXECUTABLE_KEY,
         SettingsManager.COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
         SettingsManager.COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+        SettingsManager.COMSPEC_TERMINAL_STARTUP_POSITION_KEY,
         SettingsManager.PWSH_TERMINAL_EXECUTABLE_KEY,
         SettingsManager.PWSH_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
         SettingsManager.PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+        SettingsManager.PWSH_TERMINAL_STARTUP_POSITION_KEY,
         SettingsManager.POWERSHELL5_TERMINAL_EXECUTABLE_KEY,
         SettingsManager.POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
         SettingsManager.POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+        SettingsManager.POWERSHELL5_TERMINAL_STARTUP_POSITION_KEY,
         SettingsManager.FILE_OPEN_OVERRIDES_JSON_KEY,
         SettingsManager.TOTAL_COMMANDER_EXECUTABLE_KEY,
         SettingsManager.TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY,
@@ -821,6 +833,78 @@ def test_settings_dialog_shows_resolved_terminal_diagnostics(
     )
 
 
+def test_settings_dialog_populates_terminal_executables_with_resolved_paths(
+    qtbot,
+    tmp_path: Path,
+    isolated_settings: SettingsManager,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cmd_path = tmp_path / "Windows" / "System32" / "cmd.exe"
+    pwsh_path = tmp_path / "PowerShell" / "7" / "pwsh.exe"
+    powershell5_path = (
+        tmp_path
+        / "Windows"
+        / "System32"
+        / "WindowsPowerShell"
+        / "v1.0"
+        / "powershell.exe"
+    )
+    cmd_path.parent.mkdir(parents=True, exist_ok=True)
+    pwsh_path.parent.mkdir(parents=True, exist_ok=True)
+    powershell5_path.parent.mkdir(parents=True, exist_ok=True)
+    cmd_path.write_text("", encoding="utf-8")
+    pwsh_path.write_text("", encoding="utf-8")
+    powershell5_path.write_text("", encoding="utf-8")
+    monkeypatch.setenv("ComSpec", str(cmd_path))
+    monkeypatch.setenv("PATH", str(pwsh_path.parent))
+    monkeypatch.setenv("SYSTEMROOT", str(tmp_path / "Windows"))
+
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-terminal-resolved-paths",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    assert dialog.comspec_terminal_executable_edit.text() == str(cmd_path)
+    assert dialog.pwsh_terminal_executable_edit.text() == str(pwsh_path)
+    assert dialog.powershell5_terminal_executable_edit.text() == str(powershell5_path)
+
+
+def test_settings_dialog_embeds_terminal_startup_position_in_launcher_group(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-terminal-startup-layout",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    terminal_item = dialog._subsection_tree_items["operations/terminal_tools"]
+    dialog._section_tree.setCurrentItem(terminal_item)
+    qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is terminal_item)
+
+    assert "comspec_terminal_startup_position" not in dialog._rows_by_key
+    assert "pwsh_terminal_startup_position" not in dialog._rows_by_key
+    assert "powershell5_terminal_startup_position" not in dialog._rows_by_key
+    assert dialog.comspec_terminal_startup_position_combo.isVisible() is True
+    assert dialog.pwsh_terminal_startup_position_combo.isVisible() is True
+    assert dialog.powershell5_terminal_startup_position_combo.isVisible() is True
+
+
 def test_settings_dialog_has_left_section_tree_and_search_sync(
     qtbot, tmp_path: Path, isolated_settings: SettingsManager
 ) -> None:
@@ -1160,6 +1244,10 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
     dialog.comspec_terminal_executable_edit.setText("%ComSpec%")
     dialog.comspec_terminal_open_args_edit.setText("/K cd /d {folder}")
     dialog.comspec_terminal_command_args_edit.setText("/K {shell_command}")
+    dialog.set_combo_value(
+        dialog.comspec_terminal_startup_position_combo,
+        "maximized",
+    )
     dialog.pwsh_terminal_executable_edit.setText(
         r"C:\Program Files\PowerShell\7\pwsh.exe"
     )
@@ -1167,6 +1255,10 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
         "-NoExit -Command Set-Location -LiteralPath {folder}"
     )
     dialog.pwsh_terminal_command_args_edit.setText("-NoExit -Command {shell_command}")
+    dialog.set_combo_value(
+        dialog.pwsh_terminal_startup_position_combo,
+        "right_of_screen",
+    )
     dialog.powershell5_terminal_executable_edit.setText(
         r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
     )
@@ -1175,6 +1267,10 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
     )
     dialog.powershell5_terminal_command_args_edit.setText(
         "-NoExit -Command {shell_command}"
+    )
+    dialog.set_combo_value(
+        dialog.powershell5_terminal_startup_position_combo,
+        "left_of_screen",
     )
     dialog.context_scan_cap_spin.setValue(77)
     dialog.context_code_editor_executable_edit.setText(r"C:\tools\code.exe")
@@ -1206,6 +1302,7 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
     assert persisted.comspec_terminal_executable == "%ComSpec%"
     assert persisted.comspec_terminal_open_args_template == "/K cd /d {folder}"
     assert persisted.comspec_terminal_command_args_template == "/K {shell_command}"
+    assert persisted.comspec_terminal_startup_position == "maximized"
     assert (
         persisted.pwsh_terminal_executable == r"C:\Program Files\PowerShell\7\pwsh.exe"
     )
@@ -1217,6 +1314,7 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
         persisted.pwsh_terminal_command_args_template
         == "-NoExit -Command {shell_command}"
     )
+    assert persisted.pwsh_terminal_startup_position == "right_of_screen"
     assert (
         persisted.powershell5_terminal_executable
         == r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
@@ -1229,6 +1327,7 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
         persisted.powershell5_terminal_command_args_template
         == "-NoExit -Command {shell_command}"
     )
+    assert persisted.powershell5_terminal_startup_position == "left_of_screen"
     assert persisted.context_immediate_child_scan_cap == 77
     assert persisted.context_tool_code_editor_exe_path == r"C:\tools\code.exe"
     assert persisted.context_tool_code_editor_args_template == "--folder {folder}"

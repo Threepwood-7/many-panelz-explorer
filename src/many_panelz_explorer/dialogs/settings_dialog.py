@@ -137,12 +137,15 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
             "comspec_terminal_executable",
             "comspec_terminal_open_args_template",
             "comspec_terminal_command_args_template",
+            "comspec_terminal_startup_position",
             "pwsh_terminal_executable",
             "pwsh_terminal_open_args_template",
             "pwsh_terminal_command_args_template",
+            "pwsh_terminal_startup_position",
             "powershell5_terminal_executable",
             "powershell5_terminal_open_args_template",
             "powershell5_terminal_command_args_template",
+            "powershell5_terminal_startup_position",
             "context_tool_code_editor_exe_path",
             "context_tool_code_editor_args_template",
             "context_tool_git_gui_exe_path",
@@ -202,6 +205,7 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
         comspec_terminal_command_args_edit: QLineEdit
         comspec_terminal_executable_edit: QLineEdit
         comspec_terminal_open_args_edit: QLineEdit
+        comspec_terminal_startup_position_combo: QComboBox
         default_conflict_policy_combo: QComboBox
         default_copy_move_backend_combo: QComboBox
         default_delete_backend_combo: QComboBox
@@ -235,6 +239,7 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
         powershell5_terminal_command_args_edit: QLineEdit
         powershell5_terminal_executable_edit: QLineEdit
         powershell5_terminal_open_args_edit: QLineEdit
+        powershell5_terminal_startup_position_combo: QComboBox
         powershell_delete_args_edit: QLineEdit
         powershell_delete_test_btn: QPushButton
         properties_byte_custom_template_edit: QLineEdit
@@ -242,6 +247,7 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
         pwsh_terminal_command_args_edit: QLineEdit
         pwsh_terminal_executable_edit: QLineEdit
         pwsh_terminal_open_args_edit: QLineEdit
+        pwsh_terminal_startup_position_combo: QComboBox
         remove_override_row_btn: QPushButton
         resolved_comspec_terminal_path_label: QLabel
         resolved_cmd_path_label: QLabel

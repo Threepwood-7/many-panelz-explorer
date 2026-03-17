@@ -35,6 +35,7 @@ from many_panelz_explorer._operations.types import (
     DEFAULT_RIMRAF_EXE,
     DEFAULT_TERA_COPY_EXE,
     DEFAULT_TERMINAL_LAUNCHER,
+    DEFAULT_TERMINAL_STARTUP_POSITION,
     DEFAULT_UNSTOPPABLE_EXE,
     DISPATCH_MODE_QUEUE,
     QUEUE_VIEW_DOCK,
@@ -107,19 +108,22 @@ class SettingsRegistry:
     COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY = (
         "ops/open/comspec_terminal/command_args_template"
     )
+    COMSPEC_TERMINAL_STARTUP_POSITION_KEY = "ops/open/comspec_terminal/startup_position"
     PWSH_TERMINAL_EXECUTABLE_KEY = "ops/open/pwsh_terminal/executable"
     PWSH_TERMINAL_OPEN_ARGS_TEMPLATE_KEY = "ops/open/pwsh_terminal/open_args_template"
     PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY = (
         "ops/open/pwsh_terminal/command_args_template"
     )
-    POWERSHELL5_TERMINAL_EXECUTABLE_KEY = (
-        "ops/open/powershell5_terminal/executable"
-    )
+    PWSH_TERMINAL_STARTUP_POSITION_KEY = "ops/open/pwsh_terminal/startup_position"
+    POWERSHELL5_TERMINAL_EXECUTABLE_KEY = "ops/open/powershell5_terminal/executable"
     POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE_KEY = (
         "ops/open/powershell5_terminal/open_args_template"
     )
     POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY = (
         "ops/open/powershell5_terminal/command_args_template"
+    )
+    POWERSHELL5_TERMINAL_STARTUP_POSITION_KEY = (
+        "ops/open/powershell5_terminal/startup_position"
     )
     FILE_OPEN_OVERRIDES_JSON_KEY = "ops/open/file_open_overrides_json"
     TOTAL_COMMANDER_EXECUTABLE_KEY = "ops/open/total_commander/executable"
@@ -218,13 +222,13 @@ class SettingsRegistry:
     DEFAULT_COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE = (
         DEFAULT_COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE
     )
+    DEFAULT_COMSPEC_TERMINAL_STARTUP_POSITION = DEFAULT_TERMINAL_STARTUP_POSITION
     DEFAULT_PWSH_TERMINAL_EXECUTABLE = DEFAULT_PWSH_TERMINAL_EXECUTABLE
-    DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE = (
-        DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE
-    )
+    DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE = DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE
     DEFAULT_PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE = (
         DEFAULT_PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE
     )
+    DEFAULT_PWSH_TERMINAL_STARTUP_POSITION = DEFAULT_TERMINAL_STARTUP_POSITION
     DEFAULT_POWERSHELL5_TERMINAL_EXECUTABLE = DEFAULT_POWERSHELL5_TERMINAL_EXECUTABLE
     DEFAULT_POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE = (
         DEFAULT_POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE
@@ -232,6 +236,7 @@ class SettingsRegistry:
     DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE = (
         DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE
     )
+    DEFAULT_POWERSHELL5_TERMINAL_STARTUP_POSITION = DEFAULT_TERMINAL_STARTUP_POSITION
     DEFAULT_FILE_OPEN_OVERRIDES_JSON = "{}"
     DEFAULT_TOTAL_COMMANDER_EXECUTABLE = DEFAULT_TOTAL_COMMANDER_EXECUTABLE
     DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE = (
@@ -292,4 +297,11 @@ class SettingsRegistry:
         "always_mib",
         "bytes",
         "custom",
+    }
+    ALLOWED_TERMINAL_STARTUP_POSITIONS: ClassVar[set[str]] = {
+        "normal",
+        "maximized",
+        "minimized",
+        "right_of_screen",
+        "left_of_screen",
     }

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QGridLayout,
     QHBoxLayout,
     QLabel,
@@ -277,6 +278,7 @@ def build_executable_with_open_command_templates_controls(
     executable_edit: QLineEdit,
     open_args_edit: QLineEdit,
     command_args_edit: QLineEdit,
+    startup_position_combo: QComboBox | None = None,
     default_executable: str,
     default_open_args: str,
     default_command_args: str,
@@ -291,6 +293,11 @@ def build_executable_with_open_command_templates_controls(
     command_args_edit.textChanged.connect(dialog.on_controls_changed)
     for edit in [executable_edit, open_args_edit, command_args_edit]:
         edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+    if startup_position_combo is not None:
+        startup_position_combo.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed,
+        )
 
     host = QWidget(dialog)
     layout = QGridLayout(host)
@@ -307,6 +314,11 @@ def build_executable_with_open_command_templates_controls(
     hint = QLabel("Tokens: {folder} {shell_command}", host)
     hint.setStyleSheet("color: #444;")
     layout.addWidget(hint, 3, 1)
+    next_row = 4
+    if startup_position_combo is not None:
+        layout.addWidget(QLabel("Startup Position", host), next_row, 0)
+        layout.addWidget(startup_position_combo, next_row, 1)
+        next_row += 1
 
     actions = QWidget(host)
     actions_layout = QHBoxLayout(actions)
@@ -341,7 +353,7 @@ def build_executable_with_open_command_templates_controls(
     actions_layout.addWidget(browse_btn)
     actions_layout.addWidget(find_btn)
     actions_layout.addWidget(reset_btn)
-    layout.addWidget(actions, 4, 1)
+    layout.addWidget(actions, next_row, 1)
     layout.setColumnStretch(1, 1)
     host.setToolTip(
         f"{tool_name} templates support {{folder}} and {{shell_command}} tokens."

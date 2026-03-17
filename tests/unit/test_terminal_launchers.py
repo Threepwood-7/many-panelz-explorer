@@ -79,14 +79,14 @@ def test_open_terminal_uses_exact_comspec_command_line_for_shell_command(
 ) -> None:
     cmd_path = tmp_path / "Program Files" / "cmd.exe"
     target_folder = tmp_path / "folder with spaces"
-    recorded: list[str | list[str]] = []
+    recorded: list[tuple[str | list[str], dict[str, object]]] = []
     cmd_path.parent.mkdir(parents=True, exist_ok=True)
     target_folder.mkdir()
     cmd_path.write_text("", encoding="utf-8")
     monkeypatch.setenv("ComSpec", str(cmd_path))
     monkeypatch.setattr(
         "many_panelz_explorer.terminal_launchers.subprocess.Popen",
-        lambda args: recorded.append(args),
+        lambda args, **kwargs: recorded.append((args, kwargs)),
     )
 
     open_terminal(
@@ -95,7 +95,7 @@ def test_open_terminal_uses_exact_comspec_command_line_for_shell_command(
         command="pytest -q",
     )
 
-    assert recorded == [f'"{cmd_path}" /K cd /d "{target_folder}" && pytest -q']
+    assert recorded == [(f'"{cmd_path}" /K cd /d "{target_folder}" && pytest -q', {})]
 
 
 def test_build_windows_terminal_launch_argv_runs_pwsh_command(
@@ -171,10 +171,10 @@ def test_open_terminal_here_uses_configured_default_launcher(
     powershell5_path.parent.mkdir(parents=True, exist_ok=True)
     powershell5_path.write_text("", encoding="utf-8")
     monkeypatch.setenv("SYSTEMROOT", str(tmp_path / "Windows"))
-    recorded: list[list[str]] = []
+    recorded: list[tuple[list[str], dict[str, object]]] = []
     monkeypatch.setattr(
         "many_panelz_explorer.terminal_launchers.subprocess.Popen",
-        lambda args: recorded.append(list(args)),
+        lambda args, **kwargs: recorded.append((list(args), kwargs)),
     )
     configure_terminal_launchers(
         TerminalLauncherSettings(default_terminal_launcher="powershell5")
@@ -183,12 +183,79 @@ def test_open_terminal_here_uses_configured_default_launcher(
     file_ops.open_terminal_here(tmp_path)
 
     assert recorded == [
-        [
-            str(powershell5_path),
-            "-NoExit",
-            "-Command",
-            "Set-Location",
-            "-LiteralPath",
-            f"'{tmp_path}'",
-        ]
+        (
+            [
+                str(powershell5_path),
+                "-NoExit",
+                "-Command",
+                "Set-Location",
+                "-LiteralPath",
+                f"'{tmp_path}'",
+            ],
+            {},
+        )
     ]
+
+
+def test_open_terminal_uses_startupinfo_for_maximized_terminal(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pwsh_path = tmp_path / "pwsh.exe"
+    recorded: list[tuple[list[str], dict[str, object]]] = []
+    pwsh_path.write_text("", encoding="utf-8")
+    monkeypatch.setenv("PATH", str(tmp_path))
+    monkeypatch.setattr(
+        "many_panelz_explorer.terminal_launchers._apply_windows_terminal_startup_position_async",
+        lambda *_args: None,
+    )
+    monkeypatch.setattr(
+        "many_panelz_explorer.terminal_launchers.subprocess.Popen",
+        lambda args, **kwargs: recorded.append((list(args), kwargs)),
+    )
+
+    open_terminal(
+        tmp_path,
+        launcher_id="pwsh",
+        settings=TerminalLauncherSettings(
+            pwsh_terminal_startup_position="maximized",
+        ),
+    )
+
+    assert recorded
+    _, kwargs = recorded[0]
+    startupinfo = kwargs.get("startupinfo")
+    assert startupinfo is not None
+    assert startupinfo.wShowWindow == 3
+
+
+def test_open_terminal_repositions_terminal_to_screen_side(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pwsh_path = tmp_path / "pwsh.exe"
+    recorded_positions: list[tuple[int, str]] = []
+    pwsh_path.write_text("", encoding="utf-8")
+    monkeypatch.setenv("PATH", str(tmp_path))
+
+    class _FakeProcess:
+        pid = 4242
+
+    monkeypatch.setattr(
+        "many_panelz_explorer.terminal_launchers.subprocess.Popen",
+        lambda _args, **_kwargs: _FakeProcess(),
+    )
+    monkeypatch.setattr(
+        "many_panelz_explorer.terminal_launchers._apply_windows_terminal_startup_position_async",
+        lambda process, startup_position: recorded_positions.append(
+            (process.pid, startup_position)
+        ),
+    )
+
+    open_terminal(
+        tmp_path,
+        launcher_id="pwsh",
+        settings=TerminalLauncherSettings(
+            pwsh_terminal_startup_position="right_of_screen",
+        ),
+    )
+
+    assert recorded_positions == [(4242, "right_of_screen")]
