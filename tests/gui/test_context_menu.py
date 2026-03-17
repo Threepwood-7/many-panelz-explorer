@@ -17,6 +17,7 @@ from many_panelz_explorer._operations.queue_manager import OperationQueueManager
 from many_panelz_explorer._operations.types import OperationExecutionPreferences
 from many_panelz_explorer._settings.manager import SettingsManager
 from many_panelz_explorer.operation_queue_widgets import OperationQueueTableModel
+from many_panelz_explorer.terminal_launchers import TerminalLauncherAvailability
 from many_panelz_explorer.window import ExplorerWindow
 
 if TYPE_CHECKING:
@@ -328,15 +329,15 @@ def test_context_terminal_command_uses_explicit_sh_fallback(
         return None
 
     monkeypatch.setattr(
-        "many_panelz_explorer._context.menu_controller.os.name",
+        "many_panelz_explorer.terminal_launchers.os.name",
         "posix",
     )
     monkeypatch.setattr(
-        "many_panelz_explorer._context.menu_controller.shutil.which",
+        "many_panelz_explorer.terminal_launchers.shutil.which",
         lambda name: None,
     )
     monkeypatch.setattr(
-        "many_panelz_explorer._context.menu_controller.subprocess.Popen",
+        "many_panelz_explorer.terminal_launchers.subprocess.Popen",
         _record_popen,
     )
 
@@ -368,17 +369,17 @@ def test_context_terminal_command_splits_x_terminal_arguments(
         return None
 
     monkeypatch.setattr(
-        "many_panelz_explorer._context.menu_controller.os.name",
+        "many_panelz_explorer.terminal_launchers.os.name",
         "posix",
     )
     monkeypatch.setattr(
-        "many_panelz_explorer._context.menu_controller.shutil.which",
+        "many_panelz_explorer.terminal_launchers.shutil.which",
         lambda name: (
             "/usr/bin/x-terminal-emulator" if name == "x-terminal-emulator" else None
         ),
     )
     monkeypatch.setattr(
-        "many_panelz_explorer._context.menu_controller.subprocess.Popen",
+        "many_panelz_explorer.terminal_launchers.subprocess.Popen",
         _record_popen,
     )
 
@@ -394,4 +395,129 @@ def test_context_terminal_command_splits_x_terminal_arguments(
             "-lc",
             "echo hi; exec sh",
         ]
+    ]
+
+
+def test_context_menu_terminal_submenu_lists_all_launchers(
+    qtbot, tmp_path: Path, monkeypatch
+) -> None:
+    settings = SettingsManager()
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="context-terminal-launchers",
+        roots_provider=_test_roots_provider(tmp_path),
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    root = tmp_path / "python-project"
+    root.mkdir()
+    (root / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
+    panel = window.panels_coordinator.active_panel()
+    assert panel is not None
+    panel.current_tab().navigation.set_path(root)
+    qtbot.waitUntil(lambda: window.menu_context_action.isVisible() is True)
+
+    monkeypatch.setattr(
+        "many_panelz_explorer._context.menu_controller.available_terminal_launchers",
+        lambda: [
+            TerminalLauncherAvailability(
+                launcher_id="comspec",
+                label="Command Prompt (%ComSpec%)",
+                configured_executable="%ComSpec%",
+                resolved_executable=r"C:\Windows\System32\cmd.exe",
+                error="",
+            ),
+            TerminalLauncherAvailability(
+                launcher_id="pwsh",
+                label="PowerShell 7",
+                configured_executable="pwsh.exe",
+                resolved_executable=r"C:\Program Files\PowerShell\7\pwsh.exe",
+                error="",
+            ),
+            TerminalLauncherAvailability(
+                launcher_id="powershell5",
+                label="Windows PowerShell 5.1",
+                configured_executable="powershell.exe",
+                resolved_executable="",
+                error="Configured executable is unavailable: powershell.exe",
+            ),
+        ],
+    )
+
+    controller = window.context_menu_controller
+    assert controller is not None
+    controller._last_rebuild_signature = None
+    controller.rebuild()
+    assert any(
+        any(action.text() == "Open terminal here" for action in menu.actions())
+        for menu in controller._owned_menus
+    )
+    terminal_submenu = next(
+        menu
+        for menu in controller._owned_menus
+        if menu.title() == "Open terminal with"
+    )
+    assert terminal_submenu is not None
+    actions = {action.text(): action for action in terminal_submenu.actions()}
+    assert set(actions) == {
+        "Command Prompt (%ComSpec%)",
+        "PowerShell 7",
+        "Windows PowerShell 5.1",
+    }
+    assert actions["Windows PowerShell 5.1"].isEnabled() is False
+
+
+def test_context_runnable_scripts_use_default_terminal_launcher(
+    qtbot, tmp_path: Path, monkeypatch
+) -> None:
+    settings = SettingsManager()
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="context-terminal-default-launcher",
+        roots_provider=_test_roots_provider(tmp_path),
+    )
+    qtbot.addWidget(window)
+    controller = window.context_menu_controller
+    assert controller is not None
+
+    captured: list[dict[str, object]] = []
+
+    def _record_open_terminal(
+        root_path: Path,
+        *,
+        launcher_id: str | None = None,
+        command: str | None = None,
+        python_project: bool = False,
+    ) -> None:
+        captured.append(
+            {
+                "root_path": root_path,
+                "launcher_id": launcher_id,
+                "command": command,
+                "python_project": python_project,
+            }
+        )
+
+    monkeypatch.setattr(
+        controller,
+        "_open_terminal",
+        _record_open_terminal,
+    )
+    monkeypatch.setattr(
+        "many_panelz_explorer._context.menu_controller.shutil.which",
+        lambda _name: None,
+    )
+
+    controller._run_script("python", tmp_path, "pytest -q")
+
+    assert captured == [
+        {
+            "root_path": tmp_path,
+            "launcher_id": None,
+            "command": "pytest -q",
+            "python_project": True,
+        }
     ]

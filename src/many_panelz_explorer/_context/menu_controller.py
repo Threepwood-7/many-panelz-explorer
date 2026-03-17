@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
 import webbrowser
@@ -14,6 +13,7 @@ from typing import TYPE_CHECKING, cast
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox
 
+from ..terminal_launchers import available_terminal_launchers, open_terminal
 from .detector import (
     ContextDetectionResult,
     ContextDetector,
@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 
     from PySide6.QtGui import QAction
 
+    from .._operations.types import TerminalLauncherId
     from ..window import ExplorerWindow
 
 
@@ -100,7 +101,7 @@ class ContextMenuController(QObject):
         self._script_loader = _AsyncScriptLoader(self)
         self._script_loader.signals.loaded.connect(self._on_scripts_loaded)
         self._script_menu_states: dict[tuple[str, str, str], _ScriptMenuState] = {}
-        self._last_rebuild_signature: tuple[str, int, str, str, str, str] | None = None
+        self._last_rebuild_signature: tuple[object, ...] | None = None
         self._owned_menus: list[QMenu] = []
 
     def rebuild(self) -> None:
@@ -121,6 +122,16 @@ class ContextMenuController(QObject):
             str(preferences.context_tool_code_editor_args_template),
             str(preferences.context_tool_git_gui_exe_path),
             str(preferences.context_tool_git_gui_args_template),
+            str(preferences.default_terminal_launcher),
+            str(preferences.comspec_terminal_executable),
+            str(preferences.comspec_terminal_open_args_template),
+            str(preferences.comspec_terminal_command_args_template),
+            str(preferences.pwsh_terminal_executable),
+            str(preferences.pwsh_terminal_open_args_template),
+            str(preferences.pwsh_terminal_command_args_template),
+            str(preferences.powershell5_terminal_executable),
+            str(preferences.powershell5_terminal_open_args_template),
+            str(preferences.powershell5_terminal_command_args_template),
         )
         if signature == self._last_rebuild_signature:
             return
@@ -184,11 +195,10 @@ class ContextMenuController(QObject):
                 folder=root.root_path,
                 project_root=root.root_path,
             )
-            terminal_action = root_menu.addAction("Open terminal here")
-            terminal_action.triggered.connect(
-                lambda _checked=False, path=root.root_path: self._open_terminal(
-                    path, python_project=True
-                )
+            self._add_terminal_actions(
+                root_menu,
+                root.root_path,
+                python_project=True,
             )
             if root.pyproject_path is not None:
                 self._add_tool_action(
@@ -230,10 +240,7 @@ class ContextMenuController(QObject):
                 folder=root.root_path,
                 project_root=root.root_path,
             )
-            terminal_action = root_menu.addAction("Open terminal here")
-            terminal_action.triggered.connect(
-                lambda _checked=False, path=root.root_path: self._open_terminal(path)
-            )
+            self._add_terminal_actions(root_menu, root.root_path)
             copy_action = root_menu.addAction("Copy remote origin URL")
             if root.remote_origin_url:
                 copy_action.triggered.connect(
@@ -275,10 +282,7 @@ class ContextMenuController(QObject):
                 folder=root.root_path,
                 project_root=root.root_path,
             )
-            terminal_action = root_menu.addAction("Open terminal here")
-            terminal_action.triggered.connect(
-                lambda _checked=False, path=root.root_path: self._open_terminal(path)
-            )
+            self._add_terminal_actions(root_menu, root.root_path)
             if root.package_json_path is not None:
                 self._add_tool_action(
                     root_menu,
@@ -434,6 +438,58 @@ class ContextMenuController(QObject):
         clipboard.setText(str(value or ""))
         self._window.statusBar().showMessage("Copied remote URL to clipboard.", 1800)
 
+    def _add_terminal_actions(
+        self,
+        menu: QMenu,
+        root_path: Path,
+        *,
+        python_project: bool = False,
+    ) -> None:
+        """Add the shared terminal actions to one detected project menu."""
+
+        terminal_action = menu.addAction("Open terminal here")
+        terminal_action.triggered.connect(
+            lambda _checked=False, path=root_path: self._open_terminal(
+                path,
+                python_project=python_project,
+            )
+        )
+        submenu = self._track_menu(menu.addMenu("Open terminal with"))
+        submenu.setToolTipsVisible(True)
+        for launcher in available_terminal_launchers():
+            action = submenu.addAction(launcher.label)
+            if launcher.is_available:
+                action.triggered.connect(
+                    self._terminal_trigger_callback(
+                        root_path,
+                        launcher.launcher_id,
+                        python_project=python_project,
+                    )
+                )
+                continue
+            hint = launcher.error or "Configured executable is unavailable."
+            action.setEnabled(False)
+            action.setToolTip(hint)
+            action.setStatusTip(hint)
+
+    def _terminal_trigger_callback(
+        self,
+        root_path: Path,
+        launcher_id: TerminalLauncherId,
+        *,
+        python_project: bool,
+    ) -> Callable[[bool], None]:
+        """Build a callback for an explicit terminal launcher menu entry."""
+
+        def _trigger(_checked: bool = False) -> None:
+            self._open_terminal(
+                root_path,
+                launcher_id=launcher_id,
+                python_project=python_project,
+            )
+
+        return _trigger
+
     def _scripts_menu_callback(self, key: tuple[str, str, str]) -> Callable[[], None]:
         def _show_scripts_menu() -> None:
             self._on_scripts_menu_about_to_show(key)
@@ -444,56 +500,19 @@ class ContextMenuController(QObject):
         self,
         root_path: Path,
         *,
+        launcher_id: TerminalLauncherId | None = None,
         command: str | None = None,
         python_project: bool = False,
     ) -> None:
-        path = Path(root_path)
-        if os.name == "nt":
-            parts = [f"Set-Location -LiteralPath {self._powershell_quote(str(path))}"]
-            if python_project:
-                activate_path = path / ".venv" / "Scripts" / "Activate.ps1"
-                if activate_path.is_file():
-                    parts.append(f". {self._powershell_quote(str(activate_path))}")
-            if command:
-                parts.append(str(command))
-            joined = "; ".join(part for part in parts if part)
-            try:
-                subprocess.Popen(["powershell", "-NoExit", "-Command", joined])
-            except Exception as exc:  # pragma: no cover - UI error path
-                QMessageBox.critical(self._window, "Context Action Failed", str(exc))
-            return
-
-        if command:
-            self._open_posix_terminal_with_command(path, command)
-            return
-
-        if shutil.which("x-terminal-emulator"):
-            subprocess.Popen(["x-terminal-emulator", "--working-directory", str(path)])
-            return
-        QMessageBox.warning(
-            self._window,
-            "Context Action Failed",
-            "No terminal launcher found for this platform.",
-        )
-
-    def _open_posix_terminal_with_command(self, root_path: Path, command: str) -> None:
-        """Open a POSIX terminal at ``root_path`` and run ``command``."""
-
-        path = Path(root_path)
-        if shutil.which("x-terminal-emulator"):
-            subprocess.Popen(
-                [
-                    "x-terminal-emulator",
-                    "--working-directory",
-                    str(path),
-                    "-e",
-                    "sh",
-                    "-lc",
-                    f"{command}; exec sh",
-                ]
+        try:
+            open_terminal(
+                Path(root_path),
+                launcher_id=launcher_id,
+                command=command,
+                python_project=python_project,
             )
-            return
-        subprocess.Popen(["sh", "-lc", command], cwd=path)
+        except Exception as exc:  # pragma: no cover - UI error path
+            QMessageBox.critical(self._window, "Context Action Failed", str(exc))
 
     def _python_command_with_fallbacks(self, root_path: Path, command: str) -> str:
         activate_path = root_path / ".venv" / "Scripts" / "Activate.ps1"
@@ -507,10 +526,6 @@ class ContextMenuController(QObject):
         if shutil.which("hatch"):
             return f"hatch run {command}"
         return command
-
-    def _powershell_quote(self, value: str) -> str:
-        escaped = str(value).replace("'", "''")
-        return f"'{escaped}'"
 
     def _root_label(self, root_path: Path) -> str:
         return str(root_path)

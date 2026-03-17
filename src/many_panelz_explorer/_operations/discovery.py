@@ -26,10 +26,17 @@ from .types import (
     BACKEND_TERACOPY,
     BACKEND_UNSTOPPABLE,
     COMPANION_TOOL_NOT_FOUND,
+    DEFAULT_COMSPEC_TERMINAL_EXECUTABLE,
     DEFAULT_RIMRAF_EXE,
+    DEFAULT_SYSTEM_POWERSHELL5_FALLBACK,
+    DEFAULT_SYSTEM_PWSH_FALLBACK,
     DEFAULT_TERA_COPY_EXE,
     DEFAULT_UNSTOPPABLE_EXE,
+    TERMINAL_LAUNCHER_COMSPEC,
+    TERMINAL_LAUNCHER_POWERSHELL5,
+    TERMINAL_LAUNCHER_PWSH,
     OperationExecutionPreferences,
+    TerminalLauncherId,
 )
 
 
@@ -174,6 +181,66 @@ def resolve_system_command_paths() -> tuple[str, str]:
     return resolved_cmd, resolved_robocopy
 
 
+def resolve_terminal_launcher_path(
+    *,
+    launcher_id: TerminalLauncherId,
+    configured_executable: str,
+) -> str:
+    """Resolve one terminal launcher executable path."""
+
+    configured = str(configured_executable or "").strip().strip('"')
+    if launcher_id == TERMINAL_LAUNCHER_COMSPEC:
+        return _resolve_comspec_terminal_path(configured)
+    if launcher_id == TERMINAL_LAUNCHER_PWSH:
+        return _resolve_terminal_candidate(
+            configured,
+            default_names=("pwsh.exe", "pwsh"),
+            fallback="",
+        )
+    return _resolve_powershell5_terminal_path(configured)
+
+
+def resolve_terminal_launcher_paths(
+    *,
+    comspec_executable: str,
+    pwsh_executable: str,
+    powershell5_executable: str,
+) -> tuple[str, str, str]:
+    """Resolve all terminal launcher executable paths."""
+
+    return (
+        resolve_terminal_launcher_path(
+            launcher_id=TERMINAL_LAUNCHER_COMSPEC,
+            configured_executable=comspec_executable,
+        ),
+        resolve_terminal_launcher_path(
+            launcher_id=TERMINAL_LAUNCHER_PWSH,
+            configured_executable=pwsh_executable,
+        ),
+        resolve_terminal_launcher_path(
+            launcher_id=TERMINAL_LAUNCHER_POWERSHELL5,
+            configured_executable=powershell5_executable,
+        ),
+    )
+
+
+def resolve_powershell_command_paths() -> tuple[str, str]:
+    """Resolve current PowerShell 7 and Windows PowerShell 5.1 paths."""
+
+    resolved_pwsh = resolve_terminal_launcher_path(
+        launcher_id=TERMINAL_LAUNCHER_PWSH,
+        configured_executable="pwsh.exe",
+    )
+    resolved_powershell5 = resolve_terminal_launcher_path(
+        launcher_id=TERMINAL_LAUNCHER_POWERSHELL5,
+        configured_executable="powershell.exe",
+    )
+    return (
+        resolved_pwsh or DEFAULT_SYSTEM_PWSH_FALLBACK,
+        resolved_powershell5 or DEFAULT_SYSTEM_POWERSHELL5_FALLBACK,
+    )
+
+
 def resolve_companion_tool_paths(
     preferences: OperationExecutionPreferences,
 ) -> OperationExecutionPreferences:
@@ -234,3 +301,80 @@ def resolve_external_file_manager_paths(
             DOUBLE_COMMANDER_DISCOVERY_CANDIDATES,
         ),
     )
+
+
+def _resolve_comspec_terminal_path(configured_executable: str) -> str:
+    """Resolve `%ComSpec%` first, then fall back to `cmd.exe` discovery."""
+
+    configured = str(configured_executable or "").strip()
+    if Path(configured).is_absolute():
+        candidate = Path(configured)
+        return str(candidate) if candidate.exists() else ""
+    if configured.casefold() not in {
+        "",
+        DEFAULT_COMSPEC_TERMINAL_EXECUTABLE.casefold(),
+        "cmd.exe",
+        "cmd",
+    }:
+        return _resolve_terminal_candidate(configured, default_names=(), fallback="")
+    comspec_path = get_comspec_path()
+    if comspec_path is not None and comspec_path.exists():
+        return str(comspec_path)
+    return _resolve_terminal_candidate("cmd.exe", default_names=(), fallback="")
+
+
+def _resolve_powershell5_terminal_path(configured_executable: str) -> str:
+    """Resolve Windows PowerShell 5.1 using system paths and PATH lookup."""
+
+    configured = str(configured_executable or "").strip()
+    system_path = get_system_root_path(
+        "System32",
+        "WindowsPowerShell",
+        "v1.0",
+        "powershell.exe",
+    )
+    default_names = ("powershell.exe", "powershell")
+    default_name_set = {name.casefold() for name in default_names}
+    if (
+        (not configured or configured.casefold() in default_name_set)
+        and system_path is not None
+        and system_path.exists()
+    ):
+        return str(system_path)
+    return _resolve_terminal_candidate(
+        configured,
+        default_names=default_names,
+        fallback="",
+    )
+
+
+def _resolve_terminal_candidate(
+    configured_executable: str,
+    *,
+    default_names: tuple[str, ...],
+    fallback: str,
+) -> str:
+    """Resolve one terminal executable path from explicit or default names."""
+
+    configured = str(configured_executable or "").strip().strip('"')
+    if Path(configured).is_absolute():
+        candidate = Path(configured)
+        return str(candidate) if candidate.exists() else fallback
+    names = (configured,) if configured else ()
+    names = names + tuple(
+        name for name in default_names if name.casefold() != configured.casefold()
+    )
+    for name in names:
+        resolved = _first_existing_candidate(name)
+        if resolved:
+            return resolved
+    return fallback
+
+
+def _first_existing_candidate(executable_name: str) -> str:
+    """Return the first existing candidate path for one executable name."""
+
+    for candidate in candidate_executable_paths(executable_name):
+        if candidate.exists():
+            return str(candidate)
+    return ""

@@ -11,6 +11,7 @@ from many_panelz_explorer._operations.normalize import (
     normalize_dispatch_mode,
     normalize_queue_view_mode,
     normalize_shortcut_behavior,
+    normalize_terminal_launcher,
 )
 
 from . import normalize
@@ -151,6 +152,205 @@ class OpsDefaultSettingsMixin(SettingsDomainBase, SettingsRegistry):
             self.DEFAULT_VIEWER_EXECUTABLE_KEY,
             normalize.normalize_windows_path_text(
                 value, fallback=self.DEFAULT_DEFAULT_VIEWER_EXECUTABLE
+            ),
+        )
+
+    @property
+    def default_terminal_launcher(self) -> str:
+        return normalize_terminal_launcher(
+            self._storage.value(
+                self.DEFAULT_TERMINAL_LAUNCHER_KEY,
+                self.DEFAULT_DEFAULT_TERMINAL_LAUNCHER,
+            )
+        )
+
+    @default_terminal_launcher.setter
+    def default_terminal_launcher(self, value: str) -> None:
+        self._storage.set_value(
+            self.DEFAULT_TERMINAL_LAUNCHER_KEY,
+            normalize_terminal_launcher(
+                value,
+                fallback=self.DEFAULT_DEFAULT_TERMINAL_LAUNCHER,
+            ),
+        )
+
+    @property
+    def comspec_terminal_executable(self) -> str:
+        return normalize.normalize_windows_path_text(
+            self._storage.value(
+                self.COMSPEC_TERMINAL_EXECUTABLE_KEY,
+                self.DEFAULT_COMSPEC_TERMINAL_EXECUTABLE,
+            ),
+            fallback=self.DEFAULT_COMSPEC_TERMINAL_EXECUTABLE,
+        )
+
+    @comspec_terminal_executable.setter
+    def comspec_terminal_executable(self, value: str) -> None:
+        self._storage.set_value(
+            self.COMSPEC_TERMINAL_EXECUTABLE_KEY,
+            normalize.normalize_windows_path_text(
+                value,
+                fallback=self.DEFAULT_COMSPEC_TERMINAL_EXECUTABLE,
+            ),
+        )
+
+    @property
+    def comspec_terminal_open_args_template(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
+                self.DEFAULT_COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE,
+        )
+
+    @comspec_terminal_open_args_template.setter
+    def comspec_terminal_open_args_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
+            normalize.normalize_text(
+                value,
+                fallback=self.DEFAULT_COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE,
+            ),
+        )
+
+    @property
+    def comspec_terminal_command_args_template(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+                self.DEFAULT_COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE,
+        )
+
+    @comspec_terminal_command_args_template.setter
+    def comspec_terminal_command_args_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+            normalize.normalize_text(
+                value,
+                fallback=self.DEFAULT_COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE,
+            ),
+        )
+
+    @property
+    def pwsh_terminal_executable(self) -> str:
+        return normalize.normalize_windows_path_text(
+            self._storage.value(
+                self.PWSH_TERMINAL_EXECUTABLE_KEY,
+                self.DEFAULT_PWSH_TERMINAL_EXECUTABLE,
+            ),
+            fallback=self.DEFAULT_PWSH_TERMINAL_EXECUTABLE,
+        )
+
+    @pwsh_terminal_executable.setter
+    def pwsh_terminal_executable(self, value: str) -> None:
+        self._storage.set_value(
+            self.PWSH_TERMINAL_EXECUTABLE_KEY,
+            normalize.normalize_windows_path_text(
+                value,
+                fallback=self.DEFAULT_PWSH_TERMINAL_EXECUTABLE,
+            ),
+        )
+
+    @property
+    def pwsh_terminal_open_args_template(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.PWSH_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
+                self.DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE,
+        )
+
+    @pwsh_terminal_open_args_template.setter
+    def pwsh_terminal_open_args_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.PWSH_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
+            normalize.normalize_text(
+                value,
+                fallback=self.DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE,
+            ),
+        )
+
+    @property
+    def pwsh_terminal_command_args_template(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+                self.DEFAULT_PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE,
+        )
+
+    @pwsh_terminal_command_args_template.setter
+    def pwsh_terminal_command_args_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+            normalize.normalize_text(
+                value,
+                fallback=self.DEFAULT_PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE,
+            ),
+        )
+
+    @property
+    def powershell5_terminal_executable(self) -> str:
+        return normalize.normalize_windows_path_text(
+            self._storage.value(
+                self.POWERSHELL5_TERMINAL_EXECUTABLE_KEY,
+                self.DEFAULT_POWERSHELL5_TERMINAL_EXECUTABLE,
+            ),
+            fallback=self.DEFAULT_POWERSHELL5_TERMINAL_EXECUTABLE,
+        )
+
+    @powershell5_terminal_executable.setter
+    def powershell5_terminal_executable(self, value: str) -> None:
+        self._storage.set_value(
+            self.POWERSHELL5_TERMINAL_EXECUTABLE_KEY,
+            normalize.normalize_windows_path_text(
+                value,
+                fallback=self.DEFAULT_POWERSHELL5_TERMINAL_EXECUTABLE,
+            ),
+        )
+
+    @property
+    def powershell5_terminal_open_args_template(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
+                self.DEFAULT_POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE,
+        )
+
+    @powershell5_terminal_open_args_template.setter
+    def powershell5_terminal_open_args_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
+            normalize.normalize_text(
+                value,
+                fallback=self.DEFAULT_POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE,
+            ),
+        )
+
+    @property
+    def powershell5_terminal_command_args_template(self) -> str:
+        return normalize.normalize_text(
+            self._storage.value(
+                self.POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+                self.DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE,
+            ),
+            fallback=self.DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE,
+        )
+
+    @powershell5_terminal_command_args_template.setter
+    def powershell5_terminal_command_args_template(self, value: str) -> None:
+        self._storage.set_value(
+            self.POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+            normalize.normalize_text(
+                value,
+                fallback=self.DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE,
             ),
         )
 

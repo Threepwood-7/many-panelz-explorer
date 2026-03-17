@@ -14,13 +14,23 @@ from many_panelz_explorer._operations.types import (
     BACKEND_PYTHON,
     BACKEND_RECYCLE_BIN,
     DEFAULT_CMD_DELETE_ARGS,
+    DEFAULT_COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE,
+    DEFAULT_COMSPEC_TERMINAL_EXECUTABLE,
+    DEFAULT_COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE,
     DEFAULT_GENERIC_COPYMOVE_EXE,
     DEFAULT_GENERIC_DELETE_ARGS,
     DEFAULT_GENERIC_DELETE_EXE,
+    DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE,
+    DEFAULT_POWERSHELL5_TERMINAL_EXECUTABLE,
+    DEFAULT_POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE,
     DEFAULT_POWERSHELL_DELETE_ARGS,
+    DEFAULT_PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE,
+    DEFAULT_PWSH_TERMINAL_EXECUTABLE,
+    DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE,
     DEFAULT_RIMRAF_ARGS,
     DEFAULT_RIMRAF_EXE,
     DEFAULT_TERA_COPY_EXE,
+    DEFAULT_TERMINAL_LAUNCHER,
     DEFAULT_UNSTOPPABLE_EXE,
     DISPATCH_MODE_QUEUE,
     QUEUE_VIEW_DOCK,
@@ -86,6 +96,26 @@ class UiPreferences:
     operation_queue_view_mode: str = QUEUE_VIEW_DOCK
     default_editor_executable: str = ""
     default_viewer_executable: str = ""
+    default_terminal_launcher: str = DEFAULT_TERMINAL_LAUNCHER
+    comspec_terminal_executable: str = DEFAULT_COMSPEC_TERMINAL_EXECUTABLE
+    comspec_terminal_open_args_template: str = (
+        DEFAULT_COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE
+    )
+    comspec_terminal_command_args_template: str = (
+        DEFAULT_COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE
+    )
+    pwsh_terminal_executable: str = DEFAULT_PWSH_TERMINAL_EXECUTABLE
+    pwsh_terminal_open_args_template: str = DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE
+    pwsh_terminal_command_args_template: str = (
+        DEFAULT_PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE
+    )
+    powershell5_terminal_executable: str = DEFAULT_POWERSHELL5_TERMINAL_EXECUTABLE
+    powershell5_terminal_open_args_template: str = (
+        DEFAULT_POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE
+    )
+    powershell5_terminal_command_args_template: str = (
+        DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE
+    )
     file_open_overrides_json: str = "{}"
     total_commander_executable: str = DEFAULT_TOTAL_COMMANDER_EXECUTABLE
     total_commander_source_args_template: str = (

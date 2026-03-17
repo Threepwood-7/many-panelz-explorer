@@ -13,6 +13,14 @@ from PySide6.QtWidgets import (
     QTableWidget,
 )
 
+from ..._operations.types import (
+    DEFAULT_COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE,
+    DEFAULT_COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE,
+    DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE,
+    DEFAULT_POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE,
+    DEFAULT_PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE,
+    DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE,
+)
 from ..._settings.manager import SettingsManager
 from ...constants import APP_DISPLAY_NAME, APP_VERSION
 from ...external_file_managers import (
@@ -36,6 +44,7 @@ def build_operations_rows(
     *,
     defaults_queue_group: SubsectionEntry,
     open_tools_group: SubsectionEntry,
+    terminal_tools_group: SubsectionEntry,
     backend_commands_group: SubsectionEntry,
     backend_args_group: SubsectionEntry,
     diagnostics_group: SubsectionEntry,
@@ -51,6 +60,10 @@ def build_operations_rows(
     build_operation_open_tools_rows(
         dialog,
         open_tools_group=open_tools_group,
+    )
+    build_terminal_tool_rows(
+        dialog,
+        terminal_tools_group=terminal_tools_group,
     )
     section_operations_backends.build_operation_backend_rows(
         dialog,
@@ -484,6 +497,145 @@ def build_file_open_override_rows(
         ),
         terms="extension override editor viewer open file",
         controls=[overrides_controls],
+    )
+
+
+def build_terminal_tool_rows(
+    dialog: SettingsDialog,
+    *,
+    terminal_tools_group: SubsectionEntry,
+) -> None:
+    """Build rows for configurable terminal launchers and diagnostics."""
+
+    dialog.default_terminal_launcher_combo = QComboBox(dialog)
+    dialog.default_terminal_launcher_combo.addItem(
+        "Command Prompt (%ComSpec%)",
+        "comspec",
+    )
+    dialog.default_terminal_launcher_combo.addItem("PowerShell 7", "pwsh")
+    dialog.default_terminal_launcher_combo.addItem(
+        "Windows PowerShell 5.1",
+        "powershell5",
+    )
+    dialog.default_terminal_launcher_combo.currentIndexChanged.connect(
+        dialog.on_controls_changed
+    )
+    add_row(
+        dialog,
+        section=terminal_tools_group,
+        key="default_terminal_launcher",
+        title="Default Terminal",
+        description="Launcher used by one-click Open terminal here actions.",
+        terms="default terminal comspec cmd pwsh powershell 5 7",
+        controls=[dialog.default_terminal_launcher_combo],
+    )
+
+    dialog.comspec_terminal_executable_edit = QLineEdit(dialog)
+    dialog.comspec_terminal_open_args_edit = QLineEdit(dialog)
+    dialog.comspec_terminal_command_args_edit = QLineEdit(dialog)
+    comspec_controls = (
+        control_builders.build_executable_with_open_command_templates_controls(
+            dialog,
+            executable_edit=dialog.comspec_terminal_executable_edit,
+            open_args_edit=dialog.comspec_terminal_open_args_edit,
+            command_args_edit=dialog.comspec_terminal_command_args_edit,
+            default_executable=SettingsManager.DEFAULT_COMSPEC_TERMINAL_EXECUTABLE,
+            default_open_args=DEFAULT_COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE,
+            default_command_args=DEFAULT_COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE,
+            discover_default_executable="cmd.exe",
+            tool_name="Command Prompt",
+        )
+    )
+    add_row(
+        dialog,
+        section=terminal_tools_group,
+        key="comspec_terminal_launcher",
+        title="Command Prompt (%ComSpec%)",
+        description=(
+            "Executable, open-template args, and command-template args for "
+            "Command Prompt launches."
+        ),
+        terms="command prompt comspec cmd executable open args command args",
+        controls=[comspec_controls],
+    )
+
+    dialog.pwsh_terminal_executable_edit = QLineEdit(dialog)
+    dialog.pwsh_terminal_open_args_edit = QLineEdit(dialog)
+    dialog.pwsh_terminal_command_args_edit = QLineEdit(dialog)
+    pwsh_controls = (
+        control_builders.build_executable_with_open_command_templates_controls(
+            dialog,
+            executable_edit=dialog.pwsh_terminal_executable_edit,
+            open_args_edit=dialog.pwsh_terminal_open_args_edit,
+            command_args_edit=dialog.pwsh_terminal_command_args_edit,
+            default_executable=SettingsManager.DEFAULT_PWSH_TERMINAL_EXECUTABLE,
+            default_open_args=DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE,
+            default_command_args=DEFAULT_PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE,
+            discover_default_executable="pwsh.exe",
+            tool_name="PowerShell 7",
+        )
+    )
+    add_row(
+        dialog,
+        section=terminal_tools_group,
+        key="pwsh_terminal_launcher",
+        title="PowerShell 7",
+        description=(
+            "Executable, open-template args, and command-template args for "
+            "PowerShell 7 launches."
+        ),
+        terms="pwsh powershell 7 executable open args command args",
+        controls=[pwsh_controls],
+    )
+
+    dialog.powershell5_terminal_executable_edit = QLineEdit(dialog)
+    dialog.powershell5_terminal_open_args_edit = QLineEdit(dialog)
+    dialog.powershell5_terminal_command_args_edit = QLineEdit(dialog)
+    powershell5_controls = (
+        control_builders.build_executable_with_open_command_templates_controls(
+            dialog,
+            executable_edit=dialog.powershell5_terminal_executable_edit,
+            open_args_edit=dialog.powershell5_terminal_open_args_edit,
+            command_args_edit=dialog.powershell5_terminal_command_args_edit,
+            default_executable=SettingsManager.DEFAULT_POWERSHELL5_TERMINAL_EXECUTABLE,
+            default_open_args=DEFAULT_POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE,
+            default_command_args=(
+                DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE
+            ),
+            discover_default_executable="powershell.exe",
+            tool_name="Windows PowerShell 5.1",
+        )
+    )
+    add_row(
+        dialog,
+        section=terminal_tools_group,
+        key="powershell5_terminal_launcher",
+        title="Windows PowerShell 5.1",
+        description=(
+            "Executable, open-template args, and command-template args for "
+            "Windows PowerShell 5.1 launches."
+        ),
+        terms="windows powershell 5 5.1 executable open args command args",
+        controls=[powershell5_controls],
+    )
+
+    dialog.resolved_comspec_terminal_path_label = QLabel(dialog)
+    dialog.resolved_pwsh_terminal_path_label = QLabel(dialog)
+    dialog.resolved_powershell5_terminal_path_label = QLabel(dialog)
+    add_row(
+        dialog,
+        section=terminal_tools_group,
+        key="resolved_terminal_paths",
+        title="Resolved Terminal Paths",
+        description=(
+            "Runtime-resolved launcher paths for Command Prompt and PowerShell."
+        ),
+        terms="resolved terminal paths comspec cmd pwsh powershell 5 7",
+        controls=[
+            dialog.resolved_comspec_terminal_path_label,
+            dialog.resolved_pwsh_terminal_path_label,
+            dialog.resolved_powershell5_terminal_path_label,
+        ],
     )
 
 

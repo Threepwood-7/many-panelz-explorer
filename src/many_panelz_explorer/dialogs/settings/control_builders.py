@@ -271,6 +271,84 @@ def build_executable_with_source_target_templates_controls(
     return host
 
 
+def build_executable_with_open_command_templates_controls(
+    dialog: SettingsDialog,
+    *,
+    executable_edit: QLineEdit,
+    open_args_edit: QLineEdit,
+    command_args_edit: QLineEdit,
+    default_executable: str,
+    default_open_args: str,
+    default_command_args: str,
+    discover_default_executable: str,
+    tool_name: str,
+    enable_find: bool = True,
+) -> QWidget:
+    """Build launcher controls with executable, open-template, and command-template."""
+
+    executable_edit.textChanged.connect(dialog.on_controls_changed)
+    open_args_edit.textChanged.connect(dialog.on_controls_changed)
+    command_args_edit.textChanged.connect(dialog.on_controls_changed)
+    for edit in [executable_edit, open_args_edit, command_args_edit]:
+        edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    host = QWidget(dialog)
+    layout = QGridLayout(host)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setHorizontalSpacing(8)
+    layout.setVerticalSpacing(6)
+    layout.addWidget(QLabel("Executable", host), 0, 0)
+    layout.addWidget(executable_edit, 0, 1)
+    layout.addWidget(QLabel("Open Args", host), 1, 0)
+    layout.addWidget(open_args_edit, 1, 1)
+    layout.addWidget(QLabel("Command Args", host), 2, 0)
+    layout.addWidget(command_args_edit, 2, 1)
+
+    hint = QLabel("Tokens: {folder} {shell_command}", host)
+    hint.setStyleSheet("color: #444;")
+    layout.addWidget(hint, 3, 1)
+
+    actions = QWidget(host)
+    actions_layout = QHBoxLayout(actions)
+    actions_layout.setContentsMargins(0, 0, 0, 0)
+    actions_layout.setSpacing(8)
+    browse_btn = QPushButton("Browse...", actions)
+    find_btn = QPushButton("Find", actions)
+    find_btn.setEnabled(bool(enable_find and discover_default_executable))
+    reset_btn = QPushButton("Reset", actions)
+    browse_btn.clicked.connect(
+        lambda: backend_actions.browse_executable(dialog, executable_edit)
+    )
+    find_btn.clicked.connect(
+        lambda: backend_actions.find_executable(
+            dialog,
+            executable_edit,
+            default_executable=discover_default_executable,
+        )
+    )
+    reset_btn.clicked.connect(
+        lambda: backend_actions.reset_dual_template_controls(
+            dialog,
+            executable_edit,
+            open_args_edit,
+            command_args_edit,
+            default_executable=default_executable,
+            default_source_args=default_open_args,
+            default_source_target_args=default_command_args,
+        )
+    )
+    actions_layout.addStretch(1)
+    actions_layout.addWidget(browse_btn)
+    actions_layout.addWidget(find_btn)
+    actions_layout.addWidget(reset_btn)
+    layout.addWidget(actions, 4, 1)
+    layout.setColumnStretch(1, 1)
+    host.setToolTip(
+        f"{tool_name} templates support {{folder}} and {{shell_command}} tokens."
+    )
+    return host
+
+
 def build_preview_label(dialog: SettingsDialog) -> QLabel:
     """Build a plain-text preview label used by backend settings cards."""
 

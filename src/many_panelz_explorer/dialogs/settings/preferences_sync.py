@@ -6,7 +6,10 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
 
-from ..._operations.discovery import resolve_system_command_paths
+from ..._operations.discovery import (
+    resolve_system_command_paths,
+    resolve_terminal_launcher_paths,
+)
 from ..._settings.models import UiPreferences
 from . import backend_state, open_overrides_state
 
@@ -124,6 +127,35 @@ def load_operations_preferences(
     )
     dialog.default_editor_executable_edit.setText(preferences.default_editor_executable)
     dialog.default_viewer_executable_edit.setText(preferences.default_viewer_executable)
+    dialog.set_combo_value(
+        dialog.default_terminal_launcher_combo,
+        preferences.default_terminal_launcher,
+    )
+    dialog.comspec_terminal_executable_edit.setText(
+        preferences.comspec_terminal_executable
+    )
+    dialog.comspec_terminal_open_args_edit.setText(
+        preferences.comspec_terminal_open_args_template
+    )
+    dialog.comspec_terminal_command_args_edit.setText(
+        preferences.comspec_terminal_command_args_template
+    )
+    dialog.pwsh_terminal_executable_edit.setText(preferences.pwsh_terminal_executable)
+    dialog.pwsh_terminal_open_args_edit.setText(
+        preferences.pwsh_terminal_open_args_template
+    )
+    dialog.pwsh_terminal_command_args_edit.setText(
+        preferences.pwsh_terminal_command_args_template
+    )
+    dialog.powershell5_terminal_executable_edit.setText(
+        preferences.powershell5_terminal_executable
+    )
+    dialog.powershell5_terminal_open_args_edit.setText(
+        preferences.powershell5_terminal_open_args_template
+    )
+    dialog.powershell5_terminal_command_args_edit.setText(
+        preferences.powershell5_terminal_command_args_template
+    )
     dialog.context_code_editor_executable_edit.setText(
         preferences.context_tool_code_editor_exe_path
     )
@@ -205,6 +237,25 @@ def load_operations_preferences(
     dialog.powershell_delete_args_edit.setText(preferences.powershell_delete_args)
     dialog.rimraf_executable_edit.setText(preferences.rimraf_executable)
     dialog.rimraf_args_edit.setText(preferences.rimraf_args_template)
+    resolved_comspec, resolved_pwsh, resolved_powershell5 = (
+        resolve_terminal_launcher_paths(
+            comspec_executable=preferences.comspec_terminal_executable,
+            pwsh_executable=preferences.pwsh_terminal_executable,
+            powershell5_executable=preferences.powershell5_terminal_executable,
+        )
+    )
+    dialog.resolved_comspec_terminal_path_label.setText(
+        f"ComSpec: {resolved_comspec}"
+    )
+    dialog.resolved_pwsh_terminal_path_label.setText(f"PowerShell 7: {resolved_pwsh}")
+    dialog.resolved_powershell5_terminal_path_label.setText(
+        f"Windows PowerShell 5.1: {resolved_powershell5}"
+    )
+    dialog.resolved_comspec_terminal_path_label.setToolTip(resolved_comspec)
+    dialog.resolved_pwsh_terminal_path_label.setToolTip(resolved_pwsh)
+    dialog.resolved_powershell5_terminal_path_label.setToolTip(
+        resolved_powershell5
+    )
     resolved_cmd, resolved_robocopy = resolve_system_command_paths()
     dialog.resolved_cmd_path_label.setText(f"ComSpec: {resolved_cmd}")
     dialog.resolved_robocopy_path_label.setText(f"Robocopy: {resolved_robocopy}")
@@ -302,6 +353,18 @@ def collect_preferences_from_controls(dialog: SettingsDialog) -> UiPreferences:
         ),
         default_editor_executable=dialog.default_editor_executable_edit.text().strip(),
         default_viewer_executable=dialog.default_viewer_executable_edit.text().strip(),
+        default_terminal_launcher=str(
+            dialog.default_terminal_launcher_combo.currentData()
+        ),
+        comspec_terminal_executable=dialog.comspec_terminal_executable_edit.text().strip(),
+        comspec_terminal_open_args_template=dialog.comspec_terminal_open_args_edit.text().strip(),
+        comspec_terminal_command_args_template=dialog.comspec_terminal_command_args_edit.text().strip(),
+        pwsh_terminal_executable=dialog.pwsh_terminal_executable_edit.text().strip(),
+        pwsh_terminal_open_args_template=dialog.pwsh_terminal_open_args_edit.text().strip(),
+        pwsh_terminal_command_args_template=dialog.pwsh_terminal_command_args_edit.text().strip(),
+        powershell5_terminal_executable=dialog.powershell5_terminal_executable_edit.text().strip(),
+        powershell5_terminal_open_args_template=dialog.powershell5_terminal_open_args_edit.text().strip(),
+        powershell5_terminal_command_args_template=dialog.powershell5_terminal_command_args_edit.text().strip(),
         context_tool_code_editor_exe_path=dialog.context_code_editor_executable_edit.text().strip(),
         context_tool_code_editor_args_template=dialog.context_code_editor_args_edit.text().strip(),
         context_tool_git_gui_exe_path=dialog.context_git_gui_executable_edit.text().strip(),

@@ -16,10 +16,13 @@ from threep_commons.desktop import open_path_in_default_app
 from threep_commons.executables import resolve_executable_path
 from threep_commons.fs_paths import is_explicit_path_text, normalize_windows_path_text
 
+from .terminal_launchers import open_terminal
 from .windows_system_paths import get_system_root_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
+    from ._operations.types import TerminalLauncherId
 
 
 @dataclass
@@ -346,19 +349,13 @@ def zip_extract(archive_path: Path, destination: Path) -> Path:
     return destination
 
 
-def open_terminal_here(path: Path) -> None:
+def open_terminal_here(
+    path: Path,
+    launcher_id: TerminalLauncherId | None = None,
+) -> None:
     """Open a terminal rooted at the given path."""
 
-    path = Path(path)
-    if os.name == "nt":
-        subprocess.Popen(
-            ["powershell", "-NoExit", "-Command", "Set-Location", str(path)]
-        )
-        return
-    if shutil.which("x-terminal-emulator"):
-        subprocess.Popen(["x-terminal-emulator", "--working-directory", str(path)])
-        return
-    raise RuntimeError("No terminal launcher configured for this platform")
+    open_terminal(Path(path), launcher_id=launcher_id)
 
 
 def compute_properties(path: Path) -> dict[str, str]:

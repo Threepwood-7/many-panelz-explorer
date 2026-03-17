@@ -18,10 +18,12 @@ from PySide6.QtWidgets import (
 
 from . import file_ops
 from .dialogs.properties_dialog import PropertiesDialog
+from .terminal_launchers import available_terminal_launchers
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from ._operations.types import TerminalLauncherId
     from .explorer_tab import ExplorerTab
 
 
@@ -34,6 +36,7 @@ class ExplorerTabActions(QObject):
 
     def open_context_menu(self, pos: QPoint) -> None:
         menu = QMenu(self._tab)
+        menu.setToolTipsVisible(True)
         for text, handler in self._menu_specs():
             if text is None:
                 menu.addSeparator()
@@ -41,6 +44,7 @@ class ExplorerTabActions(QObject):
             action = QAction(text, self._tab)
             action.triggered.connect(handler)
             menu.addAction(action)
+        self._add_terminal_menu_items(menu)
         menu.exec(self._tab.view.viewport().mapToGlobal(pos))
 
     def open_context_menu_from_keyboard(self) -> None:
@@ -197,8 +201,28 @@ class ExplorerTabActions(QObject):
             ("Properties", self._show_properties),
             ("Create ZIP...", self._zip_create),
             ("Extract ZIP...", self._zip_extract),
-            ("Open terminal here", self._open_terminal),
         ]
+
+    def _add_terminal_menu_items(self, menu: QMenu) -> None:
+        """Append the shared terminal actions to one explorer-tab menu."""
+
+        default_action = QAction("Open terminal here", self._tab)
+        default_action.triggered.connect(self._open_terminal)
+        menu.addAction(default_action)
+
+        submenu = menu.addMenu("Open terminal with")
+        submenu.setToolTipsVisible(True)
+        for launcher in available_terminal_launchers():
+            action = submenu.addAction(launcher.label)
+            if launcher.is_available:
+                action.triggered.connect(
+                    self._open_terminal_with_callback(launcher.launcher_id)
+                )
+                continue
+            hint = launcher.error or "Configured executable is unavailable."
+            action.setEnabled(False)
+            action.setToolTip(hint)
+            action.setStatusTip(hint)
 
     def _open_selected(self) -> None:
         for path in self._tab.selected_paths():
@@ -323,6 +347,27 @@ class ExplorerTabActions(QObject):
 
     def _open_terminal(self) -> None:
         self._run_action(lambda: file_ops.open_terminal_here(self._tab.navigation.path))
+
+    def _open_terminal_with(self, launcher_id: TerminalLauncherId) -> None:
+        """Open the current folder with one explicit launcher choice."""
+
+        self._run_action(
+            lambda: file_ops.open_terminal_here(
+                self._tab.navigation.path,
+                launcher_id=launcher_id,
+            )
+        )
+
+    def _open_terminal_with_callback(
+        self,
+        launcher_id: TerminalLauncherId,
+    ) -> Callable[[bool], None]:
+        """Build a callback for an explicit explorer-tab terminal launcher."""
+
+        def _trigger(_checked: bool = False) -> None:
+            self._open_terminal_with(launcher_id)
+
+        return _trigger
 
     def _selected_real_paths(self) -> list[Path]:
         selected: list[Path] = []

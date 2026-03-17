@@ -128,6 +128,36 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
     default_viewer_executable = delegate_domain_property(
         "ops", "default_viewer_executable"
     )
+    default_terminal_launcher = delegate_domain_property(
+        "ops", "default_terminal_launcher"
+    )
+    comspec_terminal_executable = delegate_domain_property(
+        "ops", "comspec_terminal_executable"
+    )
+    comspec_terminal_open_args_template = delegate_domain_property(
+        "ops", "comspec_terminal_open_args_template"
+    )
+    comspec_terminal_command_args_template = delegate_domain_property(
+        "ops", "comspec_terminal_command_args_template"
+    )
+    pwsh_terminal_executable = delegate_domain_property(
+        "ops", "pwsh_terminal_executable"
+    )
+    pwsh_terminal_open_args_template = delegate_domain_property(
+        "ops", "pwsh_terminal_open_args_template"
+    )
+    pwsh_terminal_command_args_template = delegate_domain_property(
+        "ops", "pwsh_terminal_command_args_template"
+    )
+    powershell5_terminal_executable = delegate_domain_property(
+        "ops", "powershell5_terminal_executable"
+    )
+    powershell5_terminal_open_args_template = delegate_domain_property(
+        "ops", "powershell5_terminal_open_args_template"
+    )
+    powershell5_terminal_command_args_template = delegate_domain_property(
+        "ops", "powershell5_terminal_command_args_template"
+    )
     file_open_overrides_json = delegate_domain_property(
         "ops", "file_open_overrides_json"
     )
@@ -256,6 +286,24 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
             operation_queue_view_mode=self.operation_queue_view_mode,
             default_editor_executable=self.default_editor_executable,
             default_viewer_executable=self.default_viewer_executable,
+            default_terminal_launcher=self.default_terminal_launcher,
+            comspec_terminal_executable=self.comspec_terminal_executable,
+            comspec_terminal_open_args_template=self.comspec_terminal_open_args_template,
+            comspec_terminal_command_args_template=(
+                self.comspec_terminal_command_args_template
+            ),
+            pwsh_terminal_executable=self.pwsh_terminal_executable,
+            pwsh_terminal_open_args_template=self.pwsh_terminal_open_args_template,
+            pwsh_terminal_command_args_template=(
+                self.pwsh_terminal_command_args_template
+            ),
+            powershell5_terminal_executable=self.powershell5_terminal_executable,
+            powershell5_terminal_open_args_template=(
+                self.powershell5_terminal_open_args_template
+            ),
+            powershell5_terminal_command_args_template=(
+                self.powershell5_terminal_command_args_template
+            ),
             file_open_overrides_json=self.file_open_overrides_json,
             total_commander_executable=self.total_commander_executable,
             total_commander_source_args_template=self.total_commander_source_args_template,
@@ -363,6 +411,30 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
         self.operation_queue_view_mode = preferences.operation_queue_view_mode
         self.default_editor_executable = preferences.default_editor_executable
         self.default_viewer_executable = preferences.default_viewer_executable
+        self.default_terminal_launcher = preferences.default_terminal_launcher
+        self.comspec_terminal_executable = preferences.comspec_terminal_executable
+        self.comspec_terminal_open_args_template = (
+            preferences.comspec_terminal_open_args_template
+        )
+        self.comspec_terminal_command_args_template = (
+            preferences.comspec_terminal_command_args_template
+        )
+        self.pwsh_terminal_executable = preferences.pwsh_terminal_executable
+        self.pwsh_terminal_open_args_template = (
+            preferences.pwsh_terminal_open_args_template
+        )
+        self.pwsh_terminal_command_args_template = (
+            preferences.pwsh_terminal_command_args_template
+        )
+        self.powershell5_terminal_executable = (
+            preferences.powershell5_terminal_executable
+        )
+        self.powershell5_terminal_open_args_template = (
+            preferences.powershell5_terminal_open_args_template
+        )
+        self.powershell5_terminal_command_args_template = (
+            preferences.powershell5_terminal_command_args_template
+        )
         self.file_open_overrides_json = preferences.file_open_overrides_json
         self.total_commander_executable = preferences.total_commander_executable
         self.total_commander_source_args_template = (

@@ -25,9 +25,13 @@ from .types import (
     QUEUE_VIEW_FLOATING,
     SHORTCUT_BEHAVIOR_DIALOG,
     SHORTCUT_BEHAVIOR_DIRECT,
+    TERMINAL_LAUNCHER_COMSPEC,
+    TERMINAL_LAUNCHER_POWERSHELL5,
+    TERMINAL_LAUNCHER_PWSH,
     OperationConflictPolicy,
     OperationDispatchMode,
     OperationKind,
+    TerminalLauncherId,
 )
 
 
@@ -113,3 +117,20 @@ def normalize_delete_backend(value: str) -> str:
     }:
         return normalized
     return BACKEND_RECYCLE_BIN
+
+
+def normalize_terminal_launcher(
+    value: str,
+    *,
+    fallback: TerminalLauncherId = TERMINAL_LAUNCHER_COMSPEC,
+) -> TerminalLauncherId:
+    """Normalize a raw terminal launcher identifier."""
+
+    normalized = str(value).strip().lower()
+    if normalized in {
+        TERMINAL_LAUNCHER_COMSPEC,
+        TERMINAL_LAUNCHER_PWSH,
+        TERMINAL_LAUNCHER_POWERSHELL5,
+    }:
+        return cast("TerminalLauncherId", normalized)
+    return fallback

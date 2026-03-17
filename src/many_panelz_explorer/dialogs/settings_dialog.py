@@ -92,6 +92,16 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
             "operation_queue_view_mode",
             "default_editor_executable",
             "default_viewer_executable",
+            "default_terminal_launcher",
+            "comspec_terminal_executable",
+            "comspec_terminal_open_args_template",
+            "comspec_terminal_command_args_template",
+            "pwsh_terminal_executable",
+            "pwsh_terminal_open_args_template",
+            "pwsh_terminal_command_args_template",
+            "powershell5_terminal_executable",
+            "powershell5_terminal_open_args_template",
+            "powershell5_terminal_command_args_template",
             "context_tool_code_editor_exe_path",
             "context_tool_code_editor_args_template",
             "context_tool_git_gui_exe_path",
@@ -148,11 +158,15 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
         context_git_gui_args_edit: QLineEdit
         context_git_gui_executable_edit: QLineEdit
         context_scan_cap_spin: QSpinBox
+        comspec_terminal_command_args_edit: QLineEdit
+        comspec_terminal_executable_edit: QLineEdit
+        comspec_terminal_open_args_edit: QLineEdit
         default_conflict_policy_combo: QComboBox
         default_copy_move_backend_combo: QComboBox
         default_delete_backend_combo: QComboBox
         default_dispatch_mode_combo: QComboBox
         default_editor_executable_edit: QLineEdit
+        default_terminal_launcher_combo: QComboBox
         default_viewer_executable_edit: QLineEdit
         external_copymove_preview_label: QLabel
         external_copymove_reset_backend_btn: QPushButton
@@ -177,12 +191,21 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
         new_context_combo: QComboBox
         operation_queue_view_mode_combo: QComboBox
         operation_shortcut_behavior_combo: QComboBox
+        powershell5_terminal_command_args_edit: QLineEdit
+        powershell5_terminal_executable_edit: QLineEdit
+        powershell5_terminal_open_args_edit: QLineEdit
         powershell_delete_args_edit: QLineEdit
         powershell_delete_test_btn: QPushButton
         properties_byte_custom_template_edit: QLineEdit
         properties_byte_format_mode_combo: QComboBox
+        pwsh_terminal_command_args_edit: QLineEdit
+        pwsh_terminal_executable_edit: QLineEdit
+        pwsh_terminal_open_args_edit: QLineEdit
         remove_override_row_btn: QPushButton
+        resolved_comspec_terminal_path_label: QLabel
         resolved_cmd_path_label: QLabel
+        resolved_powershell5_terminal_path_label: QLabel
+        resolved_pwsh_terminal_path_label: QLabel
         resolved_robocopy_path_label: QLabel
         rimraf_args_edit: QLineEdit
         rimraf_executable_edit: QLineEdit

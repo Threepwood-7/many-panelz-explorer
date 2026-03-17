@@ -17,6 +17,7 @@ from ._operations.discovery import (
     resolve_external_file_manager_paths,
     resolve_system_command_paths,
 )
+from ._operations.normalize import normalize_terminal_launcher
 from ._operations.queue_manager import OperationQueueManager
 from ._operations.types import OperationExecutionPreferences
 from ._settings.manager import SettingsManager
@@ -27,6 +28,7 @@ from .constants import (
     SETTINGS_ORG_NAME,
 )
 from .operation_queue_widgets import OperationQueuePanel, OperationQueueTableModel
+from .terminal_launchers import TerminalLauncherSettings, configure_terminal_launchers
 from .window import ExplorerWindow
 
 if TYPE_CHECKING:
@@ -58,6 +60,7 @@ class AppController:
         initial_preferences = self.settings.ui_preferences()
         self._apply_application_font(initial_preferences)
         self._apply_file_open_routing(initial_preferences)
+        self._apply_terminal_launcher_routing(initial_preferences)
         self.operation_queue_manager = OperationQueueManager(
             preferences=self._preferences_to_operation_execution(initial_preferences),
             parent=self.app,
@@ -196,6 +199,7 @@ class AppController:
     def preview_ui_preferences(self, preferences: UiPreferences) -> None:
         self._apply_application_font(preferences)
         self._apply_file_open_routing(preferences)
+        self._apply_terminal_launcher_routing(preferences)
         self.operation_queue_manager.set_preferences(
             self._preferences_to_operation_execution(preferences)
         )
@@ -240,6 +244,38 @@ class AppController:
             default_editor_executable=preferences.default_editor_executable,
             default_viewer_executable=preferences.default_viewer_executable,
             overrides_json=preferences.file_open_overrides_json,
+        )
+
+    def _apply_terminal_launcher_routing(self, preferences: UiPreferences) -> None:
+        configure_terminal_launchers(
+            TerminalLauncherSettings(
+                default_terminal_launcher=normalize_terminal_launcher(
+                    preferences.default_terminal_launcher
+                ),
+                comspec_terminal_executable=preferences.comspec_terminal_executable,
+                comspec_terminal_open_args_template=(
+                    preferences.comspec_terminal_open_args_template
+                ),
+                comspec_terminal_command_args_template=(
+                    preferences.comspec_terminal_command_args_template
+                ),
+                pwsh_terminal_executable=preferences.pwsh_terminal_executable,
+                pwsh_terminal_open_args_template=(
+                    preferences.pwsh_terminal_open_args_template
+                ),
+                pwsh_terminal_command_args_template=(
+                    preferences.pwsh_terminal_command_args_template
+                ),
+                powershell5_terminal_executable=(
+                    preferences.powershell5_terminal_executable
+                ),
+                powershell5_terminal_open_args_template=(
+                    preferences.powershell5_terminal_open_args_template
+                ),
+                powershell5_terminal_command_args_template=(
+                    preferences.powershell5_terminal_command_args_template
+                ),
+            )
         )
 
     def show_queue_floating_window(self) -> QMainWindow:

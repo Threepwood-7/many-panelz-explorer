@@ -42,6 +42,7 @@ def build_sections(dialog: SettingsDialog) -> None:
     (
         operations_defaults_queue_group,
         operations_open_tools_group,
+        operations_terminal_tools_group,
         operations_backend_commands_group,
         operations_backend_args_group,
         operations_diagnostics_group,
@@ -68,6 +69,7 @@ def build_sections(dialog: SettingsDialog) -> None:
         dialog,
         defaults_queue_group=operations_defaults_queue_group,
         open_tools_group=operations_open_tools_group,
+        terminal_tools_group=operations_terminal_tools_group,
         backend_commands_group=operations_backend_commands_group,
         backend_args_group=operations_backend_args_group,
         diagnostics_group=operations_diagnostics_group,
@@ -183,6 +185,7 @@ def build_operations_subsections(
     SubsectionEntry,
     SubsectionEntry,
     SubsectionEntry,
+    SubsectionEntry,
 ]:
     """Create the operations-related subsection groups."""
 
@@ -199,6 +202,16 @@ def build_operations_subsections(
         key="operations/open_tools",
         title="Open Tools",
         terms="open tools editor viewer context extension overrides code git",
+    )
+    operations_terminal_tools_group = add_subsection(
+        dialog,
+        section_key="operations",
+        key="operations/terminal_tools",
+        title="Terminal Tools",
+        terms=(
+            "terminal tools command prompt comspec pwsh powershell windows "
+            "powershell 5 7 launcher shell"
+        ),
     )
     operations_backend_commands_group = add_subsection(
         dialog,
@@ -224,6 +237,7 @@ def build_operations_subsections(
     return (
         operations_defaults_queue_group,
         operations_open_tools_group,
+        operations_terminal_tools_group,
         operations_backend_commands_group,
         operations_backend_args_group,
         operations_diagnostics_group,

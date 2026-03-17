@@ -21,6 +21,7 @@ OperationStatus = Literal[
 ]
 OperationDispatchMode = Literal["queue", "launch_now_no_wait", "run_now_wait"]
 OperationConflictPolicy = Literal["overwrite", "skip", "rename", "cancel"]
+TerminalLauncherId = Literal["comspec", "pwsh", "powershell5"]
 CopyMoveBackendId = Literal[
     "python_builtin",
     "windows_explorer",
@@ -81,6 +82,28 @@ DEFAULT_RIMRAF_ARGS = ""
 COMPANION_TOOL_NOT_FOUND = "<not-found>"
 DEFAULT_SYSTEM_CMD_FALLBACK = ""
 DEFAULT_SYSTEM_ROBOCOPY_FALLBACK = ""
+DEFAULT_SYSTEM_PWSH_FALLBACK = ""
+DEFAULT_SYSTEM_POWERSHELL5_FALLBACK = ""
+
+TERMINAL_LAUNCHER_COMSPEC: TerminalLauncherId = "comspec"
+TERMINAL_LAUNCHER_PWSH: TerminalLauncherId = "pwsh"
+TERMINAL_LAUNCHER_POWERSHELL5: TerminalLauncherId = "powershell5"
+DEFAULT_TERMINAL_LAUNCHER: TerminalLauncherId = TERMINAL_LAUNCHER_COMSPEC
+DEFAULT_COMSPEC_TERMINAL_EXECUTABLE = "%ComSpec%"
+DEFAULT_COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE = "/K cd /d {folder}"
+DEFAULT_COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE = "/K {shell_command}"
+DEFAULT_PWSH_TERMINAL_EXECUTABLE = "pwsh.exe"
+DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE = (
+    "-NoExit -Command Set-Location -LiteralPath {folder}"
+)
+DEFAULT_PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE = "-NoExit -Command {shell_command}"
+DEFAULT_POWERSHELL5_TERMINAL_EXECUTABLE = "powershell.exe"
+DEFAULT_POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE = (
+    "-NoExit -Command Set-Location -LiteralPath {folder}"
+)
+DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE = (
+    "-NoExit -Command {shell_command}"
+)
 
 
 @dataclass(frozen=True)

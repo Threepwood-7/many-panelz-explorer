@@ -27,6 +27,11 @@ from many_panelz_explorer._settings.models import UiPreferences
 from many_panelz_explorer.dialogs.settings_dialog import SettingsDialog
 from many_panelz_explorer.explorer_tab import ExplorerTab
 from many_panelz_explorer.operation_queue_widgets import OperationQueueTableModel
+from many_panelz_explorer.terminal_launchers import (
+    TerminalLauncherSettings,
+    configure_terminal_launchers,
+    current_terminal_launcher_settings,
+)
 from many_panelz_explorer.window import ExplorerWindow
 
 
@@ -54,6 +59,34 @@ class _ControllerSettingsStub:
 
     def preview_ui_preferences(self, preferences: UiPreferences) -> None:
         self.preview_calls.append(preferences)
+        configure_terminal_launchers(
+            TerminalLauncherSettings(
+                default_terminal_launcher=preferences.default_terminal_launcher,
+                comspec_terminal_executable=preferences.comspec_terminal_executable,
+                comspec_terminal_open_args_template=(
+                    preferences.comspec_terminal_open_args_template
+                ),
+                comspec_terminal_command_args_template=(
+                    preferences.comspec_terminal_command_args_template
+                ),
+                pwsh_terminal_executable=preferences.pwsh_terminal_executable,
+                pwsh_terminal_open_args_template=(
+                    preferences.pwsh_terminal_open_args_template
+                ),
+                pwsh_terminal_command_args_template=(
+                    preferences.pwsh_terminal_command_args_template
+                ),
+                powershell5_terminal_executable=(
+                    preferences.powershell5_terminal_executable
+                ),
+                powershell5_terminal_open_args_template=(
+                    preferences.powershell5_terminal_open_args_template
+                ),
+                powershell5_terminal_command_args_template=(
+                    preferences.powershell5_terminal_command_args_template
+                ),
+            )
+        )
         resolved_copy_move = resolve_copy_move_backend_args(
             robocopy_options=preferences.robocopy_structured_options,
             teracopy_options=preferences.teracopy_structured_options,
@@ -186,6 +219,16 @@ def _tracked_keys() -> list[str]:
         SettingsManager.OPERATION_QUEUE_VIEW_MODE_KEY,
         SettingsManager.DEFAULT_EDITOR_EXECUTABLE_KEY,
         SettingsManager.DEFAULT_VIEWER_EXECUTABLE_KEY,
+        SettingsManager.DEFAULT_TERMINAL_LAUNCHER_KEY,
+        SettingsManager.COMSPEC_TERMINAL_EXECUTABLE_KEY,
+        SettingsManager.COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
+        SettingsManager.COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+        SettingsManager.PWSH_TERMINAL_EXECUTABLE_KEY,
+        SettingsManager.PWSH_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
+        SettingsManager.PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+        SettingsManager.POWERSHELL5_TERMINAL_EXECUTABLE_KEY,
+        SettingsManager.POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
+        SettingsManager.POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
         SettingsManager.FILE_OPEN_OVERRIDES_JSON_KEY,
         SettingsManager.TOTAL_COMMANDER_EXECUTABLE_KEY,
         SettingsManager.TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY,
@@ -227,6 +270,7 @@ def isolated_settings() -> SettingsManager:
     app = QApplication.instance()
     assert app is not None
     app_font_snapshot = QFont(app.font())
+    terminal_snapshot = current_terminal_launcher_settings()
     try:
         yield settings
     finally:
@@ -237,6 +281,7 @@ def isolated_settings() -> SettingsManager:
                 settings.set_value(key, value)
         settings.sync()
         app.setFont(app_font_snapshot)
+        configure_terminal_launchers(terminal_snapshot)
 
 
 def _new_window(
@@ -695,6 +740,33 @@ def test_settings_dialog_has_larger_minimum_size_and_operations_controls(
     assert hasattr(dialog, "teracopy_args_edit") is False
 
 
+def test_settings_dialog_shows_resolved_terminal_diagnostics(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-terminal-diagnostics",
+        roots_provider=roots_provider,
+    )
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    terminal_item = dialog._subsection_tree_items["operations/terminal_tools"]
+    dialog._section_tree.setCurrentItem(terminal_item)
+    qtbot.waitUntil(lambda: dialog._section_tree.currentItem() is terminal_item)
+
+    assert dialog.resolved_comspec_terminal_path_label.text().startswith("ComSpec:")
+    assert dialog.resolved_pwsh_terminal_path_label.text().startswith("PowerShell 7:")
+    assert dialog.resolved_powershell5_terminal_path_label.text().startswith(
+        "Windows PowerShell 5.1:"
+    )
+
+
 def test_settings_dialog_has_left_section_tree_and_search_sync(
     qtbot, tmp_path: Path, isolated_settings: SettingsManager
 ) -> None:
@@ -713,7 +785,7 @@ def test_settings_dialog_has_left_section_tree_and_search_sync(
 
     assert dialog._section_tree.topLevelItemCount() >= 5
     operations_item = dialog._section_tree_items["operations"]
-    assert operations_item.childCount() >= 5
+    assert operations_item.childCount() >= 6
     dialog._section_tree.setCurrentItem(operations_item)
     qtbot.waitUntil(
         lambda: (
@@ -1030,6 +1102,28 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
 
     dialog.default_editor_executable_edit.setText(r"C:\tools\editor.exe")
     dialog.default_viewer_executable_edit.setText(r"C:\tools\viewer.exe")
+    dialog.set_combo_value(dialog.default_terminal_launcher_combo, "powershell5")
+    dialog.comspec_terminal_executable_edit.setText("%ComSpec%")
+    dialog.comspec_terminal_open_args_edit.setText("/K cd /d {folder}")
+    dialog.comspec_terminal_command_args_edit.setText("/K {shell_command}")
+    dialog.pwsh_terminal_executable_edit.setText(
+        r"C:\Program Files\PowerShell\7\pwsh.exe"
+    )
+    dialog.pwsh_terminal_open_args_edit.setText(
+        "-NoExit -Command Set-Location -LiteralPath {folder}"
+    )
+    dialog.pwsh_terminal_command_args_edit.setText(
+        "-NoExit -Command {shell_command}"
+    )
+    dialog.powershell5_terminal_executable_edit.setText(
+        r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+    )
+    dialog.powershell5_terminal_open_args_edit.setText(
+        "-NoExit -Command Set-Location -LiteralPath {folder}"
+    )
+    dialog.powershell5_terminal_command_args_edit.setText(
+        "-NoExit -Command {shell_command}"
+    )
     dialog.context_scan_cap_spin.setValue(77)
     dialog.context_code_editor_executable_edit.setText(r"C:\tools\code.exe")
     dialog.context_code_editor_args_edit.setText("--folder {folder}")
@@ -1056,6 +1150,34 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
     persisted = isolated_settings.ui_preferences()
     assert persisted.default_editor_executable == r"C:\tools\editor.exe"
     assert persisted.default_viewer_executable == r"C:\tools\viewer.exe"
+    assert persisted.default_terminal_launcher == "powershell5"
+    assert persisted.comspec_terminal_executable == "%ComSpec%"
+    assert persisted.comspec_terminal_open_args_template == "/K cd /d {folder}"
+    assert persisted.comspec_terminal_command_args_template == "/K {shell_command}"
+    assert (
+        persisted.pwsh_terminal_executable
+        == r"C:\Program Files\PowerShell\7\pwsh.exe"
+    )
+    assert (
+        persisted.pwsh_terminal_open_args_template
+        == "-NoExit -Command Set-Location -LiteralPath {folder}"
+    )
+    assert (
+        persisted.pwsh_terminal_command_args_template
+        == "-NoExit -Command {shell_command}"
+    )
+    assert (
+        persisted.powershell5_terminal_executable
+        == r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+    )
+    assert (
+        persisted.powershell5_terminal_open_args_template
+        == "-NoExit -Command Set-Location -LiteralPath {folder}"
+    )
+    assert (
+        persisted.powershell5_terminal_command_args_template
+        == "-NoExit -Command {shell_command}"
+    )
     assert persisted.context_immediate_child_scan_cap == 77
     assert persisted.context_tool_code_editor_exe_path == r"C:\tools\code.exe"
     assert persisted.context_tool_code_editor_args_template == "--folder {folder}"

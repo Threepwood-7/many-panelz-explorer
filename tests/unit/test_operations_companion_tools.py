@@ -6,12 +6,16 @@ from many_panelz_explorer._operations.discovery import (
     common_tool_search_dirs,
     resolve_companion_tool_paths,
     resolve_external_file_manager_paths,
+    resolve_powershell_command_paths,
     resolve_system_command_paths,
+    resolve_terminal_launcher_paths,
 )
 from many_panelz_explorer._operations.types import (
     COMPANION_TOOL_NOT_FOUND,
     DEFAULT_RIMRAF_EXE,
     DEFAULT_SYSTEM_CMD_FALLBACK,
+    DEFAULT_SYSTEM_POWERSHELL5_FALLBACK,
+    DEFAULT_SYSTEM_PWSH_FALLBACK,
     DEFAULT_SYSTEM_ROBOCOPY_FALLBACK,
     DEFAULT_TERA_COPY_EXE,
     DEFAULT_UNSTOPPABLE_EXE,
@@ -116,6 +120,57 @@ def test_resolve_system_command_paths_returns_empty_when_env_is_missing(
     resolved_cmd, resolved_robocopy = resolve_system_command_paths()
     assert resolved_cmd == DEFAULT_SYSTEM_CMD_FALLBACK
     assert resolved_robocopy == DEFAULT_SYSTEM_ROBOCOPY_FALLBACK
+
+
+def test_resolve_terminal_launcher_paths_uses_comspec_env_and_pwsh_path(
+    monkeypatch, tmp_path: Path
+) -> None:
+    cmd_path = tmp_path / "cmd.exe"
+    pwsh_path = tmp_path / "pwsh.exe"
+    powershell5_path = (
+        tmp_path
+        / "Windows"
+        / "System32"
+        / "WindowsPowerShell"
+        / "v1.0"
+        / "powershell.exe"
+    )
+    cmd_path.write_text("", encoding="utf-8")
+    pwsh_path.write_text("", encoding="utf-8")
+    powershell5_path.parent.mkdir(parents=True, exist_ok=True)
+    powershell5_path.write_text("", encoding="utf-8")
+
+    monkeypatch.setenv("ComSpec", str(cmd_path))
+    monkeypatch.setenv("SYSTEMROOT", str(tmp_path / "Windows"))
+    monkeypatch.setenv("PATH", str(tmp_path))
+
+    resolved_comspec, resolved_pwsh, resolved_powershell5 = (
+        resolve_terminal_launcher_paths(
+            comspec_executable="%ComSpec%",
+            pwsh_executable="pwsh.exe",
+            powershell5_executable="powershell.exe",
+        )
+    )
+
+    assert resolved_comspec == str(cmd_path)
+    assert resolved_pwsh == str(pwsh_path)
+    assert resolved_powershell5 == str(powershell5_path)
+
+
+def test_resolve_powershell_command_paths_returns_empty_when_missing(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("SYSTEMROOT", "")
+    monkeypatch.setenv("PATH", "")
+    monkeypatch.setattr(
+        "many_panelz_explorer._operations.discovery.common_tool_search_dirs",
+        lambda: [],
+    )
+
+    resolved_pwsh, resolved_powershell5 = resolve_powershell_command_paths()
+
+    assert resolved_pwsh == DEFAULT_SYSTEM_PWSH_FALLBACK
+    assert resolved_powershell5 == DEFAULT_SYSTEM_POWERSHELL5_FALLBACK
 
 
 def test_common_tool_search_dirs_uses_only_allowed_env_roots(

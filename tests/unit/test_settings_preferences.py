@@ -67,6 +67,16 @@ def _tracked_keys() -> list[str]:
         SettingsManager.OPERATION_QUEUE_VIEW_MODE_KEY,
         SettingsManager.DEFAULT_EDITOR_EXECUTABLE_KEY,
         SettingsManager.DEFAULT_VIEWER_EXECUTABLE_KEY,
+        SettingsManager.DEFAULT_TERMINAL_LAUNCHER_KEY,
+        SettingsManager.COMSPEC_TERMINAL_EXECUTABLE_KEY,
+        SettingsManager.COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
+        SettingsManager.COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+        SettingsManager.PWSH_TERMINAL_EXECUTABLE_KEY,
+        SettingsManager.PWSH_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
+        SettingsManager.PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
+        SettingsManager.POWERSHELL5_TERMINAL_EXECUTABLE_KEY,
+        SettingsManager.POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE_KEY,
+        SettingsManager.POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY,
         SettingsManager.FILE_OPEN_OVERRIDES_JSON_KEY,
         SettingsManager.TOTAL_COMMANDER_EXECUTABLE_KEY,
         SettingsManager.TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY,
@@ -165,6 +175,24 @@ def test_ui_preferences_round_trip() -> None:
             operation_queue_view_mode="both",
             default_editor_executable=r"C:\tools\editor.exe",
             default_viewer_executable=r"C:\tools\viewer.exe",
+            default_terminal_launcher="powershell5",
+            comspec_terminal_executable="%ComSpec%",
+            comspec_terminal_open_args_template="/K cd /d {folder}",
+            comspec_terminal_command_args_template="/K {shell_command}",
+            pwsh_terminal_executable=r"C:\Program Files\PowerShell\7\pwsh.exe",
+            pwsh_terminal_open_args_template=(
+                "-NoExit -Command Set-Location -LiteralPath {folder}"
+            ),
+            pwsh_terminal_command_args_template="-NoExit -Command {shell_command}",
+            powershell5_terminal_executable=(
+                r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+            ),
+            powershell5_terminal_open_args_template=(
+                "-NoExit -Command Set-Location -LiteralPath {folder}"
+            ),
+            powershell5_terminal_command_args_template=(
+                "-NoExit -Command {shell_command}"
+            ),
             file_open_overrides_json=(
                 '{".txt": {"editor": "txtedit.exe", "viewer": "txtview.exe"}}'
             ),
@@ -259,6 +287,10 @@ def test_windows_executable_paths_normalize_to_backslashes() -> None:
             "C:/tools/editor.exe",
         )
         settings.set_value(
+            SettingsManager.PWSH_TERMINAL_EXECUTABLE_KEY,
+            "C:/Program Files/PowerShell/7/pwsh.exe",
+        )
+        settings.set_value(
             SettingsManager.TOTAL_COMMANDER_EXECUTABLE_KEY,
             "C:/tools/totalcmd64.exe",
         )
@@ -284,6 +316,10 @@ def test_windows_executable_paths_normalize_to_backslashes() -> None:
             == r"C:\bin\roadkil\UnstopCpy_5_2_Win2K_UP.exe"
         )
         assert settings.default_editor_executable == r"C:\tools\editor.exe"
+        assert (
+            settings.pwsh_terminal_executable
+            == r"C:\Program Files\PowerShell\7\pwsh.exe"
+        )
         assert settings.total_commander_executable == r"C:\tools\totalcmd64.exe"
         assert settings.double_commander_executable == r"C:\tools\doublecmd.exe"
         overrides = json.loads(settings.file_open_overrides_json)
@@ -392,6 +428,16 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.set_value(SettingsManager.OPERATION_QUEUE_VIEW_MODE_KEY, "invalid")
         settings.remove(SettingsManager.DEFAULT_EDITOR_EXECUTABLE_KEY)
         settings.remove(SettingsManager.DEFAULT_VIEWER_EXECUTABLE_KEY)
+        settings.set_value(SettingsManager.DEFAULT_TERMINAL_LAUNCHER_KEY, "invalid")
+        settings.remove(SettingsManager.COMSPEC_TERMINAL_EXECUTABLE_KEY)
+        settings.remove(SettingsManager.COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE_KEY)
+        settings.remove(SettingsManager.COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY)
+        settings.remove(SettingsManager.PWSH_TERMINAL_EXECUTABLE_KEY)
+        settings.remove(SettingsManager.PWSH_TERMINAL_OPEN_ARGS_TEMPLATE_KEY)
+        settings.remove(SettingsManager.PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY)
+        settings.remove(SettingsManager.POWERSHELL5_TERMINAL_EXECUTABLE_KEY)
+        settings.remove(SettingsManager.POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE_KEY)
+        settings.remove(SettingsManager.POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE_KEY)
         settings.set_value(SettingsManager.FILE_OPEN_OVERRIDES_JSON_KEY, "not-json")
         settings.remove(SettingsManager.TOTAL_COMMANDER_EXECUTABLE_KEY)
         settings.remove(SettingsManager.TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE_KEY)
@@ -567,6 +613,46 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         assert (
             loaded.default_viewer_executable
             == SettingsManager.DEFAULT_DEFAULT_VIEWER_EXECUTABLE
+        )
+        assert (
+            loaded.default_terminal_launcher
+            == SettingsManager.DEFAULT_DEFAULT_TERMINAL_LAUNCHER
+        )
+        assert (
+            loaded.comspec_terminal_executable
+            == SettingsManager.DEFAULT_COMSPEC_TERMINAL_EXECUTABLE
+        )
+        assert (
+            loaded.comspec_terminal_open_args_template
+            == SettingsManager.DEFAULT_COMSPEC_TERMINAL_OPEN_ARGS_TEMPLATE
+        )
+        assert (
+            loaded.comspec_terminal_command_args_template
+            == SettingsManager.DEFAULT_COMSPEC_TERMINAL_COMMAND_ARGS_TEMPLATE
+        )
+        assert (
+            loaded.pwsh_terminal_executable
+            == SettingsManager.DEFAULT_PWSH_TERMINAL_EXECUTABLE
+        )
+        assert (
+            loaded.pwsh_terminal_open_args_template
+            == SettingsManager.DEFAULT_PWSH_TERMINAL_OPEN_ARGS_TEMPLATE
+        )
+        assert (
+            loaded.pwsh_terminal_command_args_template
+            == SettingsManager.DEFAULT_PWSH_TERMINAL_COMMAND_ARGS_TEMPLATE
+        )
+        assert (
+            loaded.powershell5_terminal_executable
+            == SettingsManager.DEFAULT_POWERSHELL5_TERMINAL_EXECUTABLE
+        )
+        assert (
+            loaded.powershell5_terminal_open_args_template
+            == SettingsManager.DEFAULT_POWERSHELL5_TERMINAL_OPEN_ARGS_TEMPLATE
+        )
+        assert (
+            loaded.powershell5_terminal_command_args_template
+            == SettingsManager.DEFAULT_POWERSHELL5_TERMINAL_COMMAND_ARGS_TEMPLATE
         )
         assert (
             loaded.file_open_overrides_json
