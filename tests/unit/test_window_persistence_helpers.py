@@ -26,12 +26,17 @@ def test_window_tabs_payload_ignores_invalid_rows() -> None:
                 "bad": {"panel_id": 2},
                 "3": "invalid",
             },
+            "recently_closed_tabs": [
+                {"path": "c:/closed", "panel_id": "2"},
+                {"path": "bad"},
+            ],
         }
     )
 
     assert payload == {
         "active_panel_id": 7,
         "panels": {"1": {"panel_id": 1, "tabs": [{"path": "c:/one"}]}},
+        "recently_closed_tabs": [{"path": "c:/closed", "panel_id": 2}],
     }
 
 
@@ -57,6 +62,7 @@ def test_saved_view_state_normalizes_flags_and_geometry() -> None:
             "panel_tree": {"root": {"type": "leaf", "panel_id": 1}},
             "tabs": {"4": {"panel_id": 4, "tabs": [{"path": "c:/root"}]}},
             "active_panel_id": "4",
+            "recently_closed_tabs": [{"path": "c:/closed", "panel_id": "6"}],
             "on_top": "yes",
             "maximized": "1",
             "geometry_b64": "abc123",
@@ -68,6 +74,7 @@ def test_saved_view_state_normalizes_flags_and_geometry() -> None:
         "panel_tree": {"root": {"type": "leaf", "panel_id": 1}},
         "tabs": {4: {"panel_id": 4, "tabs": [{"path": "c:/root"}]}},
         "active_panel_id": 4,
+        "recently_closed_tabs": [{"path": "c:/closed", "panel_id": 6}],
         "on_top": True,
         "maximized": True,
         "geometry_b64": "abc123",

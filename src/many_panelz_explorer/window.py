@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from .app_controller import AppController
     from .operation_queue_widgets import OperationQueuePanel
     from .panel_widget import PanelWidget
-    from .ui.window.state_types import PanelRows, TabsState
+    from .ui.window.state_types import ClosedTabState, PanelRows, TabsState
     from .ui.window.status import StorageOverviewLabel
 
 
@@ -100,6 +100,7 @@ class ExplorerWindow(QMainWindow):
     restore_view_action: QAction
     replace_view_action: QAction
     close_tab_action: QAction
+    reopen_closed_tab_action: QAction
     close_panel_action: QAction
     close_window_action: QAction
     exit_action: QAction
@@ -182,6 +183,7 @@ class ExplorerWindow(QMainWindow):
             self.panel_tree.root
         )
         self.panel_widgets: dict[int, PanelWidget] = {}
+        self.recently_closed_tabs: list[ClosedTabState] = []
 
         self._central = QWidget(self)
         self.central_layout = QVBoxLayout(self._central)
@@ -328,6 +330,7 @@ class ExplorerWindow(QMainWindow):
             "Tab / Shift+Tab: Switch active pane\n"
             "Ctrl+A: Select all items in file list\n"
             "Ctrl+P: Copy selected item path or active pane path\n"
+            "Ctrl+Shift+T: Reopen last closed tab\n"
             "Ctrl+, : Open settings\n"
             "Alt or F10: Focus main menu\n"
             "Shift+Esc: Minimize app windows\n"

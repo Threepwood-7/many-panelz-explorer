@@ -365,6 +365,35 @@ def test_show_hidden_toggle_updates_tabs(qtbot, tmp_path: Path) -> None:
     assert tab.model.filter() & tab.model.filter().Hidden
 
 
+def test_reopen_closed_tab_restores_most_recent_tab(qtbot, tmp_path: Path) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="reopen-closed-tab",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    panel = window.panels_coordinator.active_panel()
+    assert panel is not None
+    panel.add_tab(tmp_path)
+    assert panel.tab_count() == 2
+
+    window.close_tab_action.trigger()
+    assert panel.tab_count() == 1
+    assert len(window.recently_closed_tabs) == 1
+    assert window.recently_closed_tabs[0]["path"] == str(tmp_path)
+
+    window.reopen_closed_tab_action.trigger()
+    assert panel.tab_count() == 2
+    assert panel.current_tab() is not None
+    assert panel.current_tab().navigation.path == tmp_path
+    assert window.recently_closed_tabs == []
+
+
 def test_show_widget_map_toggle_updates_existing_and_new_panels(
     qtbot, tmp_path: Path
 ) -> None:
@@ -847,6 +876,7 @@ def test_apply_ui_preferences_updates_toolbar_visibility_flags(
             show_root_buttons=False,
             show_address_bar=False,
             show_navigation_buttons=False,
+            show_tab_close_buttons=False,
             app_font_family="",
             app_font_size_pt=11,
             file_list_use_app_font=False,
@@ -872,6 +902,7 @@ def test_apply_ui_preferences_updates_toolbar_visibility_flags(
         assert panel.forward_btn.isVisible() is False
         assert panel.up_btn.isVisible() is False
         assert panel.root_btn.isVisible() is False
+        assert panel.tabs.tabsClosable() is False
         qtbot.waitUntil(lambda p=panel: p.root_combo.width() > 0)
         assert panel.current_tab().view.font().pointSize() == 14
         assert panel.address_edit.font().pointSize() == 13

@@ -194,6 +194,7 @@ def _tracked_keys() -> list[str]:
         SettingsManager.SHOW_ROOT_BUTTONS_KEY,
         SettingsManager.SHOW_ADDRESS_BAR_KEY,
         SettingsManager.SHOW_NAVIGATION_BUTTONS_KEY,
+        SettingsManager.SHOW_TAB_CLOSE_BUTTONS_KEY,
         SettingsManager.BYTES_THOUSANDS_SEPARATOR_KEY,
         SettingsManager.BYTES_DECIMAL_SEPARATOR_KEY,
         SettingsManager.FILE_LIST_BYTE_FORMAT_MODE_KEY,
@@ -561,6 +562,7 @@ def test_settings_live_preview_all_windows_and_cancel_revert(
             show_root_buttons=True,
             show_address_bar=True,
             show_navigation_buttons=True,
+            show_tab_close_buttons=True,
             app_font_family="",
             app_font_size_pt=0,
             file_list_use_app_font=True,
@@ -610,10 +612,13 @@ def test_settings_live_preview_all_windows_and_cancel_revert(
     assert "rgba(168, 182, 196, 153)" in second_active.styleSheet()
     dialog.show_root_dropdown_checkbox.setChecked(True)
     dialog.show_refresh_button_checkbox.setChecked(False)
+    dialog.show_tab_close_buttons_checkbox.setChecked(False)
     qtbot.waitUntil(lambda: first_active.root_combo.isVisible() is True)
     assert second_active.root_combo.isVisible() is True
     assert first_active.refresh_btn.isVisible() is False
     assert second_active.refresh_btn.isVisible() is False
+    assert first_active.tabs.tabsClosable() is False
+    assert second_active.tabs.tabsClosable() is False
 
     dialog.reject()
     qtbot.waitUntil(lambda: "rgba(168, 182, 196, 61)" in first_active.styleSheet())
@@ -622,6 +627,8 @@ def test_settings_live_preview_all_windows_and_cancel_revert(
     assert second_active.root_combo.isVisible() is False
     assert first_active.refresh_btn.isVisible() is True
     assert second_active.refresh_btn.isVisible() is True
+    assert first_active.tabs.tabsClosable() is True
+    assert second_active.tabs.tabsClosable() is True
 
 
 def test_settings_apply_persists_and_new_window_uses_values(
@@ -650,6 +657,7 @@ def test_settings_apply_persists_and_new_window_uses_values(
     dialog.show_root_buttons_checkbox.setChecked(False)
     dialog.show_address_bar_checkbox.setChecked(False)
     dialog.show_navigation_buttons_checkbox.setChecked(False)
+    dialog.show_tab_close_buttons_checkbox.setChecked(False)
     dialog.show_storage_overview_status_row_checkbox.setChecked(False)
     dialog.byte_thousands_separator_edit.setText(" ")
     dialog.byte_decimal_separator_edit.setText(",")
@@ -677,6 +685,7 @@ def test_settings_apply_persists_and_new_window_uses_values(
     assert persisted.show_root_buttons is False
     assert persisted.show_address_bar is False
     assert persisted.show_navigation_buttons is False
+    assert persisted.show_tab_close_buttons is False
     assert persisted.show_storage_overview_status_row is False
     assert persisted.byte_thousands_separator == " "
     assert persisted.byte_decimal_separator == ","
@@ -712,6 +721,7 @@ def test_settings_apply_persists_and_new_window_uses_values(
     assert reopened_panel.forward_btn.isVisible() is False
     assert reopened_panel.up_btn.isVisible() is False
     assert reopened_panel.root_btn.isVisible() is False
+    assert reopened_panel.tabs.tabsClosable() is False
     assert reopened.storage_overview_row.isVisible() is False
     assert reopened_panel.current_tab().view.font().pointSize() == 14
     assert reopened_panel.address_edit.font().pointSize() == 13
@@ -752,6 +762,7 @@ def test_settings_checkbox_changes_sync_existing_windows(
     dialog.show_root_buttons_checkbox.setChecked(False)
     dialog.show_address_bar_checkbox.setChecked(False)
     dialog.show_navigation_buttons_checkbox.setChecked(False)
+    dialog.show_tab_close_buttons_checkbox.setChecked(False)
     dialog.show_storage_overview_status_row_checkbox.setChecked(False)
     dialog.app_font_size_spin.setValue(11)
     dialog.file_list_use_app_font_checkbox.setChecked(False)
@@ -775,6 +786,8 @@ def test_settings_checkbox_changes_sync_existing_windows(
     assert second_panel.address_edit.isVisible() is False
     assert first_panel.back_btn.isVisible() is False
     assert second_panel.back_btn.isVisible() is False
+    assert first_panel.tabs.tabsClosable() is False
+    assert second_panel.tabs.tabsClosable() is False
     assert first.storage_overview_row.isVisible() is False
     assert second.storage_overview_row.isVisible() is False
     assert first_panel.current_tab().view.font().pointSize() == 15

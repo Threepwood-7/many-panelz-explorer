@@ -135,6 +135,19 @@ class UiBehaviorSettingsMixin(SettingsDomainBase, SettingsRegistry):
         self._storage.set_value(self.SHOW_NAVIGATION_BUTTONS_KEY, bool(enabled))
 
     @property
+    def show_tab_close_buttons(self) -> bool:
+        return normalize.normalize_bool(
+            self._storage.value(
+                self.SHOW_TAB_CLOSE_BUTTONS_KEY,
+                self.DEFAULT_SHOW_TAB_CLOSE_BUTTONS,
+            )
+        )
+
+    @show_tab_close_buttons.setter
+    def show_tab_close_buttons(self, enabled: bool) -> None:
+        self._storage.set_value(self.SHOW_TAB_CLOSE_BUTTONS_KEY, bool(enabled))
+
+    @property
     def context_immediate_child_scan_cap(self) -> int:
         return normalize.normalize_positive_int(
             self._storage.value(

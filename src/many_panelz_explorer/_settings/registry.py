@@ -64,6 +64,7 @@ class SettingsRegistry:
     SHOW_ROOT_BUTTONS_KEY = "ui/show_root_buttons"
     SHOW_ADDRESS_BAR_KEY = "ui/show_address_bar"
     SHOW_NAVIGATION_BUTTONS_KEY = "ui/show_navigation_buttons"
+    SHOW_TAB_CLOSE_BUTTONS_KEY = "ui/show_tab_close_buttons"
     BYTES_THOUSANDS_SEPARATOR_KEY = "ui/bytes/separators/thousands"
     BYTES_DECIMAL_SEPARATOR_KEY = "ui/bytes/separators/decimal"
     FILE_LIST_BYTE_FORMAT_MODE_KEY = "ui/bytes/file_list/mode"
@@ -189,6 +190,7 @@ class SettingsRegistry:
     DEFAULT_NAVIGATION_USE_APP_FONT = True
     DEFAULT_NAVIGATION_FONT_FAMILY = ""
     DEFAULT_NAVIGATION_FONT_SIZE_PT = 10
+    DEFAULT_SHOW_TAB_CLOSE_BUTTONS = True
     DEFAULT_SHOW_STORAGE_OVERVIEW_STATUS_ROW = True
     DEFAULT_BYTES_THOUSANDS_SEPARATOR = ","
     DEFAULT_BYTES_DECIMAL_SEPARATOR = "."

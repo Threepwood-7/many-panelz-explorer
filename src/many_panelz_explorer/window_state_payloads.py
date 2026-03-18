@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, cast
 if TYPE_CHECKING:
     from .panel_tree import PanelTreeNodePayload, PanelTreePayload
     from .ui.window.state_types import (
+        ClosedTabState,
         PanelState,
         SavedViewState,
         TabsState,
@@ -139,6 +140,38 @@ def tab_state_payload(raw: object) -> TabState | None:
     return {"path": str(path_value)}
 
 
+def closed_tab_state_payload(raw: object) -> ClosedTabState | None:
+    """Return a normalized recently closed tab payload."""
+
+    mapping = _mapping_payload(raw)
+    if mapping is None:
+        return None
+
+    path_value = mapping.get("path")
+    panel_id = coerce_int(mapping.get("panel_id"))
+    if path_value is None or panel_id is None:
+        return None
+    return {
+        "path": str(path_value),
+        "panel_id": panel_id,
+    }
+
+
+def closed_tab_history_payload(raw: object) -> list[ClosedTabState]:
+    """Normalize a raw recently closed tab history payload."""
+
+    values = _list_payload(raw)
+    if values is None:
+        return []
+
+    history: list[ClosedTabState] = []
+    for value in values:
+        entry = closed_tab_state_payload(value)
+        if entry is not None:
+            history.append(entry)
+    return history
+
+
 def panel_state_payload(raw: object) -> PanelState | None:
     """Normalize a raw panel payload into the shared serialized state shape."""
 
@@ -199,7 +232,7 @@ def window_tabs_payload(raw: object) -> WindowTabsPayload:
 
     mapping = _mapping_payload(raw)
     if mapping is None:
-        return {"active_panel_id": None, "panels": {}}
+        return {"active_panel_id": None, "panels": {}, "recently_closed_tabs": []}
 
     return {
         "active_panel_id": coerce_int(mapping.get("active_panel_id")),
@@ -209,6 +242,9 @@ def window_tabs_payload(raw: object) -> WindowTabsPayload:
                 mapping.get("panels", {})
             ).items()
         },
+        "recently_closed_tabs": closed_tab_history_payload(
+            mapping.get("recently_closed_tabs", [])
+        ),
     }
 
 
@@ -222,6 +258,7 @@ def saved_view_state(raw: object) -> SavedViewState:
             "panel_tree": {"root": None},
             "tabs": {},
             "active_panel_id": None,
+            "recently_closed_tabs": [],
             "on_top": False,
             "maximized": False,
         }
@@ -231,6 +268,9 @@ def saved_view_state(raw: object) -> SavedViewState:
         "panel_tree": panel_tree_payload(mapping.get("panel_tree")) or {"root": None},
         "tabs": tabs_state_from_panels_payload(mapping.get("tabs", {})),
         "active_panel_id": coerce_int(mapping.get("active_panel_id")),
+        "recently_closed_tabs": closed_tab_history_payload(
+            mapping.get("recently_closed_tabs", [])
+        ),
         "on_top": coerce_bool(mapping.get("on_top", False)),
         "maximized": coerce_bool(mapping.get("maximized", False)),
     }

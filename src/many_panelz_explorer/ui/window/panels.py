@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
@@ -13,11 +14,10 @@ from .panel_rebuild import WindowPanelRebuildCoordinator
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
     from ...panel_widget import PanelWidget
     from ...window import ExplorerWindow
-    from .state_types import PanelRows, PanelState, TabsState
+    from .state_types import ClosedTabState, PanelRows, PanelState, TabsState
 
 
 def serialize_window_tabs_state(window: ExplorerWindow) -> TabsState:
@@ -72,6 +72,8 @@ def _activate_panel_and_focus(
 
 class WindowPanelsCoordinator:
     """Manage panel lifecycle, active state, and layout mutations."""
+
+    CLOSED_TAB_HISTORY_LIMIT = 30
 
     def __init__(self, window: ExplorerWindow) -> None:
         """Initialize the panel coordinator."""
@@ -157,6 +159,25 @@ class WindowPanelsCoordinator:
         panel.close_current_tab()
         if panel.tab_count() == 0:
             self.close_panel_by_id(panel.panel_id)
+
+    def reopen_last_closed_tab(self) -> None:
+        """Reopen the most recently closed tab into the best available panel."""
+
+        if not self.window.recently_closed_tabs:
+            return
+
+        closed_tab = self.window.recently_closed_tabs.pop(0)
+        target_panel = self.active_panel()
+        if target_panel is None:
+            target_panel = self.window.panel_widgets.get(closed_tab["panel_id"])
+        if target_panel is None:
+            target_panel = self.first_ordered_panel()
+        if target_panel is None:
+            return
+
+        self.set_active_panel(target_panel.panel_id)
+        reopened_tab = target_panel.add_tab(Path(closed_tab["path"]))
+        reopened_tab.view.setFocus()
 
     def close_active_panel(self) -> None:
         """Close the active panel."""
@@ -451,3 +472,25 @@ class WindowPanelsCoordinator:
             self.close_panel_by_id(panel_id)
 
         return _handle_empty
+
+    def panel_closed_tab_callback(self, panel_id: int) -> Callable[[str], None]:
+        """Build the callback used when a panel closes a tab."""
+
+        def _handle_tab_closed(path: str) -> None:
+            self._remember_closed_tab({"path": str(path), "panel_id": panel_id})
+
+        return _handle_tab_closed
+
+    def _remember_closed_tab(self, entry: ClosedTabState) -> None:
+        """Push one closed tab onto the bounded recently closed history."""
+
+        deduplicated = [
+            item
+            for item in self.window.recently_closed_tabs
+            if not (
+                item["path"] == entry["path"] and item["panel_id"] == entry["panel_id"]
+            )
+        ]
+        self.window.recently_closed_tabs = [entry, *deduplicated][
+            : self.CLOSED_TAB_HISTORY_LIMIT
+        ]

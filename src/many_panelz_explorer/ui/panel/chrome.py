@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QSizePolicy,
+    QTabBar,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -21,7 +22,29 @@ from PySide6.QtWidgets import (
 from ... import widget_naming
 
 if TYPE_CHECKING:
+    from PySide6.QtGui import QMouseEvent
+
     from ...panel_widget import PanelWidget
+
+
+class _PanelTabBar(QTabBar):
+    """Tab bar that duplicates the active tab on blank-area double click."""
+
+    def __init__(self, panel: PanelWidget) -> None:
+        super().__init__(panel)
+        self._panel = panel
+
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
+        """Duplicate the active tab when double-clicking blank tab-bar space."""
+
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and self.tabAt(event.position().toPoint()) == -1
+        ):
+            self._panel.duplicate_current_tab()
+            event.accept()
+            return
+        super().mouseDoubleClickEvent(event)
 
 
 def build_panel_toolbar(panel: PanelWidget, root: QVBoxLayout) -> None:
@@ -130,19 +153,20 @@ def build_panel_tabs(panel: PanelWidget, root: QVBoxLayout) -> None:
     """Create the tab host and connect tab lifecycle signals."""
 
     panel.tabs = QTabWidget()
+    panel.tabs.setTabBar(_PanelTabBar(panel))
     panel.tabs.setMinimumWidth(0)
     panel.tabs.setSizePolicy(
         QSizePolicy.Policy.Ignored,
         QSizePolicy.Policy.Expanding,
     )
-    panel.tabs.setTabsClosable(True)
+    panel.tabs.setTabsClosable(panel.show_tab_close_buttons)
     panel.tabs.currentChanged.connect(panel.state_coordinator.on_current_changed)
     panel.tabs.tabCloseRequested.connect(panel.state_coordinator.close_tab_at)
     panel.tabs.installEventFilter(panel.focus_watcher)
     panel.tabs.installEventFilter(panel)
     tab_bar = panel.tabs.tabBar()
     tab_bar.setElideMode(Qt.TextElideMode.ElideRight)
-    tab_bar.setExpanding(True)
+    tab_bar.setExpanding(False)
     tab_bar.setUsesScrollButtons(False)
     tab_bar.setMinimumWidth(0)
     root.addWidget(panel.tabs)

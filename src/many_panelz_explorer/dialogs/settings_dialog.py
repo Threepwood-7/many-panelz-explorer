@@ -111,6 +111,7 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
             "show_root_buttons",
             "show_address_bar",
             "show_navigation_buttons",
+            "show_tab_close_buttons",
             "show_storage_overview_status_row",
             "column_width_auto_align_mode",
             "autofit_columns",
@@ -278,6 +279,7 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
         show_refresh_button_checkbox: QCheckBox
         show_root_buttons_checkbox: QCheckBox
         show_root_dropdown_checkbox: QCheckBox
+        show_tab_close_buttons_checkbox: QCheckBox
         show_storage_overview_status_row_checkbox: QCheckBox
         status_bar_byte_custom_template_edit: QLineEdit
         status_bar_byte_format_mode_combo: QComboBox

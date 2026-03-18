@@ -65,6 +65,9 @@ def load_panel_preferences(dialog: SettingsDialog, preferences: UiPreferences) -
     dialog.show_navigation_buttons_checkbox.setChecked(
         preferences.show_navigation_buttons
     )
+    dialog.show_tab_close_buttons_checkbox.setChecked(
+        preferences.show_tab_close_buttons
+    )
     dialog.show_storage_overview_status_row_checkbox.setChecked(
         preferences.show_storage_overview_status_row
     )
@@ -362,7 +365,10 @@ def collect_preferences_from_controls(dialog: SettingsDialog) -> UiPreferences:
         show_root_buttons=dialog.show_root_buttons_checkbox.isChecked(),
         show_address_bar=dialog.show_address_bar_checkbox.isChecked(),
         show_navigation_buttons=dialog.show_navigation_buttons_checkbox.isChecked(),
-        show_storage_overview_status_row=dialog.show_storage_overview_status_row_checkbox.isChecked(),
+        show_tab_close_buttons=dialog.show_tab_close_buttons_checkbox.isChecked(),
+        show_storage_overview_status_row=(
+            dialog.show_storage_overview_status_row_checkbox.isChecked()
+        ),
         byte_thousands_separator=dialog.byte_thousands_separator_edit.text(),
         byte_decimal_separator=dialog.byte_decimal_separator_edit.text(),
         file_list_byte_format_mode=str(
@@ -399,45 +405,97 @@ def collect_preferences_from_controls(dialog: SettingsDialog) -> UiPreferences:
         default_terminal_launcher=str(
             dialog.default_terminal_launcher_combo.currentData()
         ),
-        comspec_terminal_executable=dialog.comspec_terminal_executable_edit.text().strip(),
-        comspec_terminal_open_args_template=dialog.comspec_terminal_open_args_edit.text().strip(),
-        comspec_terminal_command_args_template=dialog.comspec_terminal_command_args_edit.text().strip(),
+        comspec_terminal_executable=(
+            dialog.comspec_terminal_executable_edit.text().strip()
+        ),
+        comspec_terminal_open_args_template=(
+            dialog.comspec_terminal_open_args_edit.text().strip()
+        ),
+        comspec_terminal_command_args_template=(
+            dialog.comspec_terminal_command_args_edit.text().strip()
+        ),
         comspec_terminal_startup_position=str(
             dialog.comspec_terminal_startup_position_combo.currentData()
         ),
         pwsh_terminal_executable=dialog.pwsh_terminal_executable_edit.text().strip(),
-        pwsh_terminal_open_args_template=dialog.pwsh_terminal_open_args_edit.text().strip(),
-        pwsh_terminal_command_args_template=dialog.pwsh_terminal_command_args_edit.text().strip(),
+        pwsh_terminal_open_args_template=(
+            dialog.pwsh_terminal_open_args_edit.text().strip()
+        ),
+        pwsh_terminal_command_args_template=(
+            dialog.pwsh_terminal_command_args_edit.text().strip()
+        ),
         pwsh_terminal_startup_position=str(
             dialog.pwsh_terminal_startup_position_combo.currentData()
         ),
-        powershell5_terminal_executable=dialog.powershell5_terminal_executable_edit.text().strip(),
-        powershell5_terminal_open_args_template=dialog.powershell5_terminal_open_args_edit.text().strip(),
-        powershell5_terminal_command_args_template=dialog.powershell5_terminal_command_args_edit.text().strip(),
+        powershell5_terminal_executable=(
+            dialog.powershell5_terminal_executable_edit.text().strip()
+        ),
+        powershell5_terminal_open_args_template=(
+            dialog.powershell5_terminal_open_args_edit.text().strip()
+        ),
+        powershell5_terminal_command_args_template=(
+            dialog.powershell5_terminal_command_args_edit.text().strip()
+        ),
         powershell5_terminal_startup_position=str(
             dialog.powershell5_terminal_startup_position_combo.currentData()
         ),
-        context_tool_code_editor_exe_path=dialog.context_code_editor_executable_edit.text().strip(),
-        context_tool_code_editor_args_template=dialog.context_code_editor_args_edit.text().strip(),
-        context_tool_git_gui_exe_path=dialog.context_git_gui_executable_edit.text().strip(),
-        context_tool_git_gui_args_template=dialog.context_git_gui_args_edit.text().strip(),
-        total_commander_executable=dialog.total_commander_executable_edit.text().strip(),
-        total_commander_source_args_template=dialog.total_commander_source_args_edit.text().strip(),
-        total_commander_source_target_args_template=dialog.total_commander_source_target_args_edit.text().strip(),
-        double_commander_executable=dialog.double_commander_executable_edit.text().strip(),
-        double_commander_source_args_template=dialog.double_commander_source_args_edit.text().strip(),
-        double_commander_source_target_args_template=dialog.double_commander_source_target_args_edit.text().strip(),
+        context_tool_code_editor_exe_path=(
+            dialog.context_code_editor_executable_edit.text().strip()
+        ),
+        context_tool_code_editor_args_template=(
+            dialog.context_code_editor_args_edit.text().strip()
+        ),
+        context_tool_git_gui_exe_path=(
+            dialog.context_git_gui_executable_edit.text().strip()
+        ),
+        context_tool_git_gui_args_template=(
+            dialog.context_git_gui_args_edit.text().strip()
+        ),
+        total_commander_executable=(
+            dialog.total_commander_executable_edit.text().strip()
+        ),
+        total_commander_source_args_template=(
+            dialog.total_commander_source_args_edit.text().strip()
+        ),
+        total_commander_source_target_args_template=(
+            dialog.total_commander_source_target_args_edit.text().strip()
+        ),
+        double_commander_executable=(
+            dialog.double_commander_executable_edit.text().strip()
+        ),
+        double_commander_source_args_template=(
+            dialog.double_commander_source_args_edit.text().strip()
+        ),
+        double_commander_source_target_args_template=(
+            dialog.double_commander_source_target_args_edit.text().strip()
+        ),
         file_open_overrides_json=open_overrides_state.serialize_file_open_overrides(
             dialog
         ),
-        use_extended_paths_robocopy=dialog.use_extended_paths_robocopy_checkbox.isChecked(),
-        use_extended_paths_teracopy=dialog.use_extended_paths_teracopy_checkbox.isChecked(),
-        use_extended_paths_unstoppable=dialog.use_extended_paths_unstoppable_checkbox.isChecked(),
-        use_extended_paths_external_copymove=dialog.use_extended_paths_external_copymove_checkbox.isChecked(),
-        use_extended_paths_cmd_delete=dialog.use_extended_paths_cmd_delete_checkbox.isChecked(),
-        use_extended_paths_powershell_delete=dialog.use_extended_paths_powershell_delete_checkbox.isChecked(),
-        use_extended_paths_rimraf=dialog.use_extended_paths_rimraf_checkbox.isChecked(),
-        use_extended_paths_external_delete=dialog.use_extended_paths_external_delete_checkbox.isChecked(),
+        use_extended_paths_robocopy=(
+            dialog.use_extended_paths_robocopy_checkbox.isChecked()
+        ),
+        use_extended_paths_teracopy=(
+            dialog.use_extended_paths_teracopy_checkbox.isChecked()
+        ),
+        use_extended_paths_unstoppable=(
+            dialog.use_extended_paths_unstoppable_checkbox.isChecked()
+        ),
+        use_extended_paths_external_copymove=(
+            dialog.use_extended_paths_external_copymove_checkbox.isChecked()
+        ),
+        use_extended_paths_cmd_delete=(
+            dialog.use_extended_paths_cmd_delete_checkbox.isChecked()
+        ),
+        use_extended_paths_powershell_delete=(
+            dialog.use_extended_paths_powershell_delete_checkbox.isChecked()
+        ),
+        use_extended_paths_rimraf=(
+            dialog.use_extended_paths_rimraf_checkbox.isChecked()
+        ),
+        use_extended_paths_external_delete=(
+            dialog.use_extended_paths_external_delete_checkbox.isChecked()
+        ),
         teracopy_executable=dialog.teracopy_executable_edit.text().strip(),
         unstoppable_executable=dialog.unstoppable_executable_edit.text().strip(),
         generic_copymove_executable=dialog.generic_copymove_executable_edit.text().strip(),

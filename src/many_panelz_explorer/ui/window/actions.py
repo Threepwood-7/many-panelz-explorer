@@ -80,6 +80,12 @@ class WindowUiComposer:
             self.window.panels_coordinator.close_active_tab
         )
 
+        self.window.reopen_closed_tab_action = QAction("Reopen Closed Tab", self.window)
+        self.window.reopen_closed_tab_action.setShortcut(QKeySequence("Ctrl+Shift+T"))
+        self.window.reopen_closed_tab_action.triggered.connect(
+            self.window.panels_coordinator.reopen_last_closed_tab
+        )
+
         self.window.close_panel_action = QAction("Close Pane&l", self.window)
         self.window.close_panel_action.setShortcut(QKeySequence("Ctrl+Shift+W"))
         self.window.close_panel_action.triggered.connect(
@@ -428,6 +434,7 @@ class WindowUiComposer:
         file_menu.addAction(self.window.replace_view_action)
         file_menu.addSeparator()
         file_menu.addAction(self.window.close_tab_action)
+        file_menu.addAction(self.window.reopen_closed_tab_action)
         file_menu.addAction(self.window.close_panel_action)
         file_menu.addAction(self.window.close_window_action)
         file_menu.addSeparator()
@@ -485,6 +492,7 @@ class WindowUiComposer:
                 self.window.restore_view_action,
                 self.window.replace_view_action,
                 self.window.close_tab_action,
+                self.window.reopen_closed_tab_action,
                 self.window.close_panel_action,
                 self.window.close_window_action,
                 self.window.exit_action,

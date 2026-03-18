@@ -82,6 +82,11 @@ class WindowPreferencesCoordinator:
         return self._show_navigation_buttons
 
     @property
+    def show_tab_close_buttons_enabled(self) -> bool:
+        """Return whether tab close buttons should be visible."""
+        return self._show_tab_close_buttons
+
+    @property
     def column_width_auto_align_mode(self) -> str:
         """Return the selected auto-alignment mode for file list widths."""
         return self._column_width_auto_align_mode
@@ -163,6 +168,9 @@ class WindowPreferencesCoordinator:
                 show_root_dropdown=self._show_root_dropdown,
                 show_address_bar=self._show_address_bar,
                 show_navigation_buttons=self._show_navigation_buttons,
+            )
+            panel.presentation_coordinator.apply_tab_close_button_visibility(
+                show_tab_close_buttons=self._show_tab_close_buttons
             )
             panel.state_coordinator.set_column_width_auto_align_mode(
                 self._column_width_auto_align_mode
@@ -276,6 +284,7 @@ class WindowPreferencesCoordinator:
         self._show_root_buttons = bool(preferences.show_root_buttons)
         self._show_address_bar = bool(preferences.show_address_bar)
         self._show_navigation_buttons = bool(preferences.show_navigation_buttons)
+        self._show_tab_close_buttons = bool(preferences.show_tab_close_buttons)
         self._byte_format_preferences = self._build_byte_format_preferences(preferences)
         self._status_bar_storage_label_template = (
             preferences.status_bar_storage_label_template

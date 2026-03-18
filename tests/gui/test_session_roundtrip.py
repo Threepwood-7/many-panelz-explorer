@@ -55,6 +55,8 @@ def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
     qtbot.waitUntil(source.isMaximized)
 
     source.panels_coordinator.new_tab_in_active_panel()
+    closed_path = str(source.panels_coordinator.active_panel().current_path())
+    source.panels_coordinator.close_active_tab()
     source.panels_coordinator.split_active_panel(1)
     source.set_on_top(True)
     source.persistence_coordinator.save_to_settings()
@@ -74,6 +76,10 @@ def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
     assert restored.on_top_action.isChecked() is True
     qtbot.waitUntil(restored.isMaximized)
 
+    assert len(restored.recently_closed_tabs) == 1
+    assert restored.recently_closed_tabs[0]["path"] == closed_path
+
+    restored.reopen_closed_tab_action.trigger()
     tab_counts = sorted(panel.tab_count() for panel in restored.panel_widgets.values())
     assert tab_counts == [1, 1, 1, 2]
 

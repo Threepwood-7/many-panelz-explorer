@@ -45,6 +45,15 @@ class PanelPresentationCoordinator:
         self._sync_toolbar_visibility()
         self.panel.widget_map_coordinator.sync_overlay()
 
+    def apply_tab_close_button_visibility(
+        self, *, show_tab_close_buttons: bool
+    ) -> None:
+        """Show or hide tab close buttons for this panel."""
+
+        self.panel.show_tab_close_buttons = bool(show_tab_close_buttons)
+        self.panel.tabs.setTabsClosable(self.panel.show_tab_close_buttons)
+        self.panel.widget_map_coordinator.sync_overlay()
+
     def apply_font_preferences(
         self, *, file_list_font: QFont, navigation_font: QFont
     ) -> None:

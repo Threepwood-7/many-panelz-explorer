@@ -12,7 +12,7 @@ from PySide6.QtCore import (
     Qt,
     Signal,
 )
-from PySide6.QtGui import QColor, QFont, QKeyEvent
+from PySide6.QtGui import QColor, QFont, QKeyEvent, QMouseEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -98,6 +98,7 @@ class PanelWidget(QWidget):
     current_context_changed = Signal()
     column_widths_sync_requested = Signal(list, object)
     became_empty = Signal()
+    tab_closed = Signal(str)
     focus_watcher: _FocusWatcher
     refresh_btn: QPushButton
     root_buttons_host: QWidget
@@ -124,6 +125,7 @@ class PanelWidget(QWidget):
         default_path: Path,
         show_hidden: bool,
         show_root_dropdown: bool = False,
+        show_tab_close_buttons: bool = True,
         roots_provider: Callable[[Path | None], list[Path]] | None = None,
         parent: QWidget | None = None,
         *,
@@ -156,6 +158,7 @@ class PanelWidget(QWidget):
         self.show_root_buttons = True
         self.show_address_bar = True
         self.show_navigation_buttons = True
+        self.show_tab_close_buttons = bool(show_tab_close_buttons)
         self.file_list_font_value = QFont(self.font())
         self.navigation_font_value = QFont(self.font())
         self.file_list_size_formatter = (
@@ -244,6 +247,11 @@ class PanelWidget(QWidget):
         ):
             self.inline_filter_coordinator.position_overlay()
             return super().eventFilter(obj, event)
+        if event.type() == QEvent.Type.MouseButtonDblClick and obj is self.tabs:
+            mouse_event = cast("QMouseEvent", event)
+            if self._is_tab_strip_blank_double_click(mouse_event):
+                self.duplicate_current_tab()
+                return True
         if event.type() == QEvent.Type.KeyPress:
             key_event = cast("QKeyEvent", event)
             if obj is self.filter_edit and key_event.key() in {
@@ -274,6 +282,14 @@ class PanelWidget(QWidget):
         if index < 0:
             return
         self.state_coordinator.close_tab_at(index)
+
+    def duplicate_current_tab(self) -> ExplorerTab | None:
+        """Duplicate the active tab into a newly selected tab."""
+
+        tab = self.current_tab()
+        if tab is None:
+            return None
+        return self.add_tab(tab.navigation.path)
 
     def current_path(self) -> Path:
         tab = self.current_tab()
@@ -395,3 +411,14 @@ class PanelWidget(QWidget):
         tab = self.current_tab()
         if tab is not None:
             tab.view.setFocus()
+
+    def _is_tab_strip_blank_double_click(self, event: QMouseEvent) -> bool:
+        """Return whether a double click landed in blank tab-strip space."""
+
+        if event.button() != Qt.MouseButton.LeftButton:
+            return False
+        tab_bar_rect = self.tabs.tabBar().geometry()
+        position = event.position().toPoint()
+        if position.y() < tab_bar_rect.top() or position.y() > tab_bar_rect.bottom():
+            return False
+        return position.x() > tab_bar_rect.right()

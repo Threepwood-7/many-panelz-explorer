@@ -162,6 +162,9 @@ class WindowPanelRebuildCoordinator:
             show_root_dropdown=(
                 self.window.preferences_coordinator.show_root_dropdown_enabled
             ),
+            show_tab_close_buttons=(
+                self.window.preferences_coordinator.show_tab_close_buttons_enabled
+            ),
             file_list_size_formatter=(
                 self.window.preferences_coordinator.format_file_list_bytes
             ),
@@ -197,6 +200,9 @@ class WindowPanelRebuildCoordinator:
             self.column_sync_coordinator.panel_widths_sync_callback(panel_id)
         )
         panel.became_empty.connect(panel_empty_callback(panel_id))
+        panel.tab_closed.connect(
+            self.window.panels_coordinator.panel_closed_tab_callback(panel_id)
+        )
         panel.state_coordinator.set_column_width_auto_align_mode(
             self.window.preferences_coordinator.column_width_auto_align_mode
         )
@@ -246,6 +252,11 @@ class WindowPanelRebuildCoordinator:
             show_root_dropdown=show_root_dropdown,
             show_address_bar=show_address_bar,
             show_navigation_buttons=show_navigation_buttons,
+        )
+        panel.presentation_coordinator.apply_tab_close_button_visibility(
+            show_tab_close_buttons=(
+                self.window.preferences_coordinator.show_tab_close_buttons_enabled
+            )
         )
         panel.presentation_coordinator.apply_font_preferences(
             file_list_font=file_list_font,

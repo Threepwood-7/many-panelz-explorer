@@ -61,6 +61,7 @@ class WindowPersistenceCoordinator:
             "panel_tree": self.window.panel_tree.to_dict(),
             "tabs": serialize_window_tabs_state(self.window),
             "active_panel_id": self.window.active_panel_id,
+            "recently_closed_tabs": deepcopy(self.window.recently_closed_tabs),
             "on_top": self.window.on_top_action.isChecked(),
             "maximized": self._is_window_maximized(),
         }
@@ -80,6 +81,7 @@ class WindowPersistenceCoordinator:
         tabs_payload: WindowTabsPayload = {
             "active_panel_id": payload["active_panel_id"],
             "panels": {str(pid): state for pid, state in payload["tabs"].items()},
+            "recently_closed_tabs": payload["recently_closed_tabs"],
         }
         self.window.settings.set_json(
             self.window.settings.window_key(self.window.window_id, "tabs"), tabs_payload
@@ -123,6 +125,9 @@ class WindowPersistenceCoordinator:
         )
         tabs_payload = _window_tabs_payload(tabs_payload_raw)
         tabs_state = _tabs_state_from_panels_payload(tabs_payload["panels"])
+        self.window.recently_closed_tabs = deepcopy(
+            tabs_payload["recently_closed_tabs"]
+        )
         self.window.layout_rows = (
             self.window.layout_coordinator.append_missing_panel_ids(
                 self.window.layout_rows,
@@ -174,6 +179,7 @@ class WindowPersistenceCoordinator:
         )
 
         tabs_state = _tabs_state_from_panels_payload(deepcopy(payload.get("tabs", {})))
+        self.window.recently_closed_tabs = deepcopy(payload["recently_closed_tabs"])
         self.window.layout_rows = (
             self.window.layout_coordinator.append_missing_panel_ids(
                 self.window.layout_rows,

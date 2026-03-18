@@ -14,6 +14,13 @@ class TabState(TypedDict):
     path: str
 
 
+class ClosedTabState(TypedDict):
+    """Serialized history entry for one recently closed tab."""
+
+    path: str
+    panel_id: int
+
+
 class PanelState(TypedDict, total=False):
     """Serialized state for one panel and its tabs."""
 
@@ -32,6 +39,7 @@ class WindowTabsPayload(TypedDict):
 
     active_panel_id: int | None
     panels: dict[str, PanelState]
+    recently_closed_tabs: list[ClosedTabState]
 
 
 class WindowStatePayload(TypedDict):
@@ -41,6 +49,7 @@ class WindowStatePayload(TypedDict):
     panel_tree: PanelTreePayload
     tabs: TabsState
     active_panel_id: int | None
+    recently_closed_tabs: list[ClosedTabState]
     on_top: bool
     maximized: bool
     geometry_b64: NotRequired[str]

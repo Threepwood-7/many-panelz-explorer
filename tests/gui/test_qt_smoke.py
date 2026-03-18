@@ -64,6 +64,7 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
     assert window.panels_coordinator.active_panel().tab_count() == 2
 
     assert window.new_tab_action.shortcut().toString() == "Ctrl+T"
+    assert window.reopen_closed_tab_action.shortcut().toString() == "Ctrl+Shift+T"
     window.new_tab_action.trigger()
     assert window.panels_coordinator.active_panel().tab_count() == 3
 
@@ -204,6 +205,7 @@ def test_help_text_mentions_total_commander_shortcuts(
     assert "F2: Refresh all visible panes" in captured["text"]
     assert "Alt+F1: Open root picker for active tab" in captured["text"]
     assert "Ctrl+P: Copy selected item path or active pane path" in captured["text"]
+    assert "Ctrl+Shift+T: Reopen last closed tab" in captured["text"]
     assert "Shift+Esc: Minimize app windows" in captured["text"]
 
 

@@ -61,6 +61,7 @@ class UiPreferences:
     show_root_buttons: bool = True
     show_address_bar: bool = True
     show_navigation_buttons: bool = True
+    show_tab_close_buttons: bool = True
     byte_thousands_separator: str = ","
     byte_decimal_separator: str = "."
     file_list_byte_format_mode: str = "bytes"

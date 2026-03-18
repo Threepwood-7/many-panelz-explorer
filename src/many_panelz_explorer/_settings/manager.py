@@ -45,6 +45,7 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
     show_root_buttons = delegate_domain_property("ui", "show_root_buttons")
     show_address_bar = delegate_domain_property("ui", "show_address_bar")
     show_navigation_buttons = delegate_domain_property("ui", "show_navigation_buttons")
+    show_tab_close_buttons = delegate_domain_property("ui", "show_tab_close_buttons")
     byte_thousands_separator = delegate_domain_property(
         "ui", "byte_thousands_separator"
     )
@@ -261,6 +262,7 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
             show_root_buttons=self.show_root_buttons,
             show_address_bar=self.show_address_bar,
             show_navigation_buttons=self.show_navigation_buttons,
+            show_tab_close_buttons=self.show_tab_close_buttons,
             byte_thousands_separator=self.byte_thousands_separator,
             byte_decimal_separator=self.byte_decimal_separator,
             file_list_byte_format_mode=self.file_list_byte_format_mode,
@@ -367,6 +369,7 @@ class SettingsManager(SettingsManagerBase, SettingsRegistry):
         self.show_root_buttons = preferences.show_root_buttons
         self.show_address_bar = preferences.show_address_bar
         self.show_navigation_buttons = preferences.show_navigation_buttons
+        self.show_tab_close_buttons = preferences.show_tab_close_buttons
         self.ui.set_byte_separators(
             preferences.byte_thousands_separator,
             preferences.byte_decimal_separator,

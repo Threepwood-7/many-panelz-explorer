@@ -455,9 +455,7 @@ def test_context_menu_terminal_submenu_lists_all_launchers(
         for menu in controller._owned_menus
     )
     terminal_submenu = next(
-        menu
-        for menu in controller._owned_menus
-        if menu.title() == "Open terminal with"
+        menu for menu in controller._owned_menus if menu.title() == "Open terminal with"
     )
     assert terminal_submenu is not None
     actions = {action.text(): action for action in terminal_submenu.actions()}

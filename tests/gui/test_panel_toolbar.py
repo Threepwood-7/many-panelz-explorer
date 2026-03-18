@@ -363,6 +363,34 @@ def test_root_controls_sorted_alphabetically(qtbot, tmp_path: Path) -> None:
     assert combo_labels == ["AA", "HDD01", "HDD02"]
 
 
+def test_blank_tab_bar_double_click_duplicates_active_tab(
+    qtbot, tmp_path: Path
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir(parents=True)
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.resize(900, 300)
+    panel.show()
+    panel.add_tab(root)
+
+    tab_bar = panel.tabs.tabBar()
+    qtbot.waitUntil(lambda: panel.tabs.width() > tab_bar.geometry().right() + 12)
+    blank_point = QPoint(panel.tabs.width() - 6, tab_bar.geometry().center().y())
+
+    QTest.mouseDClick(panel.tabs, Qt.LeftButton, Qt.NoModifier, blank_point)
+
+    assert panel.tab_count() == 2
+    assert panel.current_tab() is not None
+    assert panel.current_tab().navigation.path == root
+
+
 def test_toolbar_visibility_flags_are_independent(qtbot, tmp_path: Path) -> None:
     root = tmp_path / "root"
     root.mkdir(parents=True)
@@ -429,6 +457,33 @@ def test_toolbar_visibility_flags_are_independent(qtbot, tmp_path: Path) -> None
     assert panel.root_buttons_host.isVisible() is True
     assert panel.address_edit.isVisible() is True
     assert panel.back_btn.isVisible() is True
+
+
+def test_tab_close_buttons_visibility_can_be_toggled(qtbot, tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    root.mkdir(parents=True)
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.show()
+    panel.add_tab(root)
+
+    assert panel.tabs.tabsClosable() is True
+
+    panel.presentation_coordinator.apply_tab_close_button_visibility(
+        show_tab_close_buttons=False
+    )
+    assert panel.tabs.tabsClosable() is False
+
+    panel.presentation_coordinator.apply_tab_close_button_visibility(
+        show_tab_close_buttons=True
+    )
+    assert panel.tabs.tabsClosable() is True
 
 
 def test_windows_mountpoint_uses_last_segment_and_tooltip(

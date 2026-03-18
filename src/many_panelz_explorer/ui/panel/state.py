@@ -112,6 +112,8 @@ class PanelStateCoordinator:
         """Close the tab at the given index."""
 
         widget = self.panel.tabs.widget(index)
+        if isinstance(widget, ExplorerTab):
+            self.panel.tab_closed.emit(str(widget.navigation.path))
         self.panel.tabs.removeTab(index)
         if widget is not None:
             widget.deleteLater()

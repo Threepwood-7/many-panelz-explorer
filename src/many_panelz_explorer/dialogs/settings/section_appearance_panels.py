@@ -350,6 +350,21 @@ def build_panel_visibility_rows(
         controls=[dialog.show_navigation_buttons_checkbox],
     )
 
+    dialog.show_tab_close_buttons_checkbox = QCheckBox(
+        "Show close buttons on panel tabs",
+        dialog,
+    )
+    dialog.show_tab_close_buttons_checkbox.toggled.connect(dialog.on_controls_changed)
+    add_row(
+        dialog,
+        section=visibility_group,
+        key="show_tab_close_buttons",
+        title="Tab Close Buttons",
+        description="Display an x button on each panel tab.",
+        terms="tab close buttons x close tabs panel",
+        controls=[dialog.show_tab_close_buttons_checkbox],
+    )
+
     dialog.show_storage_overview_status_row_checkbox = QCheckBox(
         "Show global storage overview status row",
         dialog,
