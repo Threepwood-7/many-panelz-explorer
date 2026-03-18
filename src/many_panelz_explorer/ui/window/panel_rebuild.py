@@ -258,6 +258,10 @@ class WindowPanelRebuildCoordinator:
                 self.window.preferences_coordinator.show_tab_close_buttons_enabled
             )
         )
+        panel.presentation_coordinator.apply_tab_position(
+            tab_position_mode=panel.tab_position_mode,
+            default_tab_position=self.window.preferences_coordinator.default_tab_position,
+        )
         panel.presentation_coordinator.apply_font_preferences(
             file_list_font=file_list_font,
             navigation_font=navigation_font,

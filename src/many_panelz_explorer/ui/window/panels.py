@@ -199,6 +199,18 @@ class WindowPanelsCoordinator:
         for panel in self.window.panel_widgets.values():
             panel.navigation_coordinator.refresh_current_path()
 
+    def set_active_panel_tab_position_mode(self, mode: str) -> None:
+        """Persist and apply a tab-position mode for the active panel."""
+
+        panel = self.active_panel()
+        if panel is None:
+            return
+        panel.presentation_coordinator.apply_tab_position(
+            tab_position_mode=mode,
+            default_tab_position=self.window.preferences_coordinator.default_tab_position,
+        )
+        self.window.ui_composer.sync_active_panel_tab_position_actions()
+
     def first_ordered_panel(self) -> PanelWidget | None:
         """Return the first ordered panel in the current layout."""
 

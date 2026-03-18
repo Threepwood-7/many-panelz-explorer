@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ...panel_tab_positions import TAB_POSITION_MODE_DEFAULT
 from ...panel_tree import (
     ORIENTATION_HORIZONTAL,
     ORIENTATION_VERTICAL,
@@ -29,6 +30,7 @@ class WindowLayoutCoordinator:
             "panel_id": panel_id,
             "current_index": 0,
             "tabs": [{"path": str(seed_path)}],
+            "tab_position_mode": TAB_POSITION_MODE_DEFAULT,
         }
 
     def default_panel_state(self, panel_id: int) -> PanelState:

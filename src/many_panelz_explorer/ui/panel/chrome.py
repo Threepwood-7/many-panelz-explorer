@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, override
 
-from PySide6.QtCore import QStringListModel, Qt, QTimer
-from PySide6.QtGui import QShortcut
+from PySide6.QtCore import QRect, QSize, QStringListModel, Qt, QTimer
+from PySide6.QtGui import QPaintEvent, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
     QCompleter,
@@ -13,6 +13,9 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QSizePolicy,
+    QStyle,
+    QStyleOptionTab,
+    QStylePainter,
     QTabBar,
     QTabWidget,
     QVBoxLayout,
@@ -27,12 +30,152 @@ if TYPE_CHECKING:
     from ...panel_widget import PanelWidget
 
 
+type _TabRenderMode = Literal["native", "west_horizontal", "east_horizontal"]
+
+
 class _PanelTabBar(QTabBar):
     """Tab bar that duplicates the active tab on blank-area double click."""
 
     def __init__(self, panel: PanelWidget) -> None:
         super().__init__(panel)
         self._panel = panel
+        self._tab_render_mode: _TabRenderMode = "native"
+        self._sync_render_mode_properties()
+
+    def set_tab_render_mode(self, mode: str) -> None:
+        """Set the side-tab label render mode for this tab bar."""
+
+        normalized_mode: _TabRenderMode
+        if mode == "west_horizontal":
+            normalized_mode = "west_horizontal"
+        elif mode == "east_horizontal":
+            normalized_mode = "east_horizontal"
+        else:
+            normalized_mode = "native"
+        if self._tab_render_mode == normalized_mode:
+            return
+        self._tab_render_mode = normalized_mode
+        self._sync_render_mode_properties()
+        self.updateGeometry()
+        self.update()
+
+    def set_left_horizontal_mode(self, enabled: bool) -> None:
+        """Enable or disable horizontal-label rendering for west-side tabs."""
+
+        self.set_tab_render_mode("west_horizontal" if enabled else "native")
+
+    @override
+    def tabSizeHint(self, index: int) -> QSize:
+        """Return a size hint adjusted for side tabs with horizontal labels."""
+
+        size = super().tabSizeHint(index)
+        if not self._use_horizontal_label_mode():
+            return size
+
+        option = self._horizontal_label_option(index)
+        if option is None:
+            return size
+        horizontal_size = self.style().sizeFromContents(
+            QStyle.ContentsType.CT_TabBarTab,
+            option,
+            size,
+            self,
+        )
+        if horizontal_size.isValid():
+            width = max(size.width(), horizontal_size.height())
+            height = max(size.height(), horizontal_size.width())
+            return QSize(width, height)
+        return size
+
+    @override
+    def paintEvent(self, event: QPaintEvent) -> None:
+        """Paint side tabs with horizontal labels when requested."""
+
+        if not self._use_horizontal_label_mode():
+            super().paintEvent(event)
+            return
+
+        painter = QStylePainter(self)
+        for index in range(self.count()):
+            option = QStyleOptionTab()
+            self.initStyleOption(option, index)
+            if not option.rect.isValid() or not option.rect.intersects(event.rect()):
+                continue
+            painter.drawControl(QStyle.ControlElement.CE_TabBarTabShape, option)
+            label_option = self._horizontal_label_option(index)
+            if label_option is None:
+                painter.drawControl(QStyle.ControlElement.CE_TabBarTabLabel, option)
+                continue
+            painter.drawControl(QStyle.ControlElement.CE_TabBarTabLabel, label_option)
+
+    def _use_horizontal_label_mode(self) -> bool:
+        """Return whether the tab bar should paint side tabs horizontally."""
+
+        if self._tab_render_mode == "west_horizontal":
+            return self.shape() in {
+                QTabBar.Shape.RoundedWest,
+                QTabBar.Shape.TriangularWest,
+            }
+        if self._tab_render_mode == "east_horizontal":
+            return self.shape() in {
+                QTabBar.Shape.RoundedEast,
+                QTabBar.Shape.TriangularEast,
+            }
+        return False
+
+    def _horizontal_label_option(self, index: int) -> QStyleOptionTab | None:
+        """Build a style option that draws the label horizontally."""
+
+        option = QStyleOptionTab()
+        self.initStyleOption(option, index)
+        if not option.rect.isValid():
+            return None
+
+        horizontal_option = QStyleOptionTab(option)
+        if horizontal_option.shape == QTabBar.Shape.RoundedWest:
+            horizontal_option.shape = QTabBar.Shape.RoundedNorth
+        elif horizontal_option.shape == QTabBar.Shape.TriangularWest:
+            horizontal_option.shape = QTabBar.Shape.TriangularNorth
+        elif horizontal_option.shape == QTabBar.Shape.RoundedEast:
+            horizontal_option.shape = QTabBar.Shape.RoundedNorth
+        elif horizontal_option.shape == QTabBar.Shape.TriangularEast:
+            horizontal_option.shape = QTabBar.Shape.TriangularNorth
+        else:
+            return horizontal_option
+
+        horizontal_size = self.style().sizeFromContents(
+            QStyle.ContentsType.CT_TabBarTab,
+            horizontal_option,
+            option.rect.size(),
+            self,
+        )
+        if horizontal_size.isValid():
+            horizontal_option.rect = QRect(
+                option.rect.left(),
+                option.rect.top(),
+                option.rect.height(),
+                option.rect.width(),
+            )
+            horizontal_option.rect = QStyle.alignedRect(
+                self.layoutDirection(),
+                Qt.AlignmentFlag.AlignCenter,
+                horizontal_size,
+                horizontal_option.rect,
+            )
+        return horizontal_option
+
+    def _sync_render_mode_properties(self) -> None:
+        """Mirror the current render mode into stable widget properties."""
+
+        self.setProperty("tab_render_mode", self._tab_render_mode)
+        self.setProperty(
+            "left_horizontal_mode",
+            self._tab_render_mode == "west_horizontal",
+        )
+        self.setProperty(
+            "right_horizontal_mode",
+            self._tab_render_mode == "east_horizontal",
+        )
 
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         """Duplicate the active tab when double-clicking blank tab-bar space."""

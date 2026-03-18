@@ -34,6 +34,7 @@ def _tracked_keys() -> list[str]:
         SettingsManager.SHOW_ADDRESS_BAR_KEY,
         SettingsManager.SHOW_NAVIGATION_BUTTONS_KEY,
         SettingsManager.SHOW_TAB_CLOSE_BUTTONS_KEY,
+        SettingsManager.DEFAULT_TAB_POSITION_KEY,
         SettingsManager.BYTES_THOUSANDS_SEPARATOR_KEY,
         SettingsManager.BYTES_DECIMAL_SEPARATOR_KEY,
         SettingsManager.FILE_LIST_BYTE_FORMAT_MODE_KEY,
@@ -144,6 +145,7 @@ def test_ui_preferences_round_trip() -> None:
             show_address_bar=False,
             show_navigation_buttons=False,
             show_tab_close_buttons=False,
+            default_tab_position="left_horizontal",
             byte_thousands_separator=" ",
             byte_decimal_separator=",",
             file_list_byte_format_mode="custom",
@@ -395,6 +397,7 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         settings.remove(SettingsManager.SHOW_ADDRESS_BAR_KEY)
         settings.remove(SettingsManager.SHOW_NAVIGATION_BUTTONS_KEY)
         settings.remove(SettingsManager.SHOW_TAB_CLOSE_BUTTONS_KEY)
+        settings.set_value(SettingsManager.DEFAULT_TAB_POSITION_KEY, "sideways")
         settings.set_value(SettingsManager.BYTES_THOUSANDS_SEPARATOR_KEY, ",")
         settings.set_value(SettingsManager.BYTES_DECIMAL_SEPARATOR_KEY, ",")
         settings.set_value(SettingsManager.FILE_LIST_BYTE_FORMAT_MODE_KEY, "invalid")
@@ -509,6 +512,10 @@ def test_ui_preferences_invalid_values_fallback_to_defaults() -> None:
         assert loaded.show_address_bar is True
         assert loaded.show_navigation_buttons is True
         assert loaded.show_tab_close_buttons is True
+        assert (
+            loaded.default_tab_position
+            == SettingsManager.DEFAULT_DEFAULT_TAB_POSITION
+        )
         assert (
             loaded.byte_thousands_separator
             == SettingsManager.DEFAULT_BYTES_THOUSANDS_SEPARATOR
@@ -799,6 +806,32 @@ def test_ui_preferences_column_auto_align_mode_invalid_value_uses_default() -> N
         _restore(settings, before)
 
 
+def test_ui_preferences_default_tab_position_round_trip() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    try:
+        settings.default_tab_position = "bottom"
+        assert settings.ui_preferences().default_tab_position == "bottom"
+        settings.default_tab_position = "right_horizontal"
+        assert settings.ui_preferences().default_tab_position == "right_horizontal"
+    finally:
+        _restore(settings, before)
+
+
+def test_ui_preferences_default_tab_position_defaults_when_unset() -> None:
+    settings = SettingsManager()
+    before = _snapshot(settings)
+    try:
+        settings.remove(SettingsManager.DEFAULT_TAB_POSITION_KEY)
+        loaded = settings.ui_preferences()
+        assert (
+            loaded.default_tab_position
+            == SettingsManager.DEFAULT_DEFAULT_TAB_POSITION
+        )
+    finally:
+        _restore(settings, before)
+
+
 def test_ops_companion_bootstrap_flag_round_trip() -> None:
     settings = SettingsManager()
     before = _snapshot(settings)
@@ -913,7 +946,13 @@ def test_saved_view_round_trip_normalizes_payload_shape() -> None:
         assert settings.get_saved_view("Legacy View") == {
             "window_id": "9",
             "panel_tree": {"root": {"type": "leaf", "panel_id": 3}},
-            "tabs": {3: {"panel_id": 3, "tabs": [{"path": "123"}]}},
+            "tabs": {
+                3: {
+                    "panel_id": 3,
+                    "tabs": [{"path": "123"}],
+                    "tab_position_mode": "default",
+                }
+            },
             "active_panel_id": 3,
             "recently_closed_tabs": [],
             "on_top": True,

@@ -112,6 +112,7 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
             "show_address_bar",
             "show_navigation_buttons",
             "show_tab_close_buttons",
+            "default_tab_position",
             "show_storage_overview_status_row",
             "column_width_auto_align_mode",
             "autofit_columns",
@@ -209,6 +210,7 @@ class SettingsDialog(SettingsDialogRuntimeMixin, QDialog):
         comspec_terminal_startup_position_combo: QComboBox
         default_conflict_policy_combo: QComboBox
         default_copy_move_backend_combo: QComboBox
+        default_tab_position_combo: QComboBox
         default_delete_backend_combo: QComboBox
         default_dispatch_mode_combo: QComboBox
         default_editor_executable_edit: QLineEdit

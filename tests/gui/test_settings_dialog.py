@@ -11,7 +11,7 @@ pytest.importorskip("pytestqt")
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication, QMessageBox, QTabWidget
 
 from many_panelz_explorer._operations.backend_options import (
     resolve_copy_move_backend_args,
@@ -195,6 +195,7 @@ def _tracked_keys() -> list[str]:
         SettingsManager.SHOW_ADDRESS_BAR_KEY,
         SettingsManager.SHOW_NAVIGATION_BUTTONS_KEY,
         SettingsManager.SHOW_TAB_CLOSE_BUTTONS_KEY,
+        SettingsManager.DEFAULT_TAB_POSITION_KEY,
         SettingsManager.BYTES_THOUSANDS_SEPARATOR_KEY,
         SettingsManager.BYTES_DECIMAL_SEPARATOR_KEY,
         SettingsManager.FILE_LIST_BYTE_FORMAT_MODE_KEY,
@@ -1362,6 +1363,55 @@ def test_settings_dialog_open_with_and_extended_path_settings_persist(
     assert '".log"' in persisted.file_open_overrides_json
     assert persisted.use_extended_paths_robocopy is True
     assert persisted.use_extended_paths_external_delete is True
+
+
+def test_settings_dialog_default_tab_position_updates_follow_default_panels(
+    qtbot, tmp_path: Path, isolated_settings: SettingsManager
+) -> None:
+    isolated_settings.default_tab_position = "top"
+    isolated_settings.sync()
+
+    roots_provider = _test_roots_provider(tmp_path)
+    controller = _ControllerSettingsStub(isolated_settings)
+    window = _new_window(
+        qtbot,
+        controller=controller,
+        settings=isolated_settings,
+        window_id="settings-tab-position",
+        roots_provider=roots_provider,
+    )
+
+    ordered_ids = [panel_id for row in window.layout_rows for panel_id in row]
+    first_panel = window.panel_widgets[ordered_ids[0]]
+    second_panel = window.panel_widgets[ordered_ids[1]]
+    window.panels_coordinator.set_active_panel(second_panel.panel_id)
+    window.panels_coordinator.set_active_panel_tab_position_mode("top")
+    window.panels_coordinator.set_active_panel(first_panel.panel_id)
+
+    assert first_panel.tabs.tabPosition() == QTabWidget.TabPosition.North
+    assert second_panel.tabs.tabPosition() == QTabWidget.TabPosition.North
+
+    dialog = SettingsDialog(controller=controller, parent=window)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    assert str(dialog.default_tab_position_combo.currentData()) == "top"
+    dialog.set_combo_value(dialog.default_tab_position_combo, "right_horizontal")
+    qtbot.waitUntil(
+        lambda: first_panel.tabs.tabPosition() == QTabWidget.TabPosition.East
+    )
+    qtbot.waitUntil(
+        lambda: bool(first_panel.tabs.tabBar().property("right_horizontal_mode"))
+        is True
+    )
+    assert second_panel.tabs.tabPosition() == QTabWidget.TabPosition.North
+    assert (
+        bool(second_panel.tabs.tabBar().property("right_horizontal_mode")) is False
+    )
+
+    dialog._apply_and_commit()
+    persisted = isolated_settings.ui_preferences()
+    assert persisted.default_tab_position == "right_horizontal"
 
 
 def test_settings_dialog_removes_central_extended_paths_row(

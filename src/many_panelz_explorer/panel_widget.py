@@ -30,6 +30,17 @@ from threep_commons.qt.widget_identity import assign_widget_identity
 from . import widget_naming
 from .explorer_tab import ExplorerTab
 from .mounts import list_roots_for_navigation
+from .panel_tab_positions import (
+    TAB_POSITION_MODE_BOTTOM,
+    TAB_POSITION_MODE_DEFAULT,
+    TAB_POSITION_MODE_LEFT,
+    TAB_POSITION_MODE_LEFT_HORIZONTAL,
+    TAB_POSITION_MODE_RIGHT,
+    TAB_POSITION_MODE_RIGHT_HORIZONTAL,
+    TAB_POSITION_MODE_TOP,
+    normalize_panel_tab_position_mode,
+    resolve_tab_position_mode,
+)
 from .ui.panel import (
     PanelInlineFilterCoordinator,
     PanelNavigationCoordinator,
@@ -93,6 +104,13 @@ class PanelWidget(QWidget):
     COLUMN_ALIGN_MODE_CURRENT_WINDOW_PANELS_TABS = "current_window_panels_tabs"
     COLUMN_ALIGN_MODE_ALL_WINDOWS_PANELS_TABS = "all_windows_panels_tabs"
     COLUMN_ALIGN_MODE_NONE = "none"
+    TAB_POSITION_MODE_DEFAULT = TAB_POSITION_MODE_DEFAULT
+    TAB_POSITION_MODE_TOP = TAB_POSITION_MODE_TOP
+    TAB_POSITION_MODE_BOTTOM = TAB_POSITION_MODE_BOTTOM
+    TAB_POSITION_MODE_LEFT = TAB_POSITION_MODE_LEFT
+    TAB_POSITION_MODE_LEFT_HORIZONTAL = TAB_POSITION_MODE_LEFT_HORIZONTAL
+    TAB_POSITION_MODE_RIGHT = TAB_POSITION_MODE_RIGHT
+    TAB_POSITION_MODE_RIGHT_HORIZONTAL = TAB_POSITION_MODE_RIGHT_HORIZONTAL
 
     activated = Signal()
     current_context_changed = Signal()
@@ -159,6 +177,9 @@ class PanelWidget(QWidget):
         self.show_address_bar = True
         self.show_navigation_buttons = True
         self.show_tab_close_buttons = bool(show_tab_close_buttons)
+        self.tab_position_mode = normalize_panel_tab_position_mode(
+            self.TAB_POSITION_MODE_DEFAULT
+        )
         self.file_list_font_value = QFont(self.font())
         self.navigation_font_value = QFont(self.font())
         self.file_list_size_formatter = (
@@ -381,6 +402,14 @@ class PanelWidget(QWidget):
             show_root_dropdown=enabled,
             show_address_bar=self.show_address_bar,
             show_navigation_buttons=self.show_navigation_buttons,
+        )
+
+    def resolved_tab_position_mode(self, *, default_tab_position: str) -> str:
+        """Return the effective tab-position mode for this panel."""
+
+        return resolve_tab_position_mode(
+            self.tab_position_mode,
+            default_tab_position=default_tab_position,
         )
 
     def assign_identity(self, widget: QWidget, widget_id: str, alias: str) -> None:

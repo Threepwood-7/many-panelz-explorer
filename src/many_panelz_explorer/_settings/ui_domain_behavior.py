@@ -148,6 +148,26 @@ class UiBehaviorSettingsMixin(SettingsDomainBase, SettingsRegistry):
         self._storage.set_value(self.SHOW_TAB_CLOSE_BUTTONS_KEY, bool(enabled))
 
     @property
+    def default_tab_position(self) -> str:
+        value = str(
+            self._storage.value(
+                self.DEFAULT_TAB_POSITION_KEY,
+                self.DEFAULT_DEFAULT_TAB_POSITION,
+            )
+        )
+        mode = value.strip().lower()
+        if mode not in self.ALLOWED_DEFAULT_TAB_POSITION_MODES:
+            return self.DEFAULT_DEFAULT_TAB_POSITION
+        return mode
+
+    @default_tab_position.setter
+    def default_tab_position(self, mode: str) -> None:
+        normalized = str(mode).strip().lower()
+        if normalized not in self.ALLOWED_DEFAULT_TAB_POSITION_MODES:
+            normalized = self.DEFAULT_DEFAULT_TAB_POSITION
+        self._storage.set_value(self.DEFAULT_TAB_POSITION_KEY, normalized)
+
+    @property
     def context_immediate_child_scan_cap(self) -> int:
         return normalize.normalize_positive_int(
             self._storage.value(

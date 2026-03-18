@@ -8,6 +8,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6")
 pytest.importorskip("pytestqt")
 
+from PySide6.QtWidgets import QTabWidget
+
 from many_panelz_explorer._operations.queue_manager import OperationQueueManager
 from many_panelz_explorer._operations.types import OperationExecutionPreferences
 from many_panelz_explorer._settings.manager import SettingsManager
@@ -54,6 +56,11 @@ def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
     source.show()
     qtbot.waitUntil(source.isMaximized)
 
+    first_panel_id = next(
+        panel_id for row in source.layout_rows for panel_id in row
+    )
+    source.panels_coordinator.set_active_panel(first_panel_id)
+    source.right_horizontal_tab_position_action.trigger()
     source.panels_coordinator.new_tab_in_active_panel()
     closed_path = str(source.panels_coordinator.active_panel().current_path())
     source.panels_coordinator.close_active_tab()
@@ -78,6 +85,13 @@ def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
 
     assert len(restored.recently_closed_tabs) == 1
     assert restored.recently_closed_tabs[0]["path"] == closed_path
+    restored_first_panel = restored.panel_widgets[first_panel_id]
+    assert restored_first_panel.tab_position_mode == "right_horizontal"
+    assert restored_first_panel.tabs.tabPosition() == QTabWidget.TabPosition.East
+    assert (
+        bool(restored_first_panel.tabs.tabBar().property("right_horizontal_mode"))
+        is True
+    )
 
     restored.reopen_closed_tab_action.trigger()
     tab_counts = sorted(panel.tab_count() for panel in restored.panel_widgets.values())

@@ -11,7 +11,7 @@ pytest.importorskip("pytestqt")
 
 from PySide6.QtCore import QItemSelectionModel, Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QInputDialog, QMessageBox
+from PySide6.QtWidgets import QApplication, QInputDialog, QMessageBox, QTabWidget
 
 from many_panelz_explorer import mounts
 from many_panelz_explorer._operations.queue_manager import OperationQueueManager
@@ -413,6 +413,74 @@ def test_show_widget_map_toggle_updates_existing_and_new_panels(
         for panel in window.panel_widgets.values()
     )
 
+
+def test_active_panel_tab_position_actions_update_only_the_active_panel(
+    qtbot, tmp_path: Path
+) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="active-panel-tab-position",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    ordered_ids = [panel_id for row in window.layout_rows for panel_id in row]
+    first_panel = window.panel_widgets[ordered_ids[0]]
+    second_panel = window.panel_widgets[ordered_ids[1]]
+
+    assert first_panel.tab_position_mode == "default"
+    assert second_panel.tab_position_mode == "default"
+    assert window.follow_default_tab_position_action.isChecked() is True
+
+    window.panels_coordinator.set_active_panel(first_panel.panel_id)
+    window.left_tab_position_action.trigger()
+    assert first_panel.tab_position_mode == "left"
+    assert first_panel.tabs.tabPosition() == QTabWidget.TabPosition.West
+    assert second_panel.tabs.tabPosition() == QTabWidget.TabPosition.North
+    assert window.left_tab_position_action.isChecked() is True
+
+    window.bottom_tab_position_action.trigger()
+    assert first_panel.tab_position_mode == "bottom"
+    assert first_panel.tabs.tabPosition() == QTabWidget.TabPosition.South
+    assert window.bottom_tab_position_action.isChecked() is True
+
+    window.right_tab_position_action.trigger()
+    assert first_panel.tab_position_mode == "right"
+    assert first_panel.tabs.tabPosition() == QTabWidget.TabPosition.East
+    assert str(first_panel.tabs.tabBar().property("tab_render_mode")) == "native"
+    assert window.right_tab_position_action.isChecked() is True
+
+    window.top_tab_position_action.trigger()
+    assert first_panel.tab_position_mode == "top"
+    assert first_panel.tabs.tabPosition() == QTabWidget.TabPosition.North
+    assert window.top_tab_position_action.isChecked() is True
+
+    window.follow_default_tab_position_action.trigger()
+    assert first_panel.tab_position_mode == "default"
+    assert first_panel.tabs.tabPosition() == QTabWidget.TabPosition.North
+    assert window.follow_default_tab_position_action.isChecked() is True
+
+    window.right_horizontal_tab_position_action.trigger()
+    assert first_panel.tab_position_mode == "right_horizontal"
+    assert first_panel.tabs.tabPosition() == QTabWidget.TabPosition.East
+    assert (
+        bool(first_panel.tabs.tabBar().property("right_horizontal_mode")) is True
+    )
+    assert (
+        bool(second_panel.tabs.tabBar().property("right_horizontal_mode")) is False
+    )
+    assert (
+        bool(first_panel.tabs.tabBar().property("left_horizontal_mode")) is False
+    )
+    assert window.right_horizontal_tab_position_action.isChecked() is True
+
+    window.panels_coordinator.set_active_panel(second_panel.panel_id)
+    assert window.follow_default_tab_position_action.isChecked() is True
+
     window.show_widget_map_action.setChecked(True)
     assert all(
         panel.widget_map_coordinator.enabled()
@@ -448,6 +516,7 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
     window.panels_coordinator.new_tab_in_active_panel()
     source_panel = window.panels_coordinator.active_panel()
     assert source_panel is not None
+    window.left_horizontal_tab_position_action.trigger()
     source_panel.tabs.setCurrentIndex(0)
     source_tab_count = source_panel.tab_count()
     source_current_index = source_panel.tabs.currentIndex()
@@ -458,6 +527,12 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
     assert cloned_panel_vertical is not None
     assert cloned_panel_vertical.tab_count() == source_tab_count
     assert cloned_panel_vertical.tabs.currentIndex() == source_current_index
+    assert cloned_panel_vertical.tab_position_mode == "left_horizontal"
+    assert cloned_panel_vertical.tabs.tabPosition() == QTabWidget.TabPosition.West
+    assert (
+        bool(cloned_panel_vertical.tabs.tabBar().property("left_horizontal_mode"))
+        is True
+    )
 
     window.clone_horizontal_panel_action.trigger()
     assert len(window.panel_widgets) == 6
@@ -465,6 +540,12 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
     assert cloned_panel_horizontal is not None
     assert cloned_panel_horizontal.tab_count() == source_tab_count
     assert cloned_panel_horizontal.tabs.currentIndex() == source_current_index
+    assert cloned_panel_horizontal.tab_position_mode == "left_horizontal"
+    assert cloned_panel_horizontal.tabs.tabPosition() == QTabWidget.TabPosition.West
+    assert (
+        bool(cloned_panel_horizontal.tabs.tabBar().property("left_horizontal_mode"))
+        is True
+    )
 
 
 def test_set_on_top_direct_call_does_not_emit_toggled(qtbot, tmp_path: Path) -> None:
@@ -931,6 +1012,7 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
 
     source.panels_coordinator.new_tab_in_active_panel()
     source.panels_coordinator.split_active_panel(Qt.Orientation.Horizontal)
+    source.right_horizontal_tab_position_action.trigger()
     source.set_on_top(True)
     assert len(source.panel_widgets) == 3
 
@@ -947,6 +1029,9 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     assert "geometry_b64" in saved
     assert saved["maximized"] is True
     assert saved["on_top"] is True
+    active_panel_id = source.active_panel_id
+    assert active_panel_id is not None
+    assert saved["tabs"][active_panel_id]["tab_position_mode"] == "right_horizontal"
 
     source.panels_coordinator.close_active_panel()
     assert len(source.panel_widgets) == 2
@@ -976,6 +1061,14 @@ def test_save_restore_replace_view_actions(qtbot, tmp_path: Path, monkeypatch) -
     assert len(restored.panel_widgets) == 3
     assert restored.on_top_action.isChecked() is True
     qtbot.waitUntil(restored.isMaximized)
+    restored_active_panel = restored.panels_coordinator.active_panel()
+    assert restored_active_panel is not None
+    assert restored_active_panel.tab_position_mode == "right_horizontal"
+    assert restored_active_panel.tabs.tabPosition() == QTabWidget.TabPosition.East
+    assert (
+        bool(restored_active_panel.tabs.tabBar().property("right_horizontal_mode"))
+        is True
+    )
 
 
 def test_split_behaviour_uses_full_width_rows(qtbot, tmp_path: Path) -> None:

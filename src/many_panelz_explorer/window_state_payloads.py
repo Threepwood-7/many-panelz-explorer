@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, cast
 
+from .panel_tab_positions import normalize_panel_tab_position_mode
+
 if TYPE_CHECKING:
     from .panel_tree import PanelTreeNodePayload, PanelTreePayload
     from .ui.window.state_types import (
@@ -206,6 +208,10 @@ def panel_state_payload(raw: object) -> PanelState | None:
             if width is not None:
                 widths.append(width)
         panel_state["column_widths"] = widths
+
+    panel_state["tab_position_mode"] = normalize_panel_tab_position_mode(
+        mapping.get("tab_position_mode", "default")
+    )
 
     return panel_state
 

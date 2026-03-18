@@ -28,6 +28,7 @@ class PanelState(TypedDict, total=False):
     current_index: int
     tabs: list[TabState]
     column_widths: list[int]
+    tab_position_mode: str
 
 
 type TabsState = dict[int, PanelState]

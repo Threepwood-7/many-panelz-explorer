@@ -14,6 +14,7 @@ from ...byte_formatting import (
     ByteFormatScopeConfig,
     format_bytes,
 )
+from ...panel_tab_positions import normalize_default_tab_position
 
 if TYPE_CHECKING:
     from ..._settings.models import UiPreferences
@@ -85,6 +86,12 @@ class WindowPreferencesCoordinator:
     def show_tab_close_buttons_enabled(self) -> bool:
         """Return whether tab close buttons should be visible."""
         return self._show_tab_close_buttons
+
+    @property
+    def default_tab_position(self) -> str:
+        """Return the global default tab position for panels."""
+
+        return self._default_tab_position
 
     @property
     def column_width_auto_align_mode(self) -> str:
@@ -171,6 +178,10 @@ class WindowPreferencesCoordinator:
             )
             panel.presentation_coordinator.apply_tab_close_button_visibility(
                 show_tab_close_buttons=self._show_tab_close_buttons
+            )
+            panel.presentation_coordinator.apply_tab_position(
+                tab_position_mode=panel.tab_position_mode,
+                default_tab_position=self._default_tab_position,
             )
             panel.state_coordinator.set_column_width_auto_align_mode(
                 self._column_width_auto_align_mode
@@ -285,6 +296,9 @@ class WindowPreferencesCoordinator:
         self._show_address_bar = bool(preferences.show_address_bar)
         self._show_navigation_buttons = bool(preferences.show_navigation_buttons)
         self._show_tab_close_buttons = bool(preferences.show_tab_close_buttons)
+        self._default_tab_position = normalize_default_tab_position(
+            preferences.default_tab_position
+        )
         self._byte_format_preferences = self._build_byte_format_preferences(preferences)
         self._status_bar_storage_label_template = (
             preferences.status_bar_storage_label_template

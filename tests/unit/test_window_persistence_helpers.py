@@ -35,7 +35,13 @@ def test_window_tabs_payload_ignores_invalid_rows() -> None:
 
     assert payload == {
         "active_panel_id": 7,
-        "panels": {"1": {"panel_id": 1, "tabs": [{"path": "c:/one"}]}},
+        "panels": {
+            "1": {
+                "panel_id": 1,
+                "tabs": [{"path": "c:/one"}],
+                "tab_position_mode": "default",
+            }
+        },
         "recently_closed_tabs": [{"path": "c:/closed", "panel_id": 2}],
     }
 
@@ -50,8 +56,8 @@ def test_tabs_state_from_panels_payload_converts_keys_to_ints() -> None:
     )
 
     assert tabs_state == {
-        1: {"panel_id": 1, "current_index": 0},
-        2: {"panel_id": 2, "current_index": 1},
+        1: {"panel_id": 1, "current_index": 0, "tab_position_mode": "default"},
+        2: {"panel_id": 2, "current_index": 1, "tab_position_mode": "default"},
     }
 
 
@@ -72,12 +78,34 @@ def test_saved_view_state_normalizes_flags_and_geometry() -> None:
     assert payload == {
         "window_id": "123",
         "panel_tree": {"root": {"type": "leaf", "panel_id": 1}},
-        "tabs": {4: {"panel_id": 4, "tabs": [{"path": "c:/root"}]}},
+        "tabs": {
+            4: {
+                "panel_id": 4,
+                "tabs": [{"path": "c:/root"}],
+                "tab_position_mode": "default",
+            }
+        },
         "active_panel_id": 4,
         "recently_closed_tabs": [{"path": "c:/closed", "panel_id": 6}],
         "on_top": True,
         "maximized": True,
         "geometry_b64": "abc123",
+    }
+
+
+def test_tabs_state_payload_normalizes_panel_tab_position_mode() -> None:
+    tabs_state = tabs_state_from_panels_payload(
+        {
+            "1": {"panel_id": 1, "tab_position_mode": "right_horizontal"},
+            "2": {"panel_id": 2, "tab_position_mode": "bottom"},
+            "3": {"panel_id": 3, "tab_position_mode": "diagonal"},
+        }
+    )
+
+    assert tabs_state == {
+        1: {"panel_id": 1, "tab_position_mode": "right_horizontal"},
+        2: {"panel_id": 2, "tab_position_mode": "bottom"},
+        3: {"panel_id": 3, "tab_position_mode": "default"},
     }
 
 

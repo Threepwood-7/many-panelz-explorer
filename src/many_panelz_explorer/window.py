@@ -40,7 +40,14 @@ from .ui.window.panels import (
 )
 
 if TYPE_CHECKING:
-    from PySide6.QtGui import QAction, QCloseEvent, QResizeEvent, QShortcut, QShowEvent
+    from PySide6.QtGui import (
+        QAction,
+        QActionGroup,
+        QCloseEvent,
+        QResizeEvent,
+        QShortcut,
+        QShowEvent,
+    )
 
     from ._settings.manager import SettingsManager
     from .app_controller import AppController
@@ -106,6 +113,13 @@ class ExplorerWindow(QMainWindow):
     exit_action: QAction
     refresh_action: QAction
     fit_columns_action: QAction
+    follow_default_tab_position_action: QAction
+    top_tab_position_action: QAction
+    bottom_tab_position_action: QAction
+    left_tab_position_action: QAction
+    left_horizontal_tab_position_action: QAction
+    right_tab_position_action: QAction
+    right_horizontal_tab_position_action: QAction
     on_top_action: QAction
     show_hidden_action: QAction
     show_widget_map_action: QAction
@@ -116,6 +130,8 @@ class ExplorerWindow(QMainWindow):
     show_queue_window_action: QAction
     settings_action: QAction
     help_action: QAction
+    active_panel_tab_position_action_group: QActionGroup
+    active_panel_tab_position_menu: QMenu
     restore_view_menu: QMenu
     context_menu: QMenu
     menu_file_action: QAction
@@ -350,6 +366,7 @@ class ExplorerWindow(QMainWindow):
 
     def update_pane_visuals(self) -> None:
         self.status_coordinator.update_pane_visuals()
+        self.ui_composer.sync_active_panel_tab_position_actions()
         self._refresh_context_menu()
 
     def _refresh_context_menu(self) -> None:

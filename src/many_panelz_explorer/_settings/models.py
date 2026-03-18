@@ -45,6 +45,7 @@ from many_panelz_explorer.external_file_managers import (
     DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE,
     DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
 )
+from many_panelz_explorer.panel_tab_positions import TAB_POSITION_MODE_TOP
 
 
 @dataclass(frozen=True)
@@ -62,6 +63,7 @@ class UiPreferences:
     show_address_bar: bool = True
     show_navigation_buttons: bool = True
     show_tab_close_buttons: bool = True
+    default_tab_position: str = TAB_POSITION_MODE_TOP
     byte_thousands_separator: str = ","
     byte_decimal_separator: str = "."
     file_list_byte_format_mode: str = "bytes"

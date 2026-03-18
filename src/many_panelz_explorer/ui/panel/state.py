@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from ...explorer_tab import ExplorerTab
+from ...panel_tab_positions import normalize_panel_tab_position_mode
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -77,11 +78,17 @@ class PanelStateCoordinator:
             "current_index": self.panel.tabs.currentIndex(),
             "tabs": tabs,
             "column_widths": list(self.panel.column_widths),
+            "tab_position_mode": normalize_panel_tab_position_mode(
+                self.panel.tab_position_mode
+            ),
         }
 
     def restore_state(self, state: PanelState) -> None:
         """Restore tabs, current index, and remembered column widths."""
 
+        self.panel.tab_position_mode = normalize_panel_tab_position_mode(
+            state.get("tab_position_mode", self.panel.TAB_POSITION_MODE_DEFAULT)
+        )
         raw_widths = state.get("column_widths", [])
         self.panel.column_widths = self._coerce_column_widths(
             cast("list[object]", raw_widths)

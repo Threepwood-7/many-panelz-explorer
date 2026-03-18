@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QSignalBlocker, Qt
-from PySide6.QtGui import QAction, QKeySequence, QShortcut
+from PySide6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QDockWidget,
     QMenu,
@@ -14,6 +14,16 @@ from threep_commons.qt.widget_identity import object_name_for_id
 
 from ... import widget_naming
 from ...operation_queue_widgets import OperationQueuePanel
+from ...panel_tab_positions import (
+    TAB_POSITION_MODE_BOTTOM,
+    TAB_POSITION_MODE_DEFAULT,
+    TAB_POSITION_MODE_LEFT,
+    TAB_POSITION_MODE_LEFT_HORIZONTAL,
+    TAB_POSITION_MODE_RIGHT,
+    TAB_POSITION_MODE_RIGHT_HORIZONTAL,
+    TAB_POSITION_MODE_TOP,
+    normalize_panel_tab_position_mode,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -250,6 +260,114 @@ class WindowUiComposer:
             self.window.views_coordinator.replace_view
         )
 
+        self.window.active_panel_tab_position_action_group = QActionGroup(self.window)
+        self.window.active_panel_tab_position_action_group.setExclusive(True)
+
+        self.window.follow_default_tab_position_action = QAction(
+            "Follow Default",
+            self.window,
+        )
+        self.window.follow_default_tab_position_action.setCheckable(True)
+        self.window.follow_default_tab_position_action.triggered.connect(
+            self._set_active_panel_tab_position_callback(TAB_POSITION_MODE_DEFAULT)
+        )
+        self.window.active_panel_tab_position_action_group.addAction(
+            self.window.follow_default_tab_position_action
+        )
+
+        self.window.top_tab_position_action = QAction("Tabs on Top", self.window)
+        self.window.top_tab_position_action.setCheckable(True)
+        self.window.top_tab_position_action.triggered.connect(
+            self._set_active_panel_tab_position_callback(TAB_POSITION_MODE_TOP)
+        )
+        self.window.active_panel_tab_position_action_group.addAction(
+            self.window.top_tab_position_action
+        )
+
+        self.window.bottom_tab_position_action = QAction("Tabs on Bottom", self.window)
+        self.window.bottom_tab_position_action.setCheckable(True)
+        self.window.bottom_tab_position_action.triggered.connect(
+            self._set_active_panel_tab_position_callback(TAB_POSITION_MODE_BOTTOM)
+        )
+        self.window.active_panel_tab_position_action_group.addAction(
+            self.window.bottom_tab_position_action
+        )
+
+        self.window.left_tab_position_action = QAction(
+            "Tabs on Left",
+            self.window,
+        )
+        self.window.left_tab_position_action.setCheckable(True)
+        self.window.left_tab_position_action.triggered.connect(
+            self._set_active_panel_tab_position_callback(TAB_POSITION_MODE_LEFT)
+        )
+        self.window.active_panel_tab_position_action_group.addAction(
+            self.window.left_tab_position_action
+        )
+
+        self.window.left_horizontal_tab_position_action = QAction(
+            "Tabs on Left (Horizontal)",
+            self.window,
+        )
+        self.window.left_horizontal_tab_position_action.setCheckable(True)
+        self.window.left_horizontal_tab_position_action.triggered.connect(
+            self._set_active_panel_tab_position_callback(
+                TAB_POSITION_MODE_LEFT_HORIZONTAL
+            )
+        )
+        self.window.active_panel_tab_position_action_group.addAction(
+            self.window.left_horizontal_tab_position_action
+        )
+
+        self.window.right_tab_position_action = QAction("Tabs on Right", self.window)
+        self.window.right_tab_position_action.setCheckable(True)
+        self.window.right_tab_position_action.triggered.connect(
+            self._set_active_panel_tab_position_callback(TAB_POSITION_MODE_RIGHT)
+        )
+        self.window.active_panel_tab_position_action_group.addAction(
+            self.window.right_tab_position_action
+        )
+
+        self.window.right_horizontal_tab_position_action = QAction(
+            "Tabs on Right (Horizontal)",
+            self.window,
+        )
+        self.window.right_horizontal_tab_position_action.setCheckable(True)
+        self.window.right_horizontal_tab_position_action.triggered.connect(
+            self._set_active_panel_tab_position_callback(
+                TAB_POSITION_MODE_RIGHT_HORIZONTAL
+            )
+        )
+        self.window.active_panel_tab_position_action_group.addAction(
+            self.window.right_horizontal_tab_position_action
+        )
+
+        self.window.active_panel_tab_position_menu = QMenu(
+            "Active Panel Tabs",
+            self.window,
+        )
+        self.window.active_panel_tab_position_menu.addAction(
+            self.window.follow_default_tab_position_action
+        )
+        self.window.active_panel_tab_position_menu.addAction(
+            self.window.top_tab_position_action
+        )
+        self.window.active_panel_tab_position_menu.addAction(
+            self.window.bottom_tab_position_action
+        )
+        self.window.active_panel_tab_position_menu.addAction(
+            self.window.left_tab_position_action
+        )
+        self.window.active_panel_tab_position_menu.addAction(
+            self.window.left_horizontal_tab_position_action
+        )
+        self.window.active_panel_tab_position_menu.addAction(
+            self.window.right_tab_position_action
+        )
+        self.window.active_panel_tab_position_menu.addAction(
+            self.window.right_horizontal_tab_position_action
+        )
+
     def _build_settings_actions(self) -> None:
 
         self.window.on_top_action = QAction("On &Top", self.window)
@@ -447,6 +565,8 @@ class WindowUiComposer:
         view_menu.addAction(self.window.align_columns_all_panels_tabs_action)
         view_menu.addAction(self.window.align_columns_all_windows_action)
         view_menu.addSeparator()
+        view_menu.addMenu(self.window.active_panel_tab_position_menu)
+        view_menu.addSeparator()
         view_menu.addAction(self.window.show_queue_dock_action)
         view_menu.addAction(self.window.show_queue_window_action)
         view_menu.addSeparator()
@@ -500,6 +620,13 @@ class WindowUiComposer:
                 self.window.align_columns_current_panel_tabs_action,
                 self.window.align_columns_all_panels_tabs_action,
                 self.window.align_columns_all_windows_action,
+                self.window.follow_default_tab_position_action,
+                self.window.top_tab_position_action,
+                self.window.bottom_tab_position_action,
+                self.window.left_tab_position_action,
+                self.window.left_horizontal_tab_position_action,
+                self.window.right_tab_position_action,
+                self.window.right_horizontal_tab_position_action,
                 self.window.show_queue_dock_action,
                 self.window.show_queue_window_action,
                 self.window.show_widget_map_action,
@@ -545,6 +672,57 @@ class WindowUiComposer:
         self.window.queue_dock.setVisible(show_dock)
         if mode in {"floating_window", "both"}:
             self.window.controller.show_queue_floating_window()
+
+    def sync_active_panel_tab_position_actions(self) -> None:
+        """Refresh the active-panel tab-position submenu check state."""
+
+        panel = self.window.panels_coordinator.active_panel()
+        enabled = panel is not None
+        mode = TAB_POSITION_MODE_DEFAULT
+        if panel is not None:
+            mode = normalize_panel_tab_position_mode(panel.tab_position_mode)
+
+        self.window.active_panel_tab_position_menu.menuAction().setEnabled(enabled)
+        actions = (
+            self.window.follow_default_tab_position_action,
+            self.window.top_tab_position_action,
+            self.window.bottom_tab_position_action,
+            self.window.left_tab_position_action,
+            self.window.left_horizontal_tab_position_action,
+            self.window.right_tab_position_action,
+            self.window.right_horizontal_tab_position_action,
+        )
+        for action in actions:
+            action.setEnabled(enabled)
+
+        with QSignalBlocker(self.window.follow_default_tab_position_action):
+            self.window.follow_default_tab_position_action.setChecked(
+                mode == TAB_POSITION_MODE_DEFAULT
+            )
+        with QSignalBlocker(self.window.top_tab_position_action):
+            self.window.top_tab_position_action.setChecked(
+                mode == TAB_POSITION_MODE_TOP
+            )
+        with QSignalBlocker(self.window.bottom_tab_position_action):
+            self.window.bottom_tab_position_action.setChecked(
+                mode == TAB_POSITION_MODE_BOTTOM
+            )
+        with QSignalBlocker(self.window.left_tab_position_action):
+            self.window.left_tab_position_action.setChecked(
+                mode == TAB_POSITION_MODE_LEFT
+            )
+        with QSignalBlocker(self.window.left_horizontal_tab_position_action):
+            self.window.left_horizontal_tab_position_action.setChecked(
+                mode == TAB_POSITION_MODE_LEFT_HORIZONTAL
+            )
+        with QSignalBlocker(self.window.right_tab_position_action):
+            self.window.right_tab_position_action.setChecked(
+                mode == TAB_POSITION_MODE_RIGHT
+            )
+        with QSignalBlocker(self.window.right_horizontal_tab_position_action):
+            self.window.right_horizontal_tab_position_action.setChecked(
+                mode == TAB_POSITION_MODE_RIGHT_HORIZONTAL
+            )
 
     def _populate_restore_view_menu(self) -> None:
         self.window.views_coordinator.populate_restore_view_menu(
@@ -595,6 +773,19 @@ class WindowUiComposer:
 
         def _handle_triggered() -> None:
             self.window.panels_coordinator.clone_active_panel(orientation)
+
+        return _handle_triggered
+
+    def _set_active_panel_tab_position_callback(
+        self,
+        mode: str,
+    ) -> Callable[[bool], None]:
+        """Build an action callback that changes the active panel tab position."""
+
+        def _handle_triggered(checked: bool) -> None:
+            if not checked:
+                return
+            self.window.panels_coordinator.set_active_panel_tab_position_mode(mode)
 
         return _handle_triggered
 

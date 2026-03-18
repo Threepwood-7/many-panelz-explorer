@@ -365,6 +365,34 @@ def build_panel_visibility_rows(
         controls=[dialog.show_tab_close_buttons_checkbox],
     )
 
+    dialog.default_tab_position_combo = QComboBox(dialog)
+    dialog.default_tab_position_combo.addItem("Top", "top")
+    dialog.default_tab_position_combo.addItem("Bottom", "bottom")
+    dialog.default_tab_position_combo.addItem("Left", "left")
+    dialog.default_tab_position_combo.addItem(
+        "Left Horizontal",
+        "left_horizontal",
+    )
+    dialog.default_tab_position_combo.addItem("Right", "right")
+    dialog.default_tab_position_combo.addItem(
+        "Right Horizontal",
+        "right_horizontal",
+    )
+    dialog.default_tab_position_combo.currentIndexChanged.connect(
+        dialog.on_controls_changed
+    )
+    add_row(
+        dialog,
+        section=visibility_group,
+        key="default_tab_position",
+        title="Default Tab Position",
+        description=(
+            "Choose where panels that follow defaults place their tab strip."
+        ),
+        terms="default tab position top bottom left right horizontal panels",
+        controls=[dialog.default_tab_position_combo],
+    )
+
     dialog.show_storage_overview_status_row_checkbox = QCheckBox(
         "Show global storage overview status row",
         dialog,

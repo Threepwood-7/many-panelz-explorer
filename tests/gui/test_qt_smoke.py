@@ -123,6 +123,28 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
     assert any(
         action.text() == "Align Columns: All Windows" for action in view_menu.actions()
     )
+    active_panel_tabs_action = next(
+        (
+            action
+            for action in view_menu.actions()
+            if action.text() == "Active Panel Tabs"
+        ),
+        None,
+    )
+    assert active_panel_tabs_action is not None
+    assert active_panel_tabs_action.menu() is window.active_panel_tab_position_menu
+    active_panel_tab_labels = [
+        action.text() for action in window.active_panel_tab_position_menu.actions()
+    ]
+    assert active_panel_tab_labels == [
+        "Follow Default",
+        "Tabs on Top",
+        "Tabs on Bottom",
+        "Tabs on Left",
+        "Tabs on Left (Horizontal)",
+        "Tabs on Right",
+        "Tabs on Right (Horizontal)",
+    ]
     settings_action = next(
         (action for action in view_menu.actions() if action.text() == "&Settings..."),
         None,

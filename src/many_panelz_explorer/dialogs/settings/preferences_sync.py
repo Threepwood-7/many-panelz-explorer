@@ -68,6 +68,10 @@ def load_panel_preferences(dialog: SettingsDialog, preferences: UiPreferences) -
     dialog.show_tab_close_buttons_checkbox.setChecked(
         preferences.show_tab_close_buttons
     )
+    dialog.set_combo_value(
+        dialog.default_tab_position_combo,
+        preferences.default_tab_position,
+    )
     dialog.show_storage_overview_status_row_checkbox.setChecked(
         preferences.show_storage_overview_status_row
     )
@@ -366,6 +370,7 @@ def collect_preferences_from_controls(dialog: SettingsDialog) -> UiPreferences:
         show_address_bar=dialog.show_address_bar_checkbox.isChecked(),
         show_navigation_buttons=dialog.show_navigation_buttons_checkbox.isChecked(),
         show_tab_close_buttons=dialog.show_tab_close_buttons_checkbox.isChecked(),
+        default_tab_position=str(dialog.default_tab_position_combo.currentData()),
         show_storage_overview_status_row=(
             dialog.show_storage_overview_status_row_checkbox.isChecked()
         ),

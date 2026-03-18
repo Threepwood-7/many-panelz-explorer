@@ -5,9 +5,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from PySide6.QtGui import QColor, QFont
+from PySide6.QtWidgets import QTabWidget
 from threep_commons.fs_paths import display_path_text
 
 from ...explorer_tab import ExplorerTab
+from ...panel_tab_positions import (
+    TAB_POSITION_MODE_BOTTOM,
+    TAB_POSITION_MODE_LEFT,
+    TAB_POSITION_MODE_LEFT_HORIZONTAL,
+    TAB_POSITION_MODE_RIGHT,
+    TAB_POSITION_MODE_RIGHT_HORIZONTAL,
+    normalize_panel_tab_position_mode,
+    resolve_tab_position_mode,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -52,6 +62,70 @@ class PanelPresentationCoordinator:
 
         self.panel.show_tab_close_buttons = bool(show_tab_close_buttons)
         self.panel.tabs.setTabsClosable(self.panel.show_tab_close_buttons)
+        self.panel.widget_map_coordinator.sync_overlay()
+
+    def apply_tab_position(
+        self,
+        *,
+        tab_position_mode: str,
+        default_tab_position: str,
+    ) -> None:
+        """Apply the panel tab-strip position using the current default."""
+
+        self.panel.tab_position_mode = normalize_panel_tab_position_mode(
+            tab_position_mode
+        )
+        resolved_mode = resolve_tab_position_mode(
+            self.panel.tab_position_mode,
+            default_tab_position=default_tab_position,
+        )
+        tab_position = QTabWidget.TabPosition.North
+        tab_render_mode = "native"
+        if resolved_mode == TAB_POSITION_MODE_BOTTOM:
+            tab_position = QTabWidget.TabPosition.South
+        elif resolved_mode in {
+            TAB_POSITION_MODE_LEFT,
+            TAB_POSITION_MODE_LEFT_HORIZONTAL,
+        }:
+            tab_position = QTabWidget.TabPosition.West
+            if resolved_mode == TAB_POSITION_MODE_LEFT_HORIZONTAL:
+                tab_render_mode = "west_horizontal"
+        elif resolved_mode in {
+            TAB_POSITION_MODE_RIGHT,
+            TAB_POSITION_MODE_RIGHT_HORIZONTAL,
+        }:
+            tab_position = QTabWidget.TabPosition.East
+            if resolved_mode == TAB_POSITION_MODE_RIGHT_HORIZONTAL:
+                tab_render_mode = "east_horizontal"
+
+        tab_bar = self.panel.tabs.tabBar()
+        self.panel.tabs.setTabPosition(tab_position)
+        tab_bar.setProperty("tab_render_mode", tab_render_mode)
+        tab_bar.setProperty(
+            "left_horizontal_mode",
+            tab_render_mode == "west_horizontal",
+        )
+        tab_bar.setProperty(
+            "right_horizontal_mode",
+            tab_render_mode == "east_horizontal",
+        )
+        set_tab_render_mode = getattr(
+            tab_bar,
+            "set_tab_render_mode",
+            None,
+        )
+        if callable(set_tab_render_mode):
+            set_tab_render_mode(tab_render_mode)
+        else:
+            set_left_horizontal_mode = getattr(
+                tab_bar,
+                "set_left_horizontal_mode",
+                None,
+            )
+            if callable(set_left_horizontal_mode):
+                set_left_horizontal_mode(
+                    resolved_mode == TAB_POSITION_MODE_LEFT_HORIZONTAL
+                )
         self.panel.widget_map_coordinator.sync_overlay()
 
     def apply_font_preferences(

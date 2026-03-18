@@ -49,6 +49,10 @@ from many_panelz_explorer.external_file_managers import (
     DEFAULT_TOTAL_COMMANDER_SOURCE_ARGS_TEMPLATE,
     DEFAULT_TOTAL_COMMANDER_SOURCE_TARGET_ARGS_TEMPLATE,
 )
+from many_panelz_explorer.panel_tab_positions import (
+    ALLOWED_DEFAULT_TAB_POSITIONS,
+    TAB_POSITION_MODE_TOP,
+)
 
 
 class SettingsRegistry:
@@ -65,6 +69,7 @@ class SettingsRegistry:
     SHOW_ADDRESS_BAR_KEY = "ui/show_address_bar"
     SHOW_NAVIGATION_BUTTONS_KEY = "ui/show_navigation_buttons"
     SHOW_TAB_CLOSE_BUTTONS_KEY = "ui/show_tab_close_buttons"
+    DEFAULT_TAB_POSITION_KEY = "ui/default_tab_position"
     BYTES_THOUSANDS_SEPARATOR_KEY = "ui/bytes/separators/thousands"
     BYTES_DECIMAL_SEPARATOR_KEY = "ui/bytes/separators/decimal"
     FILE_LIST_BYTE_FORMAT_MODE_KEY = "ui/bytes/file_list/mode"
@@ -191,6 +196,7 @@ class SettingsRegistry:
     DEFAULT_NAVIGATION_FONT_FAMILY = ""
     DEFAULT_NAVIGATION_FONT_SIZE_PT = 10
     DEFAULT_SHOW_TAB_CLOSE_BUTTONS = True
+    DEFAULT_DEFAULT_TAB_POSITION = TAB_POSITION_MODE_TOP
     DEFAULT_SHOW_STORAGE_OVERVIEW_STATUS_ROW = True
     DEFAULT_BYTES_THOUSANDS_SEPARATOR = ","
     DEFAULT_BYTES_DECIMAL_SEPARATOR = "."
@@ -293,6 +299,9 @@ class SettingsRegistry:
         "all_windows_panels_tabs",
         "none",
     }
+    ALLOWED_DEFAULT_TAB_POSITION_MODES: ClassVar[set[str]] = (
+        ALLOWED_DEFAULT_TAB_POSITIONS
+    )
     ALLOWED_BYTE_FORMAT_MODES: ClassVar[set[str]] = {
         "human_readable",
         "always_mb",
