@@ -1,6 +1,6 @@
 # Changes here will be overwritten by Copier.
 _src_path: "c:/prj/aidev/py/aatemplate"
-_commit: "v1.7.4"
+_commit: "v1.7.4-1-gf6a9b9e"
 project_name: "many-panelz-explorer"
 project_kind: "qt_app"
 package_name: "many_panelz_explorer"

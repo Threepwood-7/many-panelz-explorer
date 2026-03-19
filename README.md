@@ -284,6 +284,7 @@ many-panelz-explorer/
 |   |-- policy/
 |   |   `-- check_standard.py
 |   `-- windows/
+|       |-- build_nuitka.py          # Build standalone Windows package with Nuitka
 |       |-- setup_env.py              # Create/verify .venv via uv sync
 |       |-- run_app.py               # Launch app via hatch run
 |       |-- run_app_gui.pyw          # Launch GUI without console window
@@ -320,6 +321,7 @@ many-panelz-explorer/
 
 | Script | Description |
 |---|---|
+| `python scripts\windows\build_nuitka.py` | Build the standalone Windows package into `build\nuitka\standalone\` |
 | `python scripts\windows\setup_env.py` | Create/verify `.venv` via `uv sync --locked` |
 | `pyw scripts\windows\run_app_gui.pyw` | Launch GUI without console window (auto-bootstraps venv) |
 | `python scripts\windows\run_app.py` | Launch app via `hatch run` (requires hatch in PATH) |
@@ -353,6 +355,18 @@ hatch run lint:policy
 ```bat
 hatch build
 ```
+
+### Packaging
+
+```bat
+hatch run package-standalone
+:: or
+python scripts\windows\build_nuitka.py
+```
+
+This creates a standalone Nuitka build under `build\nuitka\standalone\`.
+
+Version 1 of packaging intentionally does not bundle external tools. Recycle Bin behavior continues to rely on the normal Windows `send2trash` integration, and terminal/editor tools remain system-provided.
 
 ### Lockfile Workflow
 
