@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from ...explorer_tab import ExplorerTab
+from ...panel_groups import DEFAULT_TAB_GROUP_ID, DEFAULT_TAB_GROUP_TITLE
 from ...panel_tab_positions import normalize_panel_tab_position_mode
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from ...panel_widget import PanelWidget
-    from ..window.state_types import PanelState, TabState
+    from ..window.state_types import PanelState
 
 
 class PanelStateCoordinator:
@@ -67,17 +67,10 @@ class PanelStateCoordinator:
     def serialize_state(self) -> PanelState:
         """Serialize panel tabs and column widths."""
 
-        tabs: list[TabState] = []
-        for index in range(self.panel.tabs.count()):
-            widget = self.panel.tabs.widget(index)
-            if isinstance(widget, ExplorerTab):
-                tabs.append(widget.serialize_state())
-
         return {
             "panel_id": self.panel.panel_id,
-            "current_index": self.panel.tabs.currentIndex(),
-            "tabs": tabs,
-            "column_widths": list(self.panel.column_widths),
+            "active_group_id": self.panel.active_group_id,
+            "groups": self.panel.serialize_tab_groups(),
             "tab_position_mode": normalize_panel_tab_position_mode(
                 self.panel.tab_position_mode
             ),
@@ -89,28 +82,34 @@ class PanelStateCoordinator:
         self.panel.tab_position_mode = normalize_panel_tab_position_mode(
             state.get("tab_position_mode", self.panel.TAB_POSITION_MODE_DEFAULT)
         )
-        raw_widths = state.get("column_widths", [])
-        self.panel.column_widths = self._coerce_column_widths(
-            cast("list[object]", raw_widths)
-        )
 
         self.panel.restoring_state = True
         try:
-            tabs = state.get("tabs", [])
-            if not tabs:
-                self.panel.add_tab(self.panel.default_path)
-                if self.panel.column_widths:
-                    self._apply_column_widths_to_all_tabs(self.panel.column_widths)
-                return
-
-            for tab_state in tabs:
-                self.panel.add_tab(Path(tab_state["path"]))
-
-            current_index = self._coerce_index(state.get("current_index", 0))
-            current_index = max(0, min(current_index, self.panel.tabs.count() - 1))
-            self.panel.tabs.setCurrentIndex(current_index)
-            if self.panel.column_widths:
-                self._apply_column_widths_to_all_tabs(self.panel.column_widths)
+            groups = state.get("groups", [])
+            if groups:
+                self.panel.restore_tab_groups(
+                    groups,
+                    active_group_id=str(
+                        state.get("active_group_id", DEFAULT_TAB_GROUP_ID)
+                    ),
+                )
+            else:
+                self.panel.restore_tab_groups(
+                    [
+                        {
+                            "group_id": DEFAULT_TAB_GROUP_ID,
+                            "title": DEFAULT_TAB_GROUP_TITLE,
+                            "current_index": self._coerce_index(
+                                state.get("current_index", 0)
+                            ),
+                            "tabs": state.get("tabs", []),
+                            "column_widths": self._coerce_column_widths(
+                                state.get("column_widths", [])
+                            ),
+                        }
+                    ],
+                    active_group_id=DEFAULT_TAB_GROUP_ID,
+                )
             self.panel.presentation_coordinator.sync_toolbar_for_current_tab()
         finally:
             self.panel.restoring_state = False
@@ -125,8 +124,13 @@ class PanelStateCoordinator:
         if widget is not None:
             widget.deleteLater()
         if self.panel.tabs.count() == 0:
-            self.panel.became_empty.emit()
+            self.panel.sync_active_group_state()
+            if self.panel.can_close_active_group():
+                self.panel.close_group(self.panel.active_group_id)
+            else:
+                self.panel.became_empty.emit()
             return
+        self.panel.sync_active_group_state()
         self.panel.presentation_coordinator.sync_toolbar_for_current_tab()
         self.panel.widget_map_coordinator.sync_overlay()
 

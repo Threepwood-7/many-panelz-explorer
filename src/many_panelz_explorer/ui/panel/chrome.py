@@ -225,6 +225,29 @@ def build_panel_toolbar(panel: PanelWidget, root: QVBoxLayout) -> None:
     )
     toolbar.addWidget(panel.root_combo)
 
+    panel.group_picker_combo = QComboBox()
+    panel.group_picker_combo.setMinimumWidth(0)
+    panel.group_picker_combo.setSizePolicy(
+        QSizePolicy.Policy.Preferred,
+        QSizePolicy.Policy.Fixed,
+    )
+    panel.group_picker_combo.currentIndexChanged.connect(
+        panel.on_group_picker_index_changed
+    )
+    toolbar.addWidget(panel.group_picker_combo)
+
+    panel.new_group_btn = QPushButton("+")
+    panel.new_group_btn.setMinimumWidth(28)
+    panel.new_group_btn.setSizePolicy(
+        QSizePolicy.Policy.Fixed,
+        QSizePolicy.Policy.Fixed,
+    )
+    panel.new_group_btn.setToolTip("Create a new tab group")
+    panel.new_group_btn.clicked.connect(
+        lambda: panel.create_group(seed_paths=[panel.current_path()], activate=True)
+    )
+    toolbar.addWidget(panel.new_group_btn)
+
     panel.address_edit = QLineEdit()
     panel.address_edit.returnPressed.connect(
         panel.navigation_coordinator.on_address_submitted
@@ -342,9 +365,24 @@ def assign_panel_control_identities(panel: PanelWidget) -> None:
         widget_naming.panel_control_alias(panel.panel_id, "refresh"),
     )
     panel.assign_identity(
+        panel.group_picker_combo,
+        widget_naming.panel_control_widget_id(panel.panel_id, "group_picker"),
+        widget_naming.panel_control_alias(panel.panel_id, "group_picker"),
+    )
+    panel.assign_identity(
+        panel.new_group_btn,
+        widget_naming.panel_control_widget_id(panel.panel_id, "new_group"),
+        widget_naming.panel_control_alias(panel.panel_id, "new_group"),
+    )
+    panel.assign_identity(
         panel.address_edit,
         widget_naming.panel_control_widget_id(panel.panel_id, "address"),
         widget_naming.panel_control_alias(panel.panel_id, "address"),
+    )
+    panel.assign_identity(
+        panel.root_combo,
+        widget_naming.panel_control_widget_id(panel.panel_id, "root_combo"),
+        widget_naming.panel_control_alias(panel.panel_id, "root_combo"),
     )
     panel.assign_identity(
         panel.back_btn,
@@ -393,6 +431,8 @@ def install_panel_focus_watchers(panel: PanelWidget) -> None:
     panel.refresh_btn.installEventFilter(panel.focus_watcher)
     panel.root_buttons_host.installEventFilter(panel.focus_watcher)
     panel.root_combo.installEventFilter(panel.focus_watcher)
+    panel.group_picker_combo.installEventFilter(panel.focus_watcher)
+    panel.new_group_btn.installEventFilter(panel.focus_watcher)
     panel.address_edit.installEventFilter(panel.focus_watcher)
     panel.address_edit.installEventFilter(panel)
 

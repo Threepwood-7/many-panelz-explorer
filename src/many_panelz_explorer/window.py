@@ -108,6 +108,15 @@ class ExplorerWindow(QMainWindow):
     replace_view_action: QAction
     close_tab_action: QAction
     reopen_closed_tab_action: QAction
+    new_tab_group_action: QAction
+    new_tab_group_from_current_tab_action: QAction
+    rename_tab_group_action: QAction
+    close_tab_group_action: QAction
+    next_tab_group_action: QAction
+    previous_tab_group_action: QAction
+    move_current_tab_to_group_action: QAction
+    move_current_tab_to_new_group_action: QAction
+    tab_groups_menu: QMenu
     close_panel_action: QAction
     close_window_action: QAction
     exit_action: QAction
@@ -367,6 +376,7 @@ class ExplorerWindow(QMainWindow):
     def update_pane_visuals(self) -> None:
         self.status_coordinator.update_pane_visuals()
         self.ui_composer.sync_active_panel_tab_position_actions()
+        self.ui_composer.sync_active_panel_tab_group_actions()
         self._refresh_context_menu()
 
     def _refresh_context_menu(self) -> None:

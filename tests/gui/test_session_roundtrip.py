@@ -62,6 +62,8 @@ def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
     source.panels_coordinator.set_active_panel(first_panel_id)
     source.right_horizontal_tab_position_action.trigger()
     source.panels_coordinator.new_tab_in_active_panel()
+    source.panels_coordinator.new_group_from_current_tab()
+    source.panels_coordinator.focus_previous_group()
     closed_path = str(source.panels_coordinator.active_panel().current_path())
     source.panels_coordinator.close_active_tab()
     source.panels_coordinator.split_active_panel(1)
@@ -86,6 +88,8 @@ def test_session_roundtrip(qtbot, tmp_path: Path) -> None:
     assert len(restored.recently_closed_tabs) == 1
     assert restored.recently_closed_tabs[0]["path"] == closed_path
     restored_first_panel = restored.panel_widgets[first_panel_id]
+    assert restored_first_panel.group_count() == 2
+    assert restored_first_panel.total_tab_count() == 2
     assert restored_first_panel.tab_position_mode == "right_horizontal"
     assert restored_first_panel.tabs.tabPosition() == QTabWidget.TabPosition.East
     assert (

@@ -14,6 +14,16 @@ class TabState(TypedDict):
     path: str
 
 
+class TabGroupState(TypedDict, total=False):
+    """Serialized state for one panel-local tab group."""
+
+    group_id: str
+    title: str
+    current_index: int
+    tabs: list[TabState]
+    column_widths: list[int]
+
+
 class ClosedTabState(TypedDict):
     """Serialized history entry for one recently closed tab."""
 
@@ -25,6 +35,8 @@ class PanelState(TypedDict, total=False):
     """Serialized state for one panel and its tabs."""
 
     panel_id: int
+    active_group_id: str
+    groups: list[TabGroupState]
     current_index: int
     tabs: list[TabState]
     column_widths: list[int]

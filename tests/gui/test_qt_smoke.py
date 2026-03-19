@@ -100,6 +100,25 @@ def test_shortcuts_and_menu_parity(qtbot, tmp_path: Path) -> None:
     assert "Save View" in file_labels
     assert "Restore View" in file_labels
     assert "Replace View" in file_labels
+    tab_groups_action = next(
+        (action for action in file_menu.actions() if action.text() == "Tab Groups"),
+        None,
+    )
+    assert tab_groups_action is not None
+    assert tab_groups_action.menu() is window.tab_groups_menu
+    tab_group_labels = [
+        action.text() for action in window.tab_groups_menu.actions() if action.text()
+    ]
+    assert tab_group_labels == [
+        "New Tab Group",
+        "New Group From Current Tab",
+        "Rename Current Group",
+        "Close Current Group",
+        "Next Group",
+        "Previous Group",
+        "Move Current Tab To Group...",
+        "Move Current Tab To New Group",
+    ]
 
     restore_action = next(
         action

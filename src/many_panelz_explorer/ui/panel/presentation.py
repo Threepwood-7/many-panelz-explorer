@@ -8,7 +8,6 @@ from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import QTabWidget
 from threep_commons.fs_paths import display_path_text
 
-from ...explorer_tab import ExplorerTab
 from ...panel_tab_positions import (
     TAB_POSITION_MODE_BOTTOM,
     TAB_POSITION_MODE_LEFT,
@@ -222,6 +221,8 @@ class PanelPresentationCoordinator:
         toolbar_widgets: list[QWidget] = [
             self.panel.refresh_btn,
             self.panel.root_combo,
+            self.panel.group_picker_combo,
+            self.panel.new_group_btn,
             self.panel.address_edit,
             *self.panel.navigation_buttons,
         ]
@@ -231,19 +232,13 @@ class PanelPresentationCoordinator:
             button.setFont(self.panel.navigation_font_value)
 
     def _apply_file_list_font(self) -> None:
-        for index in range(self.panel.tabs.count()):
-            widget = self.panel.tabs.widget(index)
-            if isinstance(widget, ExplorerTab):
-                widget.view.setFont(self.panel.file_list_font_value)
+        for tab in self.panel.iter_all_tabs():
+            tab.view.setFont(self.panel.file_list_font_value)
 
     def _apply_size_formatters_to_tabs(self) -> None:
-        for index in range(self.panel.tabs.count()):
-            widget = self.panel.tabs.widget(index)
-            if isinstance(widget, ExplorerTab):
-                widget.set_file_size_formatter(self.panel.file_list_size_formatter)
-                widget.set_properties_size_formatter(
-                    self.panel.properties_size_formatter
-                )
+        for tab in self.panel.iter_all_tabs():
+            tab.set_file_size_formatter(self.panel.file_list_size_formatter)
+            tab.set_properties_size_formatter(self.panel.properties_size_formatter)
 
     def _apply_visual_role(self) -> None:
         if self.panel.pane_role == "active":

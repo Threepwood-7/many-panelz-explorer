@@ -5,6 +5,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, cast
 
+from .panel_groups import (
+    DEFAULT_TAB_GROUP_ID,
+    DEFAULT_TAB_GROUP_TITLE,
+    normalize_tab_group_id,
+    normalize_tab_group_title,
+)
 from .panel_tab_positions import normalize_panel_tab_position_mode
 
 if TYPE_CHECKING:
@@ -13,6 +19,7 @@ if TYPE_CHECKING:
         ClosedTabState,
         PanelState,
         SavedViewState,
+        TabGroupState,
         TabsState,
         TabState,
         WindowTabsPayload,
@@ -174,6 +181,50 @@ def closed_tab_history_payload(raw: object) -> list[ClosedTabState]:
     return history
 
 
+def _coerce_widths(raw: object) -> list[int]:
+    """Normalize a persisted width sequence into positive integers."""
+
+    widths_raw = _list_payload(raw)
+    if widths_raw is None:
+        return []
+    widths: list[int] = []
+    for raw_width in widths_raw:
+        width = coerce_int(raw_width)
+        if width is not None:
+            widths.append(width)
+    return widths
+
+
+def tab_group_state_payload(raw: object) -> TabGroupState | None:
+    """Normalize a raw tab-group payload into the shared serialized shape."""
+
+    mapping = _mapping_payload(raw)
+    if mapping is None:
+        return None
+
+    tabs_raw = _list_payload(mapping.get("tabs"))
+    tabs: list[TabState] = []
+    if tabs_raw is not None:
+        for tab_raw in tabs_raw:
+            tab_state = tab_state_payload(tab_raw)
+            if tab_state is not None:
+                tabs.append(tab_state)
+
+    return {
+        "group_id": normalize_tab_group_id(
+            mapping.get("group_id"),
+            fallback=DEFAULT_TAB_GROUP_ID,
+        ),
+        "title": normalize_tab_group_title(
+            mapping.get("title"),
+            fallback=DEFAULT_TAB_GROUP_TITLE,
+        ),
+        "current_index": coerce_int(mapping.get("current_index", 0)) or 0,
+        "tabs": tabs,
+        "column_widths": _coerce_widths(mapping.get("column_widths")),
+    }
+
+
 def panel_state_payload(raw: object) -> PanelState | None:
     """Normalize a raw panel payload into the shared serialized state shape."""
 
@@ -187,27 +238,62 @@ def panel_state_payload(raw: object) -> PanelState | None:
     if panel_id is not None:
         panel_state["panel_id"] = panel_id
 
-    current_index = coerce_int(mapping.get("current_index"))
-    if current_index is not None:
-        panel_state["current_index"] = current_index
+    groups_raw = _list_payload(mapping.get("groups"))
+    groups: list[TabGroupState] = []
+    if groups_raw is not None:
+        seen_group_ids: set[str] = set()
+        for group_raw in groups_raw:
+            group_state = tab_group_state_payload(group_raw)
+            if group_state is None:
+                continue
+            group_id = normalize_tab_group_id(
+                group_state.get("group_id"),
+                fallback=DEFAULT_TAB_GROUP_ID,
+            )
+            if group_id in seen_group_ids:
+                continue
+            seen_group_ids.add(group_id)
+            groups.append(group_state)
 
-    tabs_raw = _list_payload(mapping.get("tabs"))
-    if tabs_raw is not None:
-        tabs: list[TabState] = []
-        for tab_raw in tabs_raw:
-            tab_state = tab_state_payload(tab_raw)
-            if tab_state is not None:
-                tabs.append(tab_state)
-        panel_state["tabs"] = tabs
+    if not groups:
+        legacy_tabs_raw = _list_payload(mapping.get("tabs"))
+        legacy_tabs: list[TabState] = []
+        if legacy_tabs_raw is not None:
+            for tab_raw in legacy_tabs_raw:
+                tab_state = tab_state_payload(tab_raw)
+                if tab_state is not None:
+                    legacy_tabs.append(tab_state)
+        groups = [
+            {
+                "group_id": DEFAULT_TAB_GROUP_ID,
+                "title": DEFAULT_TAB_GROUP_TITLE,
+                "current_index": coerce_int(mapping.get("current_index", 0)) or 0,
+                "tabs": legacy_tabs,
+                "column_widths": _coerce_widths(mapping.get("column_widths")),
+            }
+        ]
 
-    widths_raw = _list_payload(mapping.get("column_widths"))
-    if widths_raw is not None:
-        widths: list[int] = []
-        for raw_width in widths_raw:
-            width = coerce_int(raw_width)
-            if width is not None:
-                widths.append(width)
-        panel_state["column_widths"] = widths
+    panel_state["groups"] = groups
+    first_group_id = normalize_tab_group_id(
+        groups[0].get("group_id"),
+        fallback=DEFAULT_TAB_GROUP_ID,
+    )
+    requested_active_group_id = normalize_tab_group_id(
+        mapping.get("active_group_id"),
+        fallback=first_group_id,
+    )
+    active_group_ids = {
+        normalize_tab_group_id(
+            group.get("group_id"),
+            fallback=DEFAULT_TAB_GROUP_ID,
+        )
+        for group in groups
+    }
+    panel_state["active_group_id"] = (
+        requested_active_group_id
+        if requested_active_group_id in active_group_ids
+        else first_group_id
+    )
 
     panel_state["tab_position_mode"] = normalize_panel_tab_position_mode(
         mapping.get("tab_position_mode", "default")

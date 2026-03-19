@@ -96,6 +96,58 @@ class WindowUiComposer:
             self.window.panels_coordinator.reopen_last_closed_tab
         )
 
+        self.window.new_tab_group_action = QAction("New Tab Group", self.window)
+        self.window.new_tab_group_action.triggered.connect(
+            self.window.panels_coordinator.new_group_in_active_panel
+        )
+
+        self.window.new_tab_group_from_current_tab_action = QAction(
+            "New Group From Current Tab",
+            self.window,
+        )
+        self.window.new_tab_group_from_current_tab_action.triggered.connect(
+            self.window.panels_coordinator.new_group_from_current_tab
+        )
+
+        self.window.rename_tab_group_action = QAction(
+            "Rename Current Group",
+            self.window,
+        )
+        self.window.rename_tab_group_action.triggered.connect(
+            self.window.panels_coordinator.rename_active_group
+        )
+
+        self.window.close_tab_group_action = QAction("Close Current Group", self.window)
+        self.window.close_tab_group_action.triggered.connect(
+            self.window.panels_coordinator.close_active_group
+        )
+
+        self.window.next_tab_group_action = QAction("Next Group", self.window)
+        self.window.next_tab_group_action.triggered.connect(
+            self.window.panels_coordinator.focus_next_group
+        )
+
+        self.window.previous_tab_group_action = QAction("Previous Group", self.window)
+        self.window.previous_tab_group_action.triggered.connect(
+            self.window.panels_coordinator.focus_previous_group
+        )
+
+        self.window.move_current_tab_to_group_action = QAction(
+            "Move Current Tab To Group...",
+            self.window,
+        )
+        self.window.move_current_tab_to_group_action.triggered.connect(
+            self.window.panels_coordinator.move_current_tab_to_group
+        )
+
+        self.window.move_current_tab_to_new_group_action = QAction(
+            "Move Current Tab To New Group",
+            self.window,
+        )
+        self.window.move_current_tab_to_new_group_action.triggered.connect(
+            self.window.panels_coordinator.move_current_tab_to_new_group
+        )
+
         self.window.close_panel_action = QAction("Close Pane&l", self.window)
         self.window.close_panel_action.setShortcut(QKeySequence("Ctrl+Shift+W"))
         self.window.close_panel_action.triggered.connect(
@@ -524,6 +576,24 @@ class WindowUiComposer:
         file_menu.addAction(self.window.new_horizontal_panel_action)
         file_menu.addAction(self.window.clone_vertical_panel_action)
         file_menu.addAction(self.window.clone_horizontal_panel_action)
+        self.window.tab_groups_menu = QMenu("Tab Groups", self.window)
+        self.window.tab_groups_menu.addAction(self.window.new_tab_group_action)
+        self.window.tab_groups_menu.addAction(
+            self.window.new_tab_group_from_current_tab_action
+        )
+        self.window.tab_groups_menu.addAction(self.window.rename_tab_group_action)
+        self.window.tab_groups_menu.addAction(self.window.close_tab_group_action)
+        self.window.tab_groups_menu.addSeparator()
+        self.window.tab_groups_menu.addAction(self.window.next_tab_group_action)
+        self.window.tab_groups_menu.addAction(self.window.previous_tab_group_action)
+        self.window.tab_groups_menu.addSeparator()
+        self.window.tab_groups_menu.addAction(
+            self.window.move_current_tab_to_group_action
+        )
+        self.window.tab_groups_menu.addAction(
+            self.window.move_current_tab_to_new_group_action
+        )
+        file_menu.addMenu(self.window.tab_groups_menu)
         file_menu.addSeparator()
         file_menu.addAction(self.window.copy_to_target_action)
         file_menu.addAction(self.window.copy_to_target_configure_action)
@@ -613,6 +683,14 @@ class WindowUiComposer:
                 self.window.replace_view_action,
                 self.window.close_tab_action,
                 self.window.reopen_closed_tab_action,
+                self.window.new_tab_group_action,
+                self.window.new_tab_group_from_current_tab_action,
+                self.window.rename_tab_group_action,
+                self.window.close_tab_group_action,
+                self.window.next_tab_group_action,
+                self.window.previous_tab_group_action,
+                self.window.move_current_tab_to_group_action,
+                self.window.move_current_tab_to_new_group_action,
                 self.window.close_panel_action,
                 self.window.close_window_action,
                 self.window.exit_action,
@@ -723,6 +801,29 @@ class WindowUiComposer:
             self.window.right_horizontal_tab_position_action.setChecked(
                 mode == TAB_POSITION_MODE_RIGHT_HORIZONTAL
             )
+
+    def sync_active_panel_tab_group_actions(self) -> None:
+        """Refresh enabled state for the active-panel tab-group actions."""
+
+        panel = self.window.panels_coordinator.active_panel()
+        enabled = panel is not None
+        has_current_tab = enabled and panel.current_tab() is not None
+        has_multiple_groups = enabled and panel.group_count() > 1
+        has_move_target = (
+            enabled and bool(panel.ordered_group_choices(include_active=False))
+        )
+
+        self.window.tab_groups_menu.menuAction().setEnabled(enabled)
+        self.window.new_tab_group_action.setEnabled(enabled)
+        self.window.new_tab_group_from_current_tab_action.setEnabled(has_current_tab)
+        self.window.rename_tab_group_action.setEnabled(enabled)
+        self.window.close_tab_group_action.setEnabled(has_multiple_groups)
+        self.window.next_tab_group_action.setEnabled(has_multiple_groups)
+        self.window.previous_tab_group_action.setEnabled(has_multiple_groups)
+        self.window.move_current_tab_to_group_action.setEnabled(
+            has_current_tab and has_move_target
+        )
+        self.window.move_current_tab_to_new_group_action.setEnabled(has_current_tab)
 
     def _populate_restore_view_menu(self) -> None:
         self.window.views_coordinator.populate_restore_view_menu(

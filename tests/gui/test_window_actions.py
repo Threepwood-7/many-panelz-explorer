@@ -516,9 +516,13 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
     window.panels_coordinator.new_tab_in_active_panel()
     source_panel = window.panels_coordinator.active_panel()
     assert source_panel is not None
+    window.new_tab_group_action.trigger()
     window.left_horizontal_tab_position_action.trigger()
     source_panel.tabs.setCurrentIndex(0)
     source_tab_count = source_panel.tab_count()
+    source_total_tab_count = source_panel.total_tab_count()
+    source_group_count = source_panel.group_count()
+    source_active_group_id = source_panel.active_group_id
     source_current_index = source_panel.tabs.currentIndex()
 
     window.clone_vertical_panel_action.trigger()
@@ -526,6 +530,9 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
     cloned_panel_vertical = window.panels_coordinator.active_panel()
     assert cloned_panel_vertical is not None
     assert cloned_panel_vertical.tab_count() == source_tab_count
+    assert cloned_panel_vertical.total_tab_count() == source_total_tab_count
+    assert cloned_panel_vertical.group_count() == source_group_count
+    assert cloned_panel_vertical.active_group_id == source_active_group_id
     assert cloned_panel_vertical.tabs.currentIndex() == source_current_index
     assert cloned_panel_vertical.tab_position_mode == "left_horizontal"
     assert cloned_panel_vertical.tabs.tabPosition() == QTabWidget.TabPosition.West
@@ -539,6 +546,9 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
     cloned_panel_horizontal = window.panels_coordinator.active_panel()
     assert cloned_panel_horizontal is not None
     assert cloned_panel_horizontal.tab_count() == source_tab_count
+    assert cloned_panel_horizontal.total_tab_count() == source_total_tab_count
+    assert cloned_panel_horizontal.group_count() == source_group_count
+    assert cloned_panel_horizontal.active_group_id == source_active_group_id
     assert cloned_panel_horizontal.tabs.currentIndex() == source_current_index
     assert cloned_panel_horizontal.tab_position_mode == "left_horizontal"
     assert cloned_panel_horizontal.tabs.tabPosition() == QTabWidget.TabPosition.West
@@ -546,6 +556,77 @@ def test_clone_current_panel_vertical_and_horizontal(qtbot, tmp_path: Path) -> N
         bool(cloned_panel_horizontal.tabs.tabBar().property("left_horizontal_mode"))
         is True
     )
+
+
+def test_tab_group_actions_move_switch_and_close(
+    qtbot,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = SettingsManager()
+    roots_provider = _test_roots_provider(tmp_path)
+    window = ExplorerWindow(
+        controller=_ControllerStub(),
+        settings=settings,
+        window_id="tab-group-actions",
+        roots_provider=roots_provider,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    panel = window.panels_coordinator.active_panel()
+    assert panel is not None
+    assert panel.group_count() == 1
+    assert panel.group_picker_combo.isVisible() is False
+    assert window.new_tab_group_from_current_tab_action.isEnabled() is True
+    assert window.move_current_tab_to_group_action.isEnabled() is False
+
+    window.new_tab_group_action.trigger()
+    assert panel.group_count() == 2
+    assert panel.group_picker_combo.isVisible() is True
+    assert panel.active_group_title == "Group 1"
+    assert panel.tab_count() == 1
+    assert panel.total_tab_count() == 2
+    assert window.close_tab_group_action.isEnabled() is True
+    assert window.move_current_tab_to_group_action.isEnabled() is True
+
+    monkeypatch.setattr(
+        QInputDialog,
+        "getText",
+        lambda *_a, **_k: ("Pinned", True),
+    )
+    window.rename_tab_group_action.trigger()
+    assert panel.active_group_title == "Pinned"
+
+    monkeypatch.setattr(
+        QInputDialog,
+        "getItem",
+        lambda *_a, **_k: ("Main", True),
+    )
+    window.move_current_tab_to_group_action.trigger()
+    assert panel.active_group_title == "Main"
+    assert panel.tab_count() == 2
+    assert panel.total_tab_count() == 2
+    assert panel.group_count() == 1
+    assert panel.group_picker_combo.isVisible() is False
+
+    window.move_current_tab_to_new_group_action.trigger()
+    assert panel.group_count() == 2
+    assert panel.active_group_title == "Group 1"
+    assert panel.tab_count() == 1
+    assert panel.total_tab_count() == 2
+
+    window.previous_tab_group_action.trigger()
+    assert panel.active_group_title == "Main"
+    window.next_tab_group_action.trigger()
+    assert panel.active_group_title == "Group 1"
+
+    window.close_tab_group_action.trigger()
+    assert panel.group_count() == 1
+    assert panel.active_group_title == "Main"
+    assert panel.tab_count() == 1
+    assert panel.total_tab_count() == 1
+    assert panel.group_picker_combo.isVisible() is False
 
 
 def test_set_on_top_direct_call_does_not_emit_toggled(qtbot, tmp_path: Path) -> None:

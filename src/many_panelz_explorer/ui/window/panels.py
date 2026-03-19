@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QInputDialog
 
 from .layout import WindowLayoutCoordinator
 from .panel_columns import WindowPanelColumnSyncCoordinator
@@ -52,7 +53,9 @@ def window_default_close_warning(window: ExplorerWindow) -> bool:
     if window.active_panel_id is None:
         return False
     panel = window.panel_widgets.get(window.active_panel_id)
-    return panel is not None and panel.tab_count() > 1
+    return panel is not None and (
+        panel.total_tab_count() > 1 or panel.group_count() > 1
+    )
 
 
 def _activate_panel_and_focus(
@@ -119,6 +122,101 @@ class WindowPanelsCoordinator:
         if panel is None:
             return
         panel.add_tab(self._resolved_seed_path(panel.current_path()))
+
+    def new_group_in_active_panel(self) -> None:
+        """Create a new tab group in the active panel."""
+
+        panel = self.active_panel()
+        if panel is None:
+            return
+        panel.create_group(
+            seed_paths=[self._resolved_seed_path(panel.current_path())],
+            activate=True,
+        )
+
+    def new_group_from_current_tab(self) -> None:
+        """Create a new tab group seeded from the current tab."""
+
+        panel = self.active_panel()
+        if panel is None:
+            return
+        panel.clone_current_tab_to_new_group()
+
+    def rename_active_group(self) -> None:
+        """Prompt for a new title for the active tab group."""
+
+        panel = self.active_panel()
+        if panel is None:
+            return
+        title, accepted = QInputDialog.getText(
+            self.window,
+            "Rename Tab Group",
+            "Group name:",
+            text=panel.active_group_title,
+        )
+        if not accepted:
+            return
+        panel.rename_group(panel.active_group_id, title)
+
+    def close_active_group(self) -> None:
+        """Close the active tab group when another group remains."""
+
+        panel = self.active_panel()
+        if panel is None:
+            return
+        panel.close_group(panel.active_group_id)
+
+    def focus_next_group(self) -> None:
+        """Move focus to the next tab group in the active panel."""
+
+        panel = self.active_panel()
+        if panel is not None:
+            panel.focus_relative_group(1)
+
+    def focus_previous_group(self) -> None:
+        """Move focus to the previous tab group in the active panel."""
+
+        panel = self.active_panel()
+        if panel is not None:
+            panel.focus_relative_group(-1)
+
+    def move_current_tab_to_group(self) -> None:
+        """Prompt for a target tab group and move the current tab there."""
+
+        panel = self.active_panel()
+        if panel is None:
+            return
+
+        choices = panel.ordered_group_choices(include_active=False)
+        if not choices:
+            return
+        labels = self._group_choice_labels(choices)
+        label_to_group_id = {
+            label: group_id
+            for label, (group_id, _title) in zip(labels, choices, strict=True)
+        }
+        selected_label, accepted = QInputDialog.getItem(
+            self.window,
+            "Move Tab To Group",
+            "Target group:",
+            labels,
+            0,
+            False,
+        )
+        if not accepted:
+            return
+        target_group_id = label_to_group_id.get(selected_label)
+        if target_group_id is None:
+            return
+        panel.move_current_tab_to_group(target_group_id)
+
+    def move_current_tab_to_new_group(self) -> None:
+        """Move the current tab into a newly created tab group."""
+
+        panel = self.active_panel()
+        if panel is None:
+            return
+        panel.move_current_tab_to_new_group()
 
     def clone_active_panel(self, orientation: Qt.Orientation) -> None:
         """Clone the active panel into a new split."""
@@ -506,3 +604,21 @@ class WindowPanelsCoordinator:
         self.window.recently_closed_tabs = [entry, *deduplicated][
             : self.CLOSED_TAB_HISTORY_LIMIT
         ]
+
+    def _group_choice_labels(
+        self,
+        choices: list[tuple[str, str]],
+    ) -> list[str]:
+        """Build stable prompt labels for a set of tab-group choices."""
+
+        title_counts: dict[str, int] = {}
+        for _group_id, title in choices:
+            title_counts[title] = title_counts.get(title, 0) + 1
+
+        labels: list[str] = []
+        for group_id, title in choices:
+            if title_counts[title] > 1:
+                labels.append(f"{title} [{group_id[:6]}]")
+            else:
+                labels.append(title)
+        return labels

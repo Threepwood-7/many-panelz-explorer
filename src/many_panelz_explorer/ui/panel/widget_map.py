@@ -113,6 +113,9 @@ class PanelWidgetMapCoordinator:
         widgets: list[QWidget] = [
             self.panel.tabs,
             self.panel.tabs.tabBar(),
+            self.panel.group_picker_combo,
+            self.panel.new_group_btn,
+            self.panel.root_combo,
             self.panel.address_edit,
             self.panel.refresh_btn,
             self.panel.back_btn,
