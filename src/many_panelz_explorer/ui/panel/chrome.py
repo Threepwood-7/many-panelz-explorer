@@ -92,12 +92,18 @@ class _PanelTabBar(QTabBar):
             self.initStyleOption(option, index)
             if not option.rect.isValid() or not option.rect.intersects(event.rect()):
                 continue
-            horizontal_option = self._horizontal_side_option(option)
+            horizontal_option = self._horizontal_side_option(option, index)
+            self._sync_horizontal_side_palette(horizontal_option)
+            painter.save()
             painter.drawControl(
                 QStyle.ControlElement.CE_TabBarTabShape,
                 horizontal_option,
             )
-            self._paint_horizontal_label(painter, horizontal_option, index)
+            painter.drawControl(
+                QStyle.ControlElement.CE_TabBarTabLabel,
+                horizontal_option,
+            )
+            painter.restore()
 
     def _use_horizontal_label_mode(self) -> bool:
         """Return whether the tab bar should paint side tabs horizontally."""
@@ -114,56 +120,15 @@ class _PanelTabBar(QTabBar):
             }
         return False
 
-    def _paint_horizontal_label(
+    def _horizontal_side_option(
         self,
-        painter: QStylePainter,
         option: QStyleOptionTab,
         index: int,
-    ) -> None:
-        """Paint one horizontal side-tab label without waiting for Qt relayout."""
-
-        text_rect = option.rect.adjusted(8, 0, -8, 0)
-        for button_position in (
-            QTabBar.ButtonPosition.LeftSide,
-            QTabBar.ButtonPosition.RightSide,
-        ):
-            button = self.tabButton(index, button_position)
-            is_visible = getattr(button, "isVisible", None)
-            if not callable(is_visible) or not is_visible():
-                continue
-            button_rect = button.geometry()
-            if button_position == QTabBar.ButtonPosition.LeftSide:
-                left = max(text_rect.left(), button_rect.right() + 4)
-                text_rect.setLeft(left)
-            else:
-                right = min(text_rect.right(), button_rect.left() - 4)
-                text_rect.setRight(right)
-        if not text_rect.isValid():
-            return
-
-        elided_text = painter.fontMetrics().elidedText(
-            self.tabText(index),
-            self.elideMode(),
-            text_rect.width(),
-        )
-        text_role = (
-            QPalette.ColorRole.HighlightedText
-            if option.state & QStyle.StateFlag.State_Selected
-            else QPalette.ColorRole.WindowText
-        )
-        painter.save()
-        painter.setPen(option.palette.color(text_role))
-        painter.drawText(
-            text_rect,
-            Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter,
-            elided_text,
-        )
-        painter.restore()
-
-    def _horizontal_side_option(self, option: QStyleOptionTab) -> QStyleOptionTab:
+    ) -> QStyleOptionTab:
         """Return a north-shaped style option for horizontal side-tab painting."""
 
         horizontal_option = QStyleOptionTab(option)
+        horizontal_option.text = self.tabText(index)
         if horizontal_option.shape == QTabBar.Shape.RoundedWest:
             horizontal_option.shape = QTabBar.Shape.RoundedNorth
         elif horizontal_option.shape == QTabBar.Shape.TriangularWest:
@@ -173,6 +138,17 @@ class _PanelTabBar(QTabBar):
         elif horizontal_option.shape == QTabBar.Shape.TriangularEast:
             horizontal_option.shape = QTabBar.Shape.TriangularNorth
         return horizontal_option
+
+    def _sync_horizontal_side_palette(self, option: QStyleOptionTab) -> None:
+        """Keep selected horizontal side-tab text readable on native light fills."""
+
+        if not option.state & QStyle.StateFlag.State_Selected:
+            return
+        selected_text_color = option.palette.color(QPalette.ColorRole.WindowText)
+        option.palette.setColor(
+            QPalette.ColorRole.HighlightedText,
+            selected_text_color,
+        )
 
     def _reposition_horizontal_side_tab_buttons(self) -> None:
         """Move close buttons to the trailing edge of horizontal side tabs."""

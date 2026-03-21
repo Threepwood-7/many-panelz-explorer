@@ -9,8 +9,9 @@ pytest.importorskip("PySide6")
 pytest.importorskip("pytestqt")
 
 from PySide6.QtCore import QPoint, Qt
+from PySide6.QtGui import QPixmap
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QTabBar
+from PySide6.QtWidgets import QStyle, QStyleOptionTab, QTabBar
 from threep_commons.qt.widget_identity import object_name_for_id
 
 from many_panelz_explorer import widget_naming
@@ -40,6 +41,37 @@ def _action_for_root(menu, target: Path):
         if _norm(action.toolTip()) == _norm(target):
             return action
     raise AssertionError(f"menu root not found: {target}")
+
+
+def _horizontal_side_text_dark_pixel_count(tab_bar: QTabBar, index: int) -> int:
+    """Return the number of dark pixels inside one horizontal side-tab label."""
+
+    option = QStyleOptionTab()
+    tab_bar.initStyleOption(option, index)
+    option.text = tab_bar.tabText(index)
+    if option.shape == QTabBar.Shape.RoundedWest:
+        option.shape = QTabBar.Shape.RoundedNorth
+    elif option.shape == QTabBar.Shape.TriangularWest:
+        option.shape = QTabBar.Shape.TriangularNorth
+    elif option.shape == QTabBar.Shape.RoundedEast:
+        option.shape = QTabBar.Shape.RoundedNorth
+    elif option.shape == QTabBar.Shape.TriangularEast:
+        option.shape = QTabBar.Shape.TriangularNorth
+    text_rect = tab_bar.style().subElementRect(
+        QStyle.SubElement.SE_TabBarTabText,
+        option,
+        tab_bar,
+    )
+    text_rect = text_rect.adjusted(2, 2, -2, -2)
+    pixmap = QPixmap(tab_bar.size())
+    tab_bar.render(pixmap)
+    image = pixmap.toImage()
+    dark_pixels = 0
+    for x_pos in range(text_rect.left(), text_rect.right() + 1):
+        for y_pos in range(text_rect.top(), text_rect.bottom() + 1):
+            if image.pixelColor(x_pos, y_pos).value() < 200:
+                dark_pixels += 1
+    return dark_pixels
 
 
 def test_panel_toolbar_controls_active_tab_navigation(qtbot, tmp_path: Path) -> None:
@@ -448,6 +480,10 @@ def test_horizontal_side_tabs_render_correctly_without_tab_switch(
             - 6
             for index in range(tab_bar.count())
         )
+    )
+    current_index = tab_bar.currentIndex()
+    qtbot.waitUntil(
+        lambda: _horizontal_side_text_dark_pixel_count(tab_bar, current_index) > 40
     )
 
 
