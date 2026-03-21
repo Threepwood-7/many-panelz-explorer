@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier.
-_src_path: "c:/prj/aidev/py/aatemplate"
+_src_path: "_py_template"
 _commit: "v1.7.4-1-gf6a9b9e"
 project_name: "many-panelz-explorer"
 project_kind: "qt_app"
@@ -16,4 +16,3 @@ runtime_dependencies:
   - "shiboken6>=6.10.2"
 
   - "send2trash>=2.1.0"
-
