@@ -10,6 +10,7 @@ pytest.importorskip("pytestqt")
 
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
+from PySide6.QtWidgets import QTabBar
 from threep_commons.qt.widget_identity import object_name_for_id
 
 from many_panelz_explorer import widget_naming
@@ -389,6 +390,65 @@ def test_blank_tab_bar_double_click_duplicates_active_tab(
     assert panel.tab_count() == 2
     assert panel.current_tab() is not None
     assert panel.current_tab().navigation.path == root
+
+
+@pytest.mark.parametrize(
+    "tab_position_mode",
+    ["left_horizontal", "right_horizontal"],
+)
+def test_horizontal_side_tabs_render_correctly_without_tab_switch(
+    qtbot,
+    tmp_path: Path,
+    tab_position_mode: str,
+) -> None:
+    root = tmp_path / "root"
+    first = root / "H06T90"
+    second = root / "H16T00"
+    first.mkdir(parents=True)
+    second.mkdir(parents=True)
+
+    panel = PanelWidget(
+        panel_id=1,
+        default_path=root,
+        show_hidden=True,
+        roots_provider=lambda _current: [root],
+    )
+    qtbot.addWidget(panel)
+    panel.resize(900, 300)
+    panel.show()
+    panel.add_tab(first)
+    panel.add_tab(second)
+
+    panel.presentation_coordinator.apply_tab_position(
+        tab_position_mode=tab_position_mode,
+        default_tab_position="top",
+    )
+
+    tab_bar = panel.tabs.tabBar()
+    qtbot.waitUntil(
+        lambda: all(
+            tab_bar.tabRect(index).width() > tab_bar.tabRect(index).height()
+            for index in range(tab_bar.count())
+        )
+    )
+
+    assert all(
+        tab_bar.tabSizeHint(index).width() > tab_bar.tabSizeHint(index).height()
+        for index in range(tab_bar.count())
+    )
+    assert all(
+        tab_bar.tabRect(index).width() > tab_bar.tabRect(index).height()
+        for index in range(tab_bar.count())
+    )
+    qtbot.waitUntil(
+        lambda: all(
+            tab_bar.tabButton(index, QTabBar.ButtonPosition.RightSide).x()
+            >= tab_bar.tabRect(index).right()
+            - tab_bar.tabButton(index, QTabBar.ButtonPosition.RightSide).width()
+            - 6
+            for index in range(tab_bar.count())
+        )
+    )
 
 
 def test_toolbar_visibility_flags_are_independent(qtbot, tmp_path: Path) -> None:

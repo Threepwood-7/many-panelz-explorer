@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, override
 
-from PySide6.QtCore import QRect, QSize, QStringListModel, Qt, QTimer
-from PySide6.QtGui import QPaintEvent, QShortcut
+from PySide6.QtCore import QSize, QStringListModel, Qt, QTimer
+from PySide6.QtGui import QPaintEvent, QPalette, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
     QCompleter,
@@ -56,6 +56,10 @@ class _PanelTabBar(QTabBar):
             return
         self._tab_render_mode = normalized_mode
         self._sync_render_mode_properties()
+        # Reapply the current elide mode so Qt recomputes side-tab geometry
+        # immediately instead of waiting for a later focus or tab change.
+        self.setElideMode(self.elideMode())
+        QTimer.singleShot(0, self._reposition_horizontal_side_tab_buttons)
         self.updateGeometry()
         self.update()
 
@@ -71,21 +75,7 @@ class _PanelTabBar(QTabBar):
         size = super().tabSizeHint(index)
         if not self._use_horizontal_label_mode():
             return size
-
-        option = self._horizontal_label_option(index)
-        if option is None:
-            return size
-        horizontal_size = self.style().sizeFromContents(
-            QStyle.ContentsType.CT_TabBarTab,
-            option,
-            size,
-            self,
-        )
-        if horizontal_size.isValid():
-            width = max(size.width(), horizontal_size.height())
-            height = max(size.height(), horizontal_size.width())
-            return QSize(width, height)
-        return size
+        return QSize(size.height(), size.width())
 
     @override
     def paintEvent(self, event: QPaintEvent) -> None:
@@ -95,18 +85,19 @@ class _PanelTabBar(QTabBar):
             super().paintEvent(event)
             return
 
+        self._reposition_horizontal_side_tab_buttons()
         painter = QStylePainter(self)
         for index in range(self.count()):
             option = QStyleOptionTab()
             self.initStyleOption(option, index)
             if not option.rect.isValid() or not option.rect.intersects(event.rect()):
                 continue
-            painter.drawControl(QStyle.ControlElement.CE_TabBarTabShape, option)
-            label_option = self._horizontal_label_option(index)
-            if label_option is None:
-                painter.drawControl(QStyle.ControlElement.CE_TabBarTabLabel, option)
-                continue
-            painter.drawControl(QStyle.ControlElement.CE_TabBarTabLabel, label_option)
+            horizontal_option = self._horizontal_side_option(option)
+            painter.drawControl(
+                QStyle.ControlElement.CE_TabBarTabShape,
+                horizontal_option,
+            )
+            self._paint_horizontal_label(painter, horizontal_option, index)
 
     def _use_horizontal_label_mode(self) -> bool:
         """Return whether the tab bar should paint side tabs horizontally."""
@@ -123,13 +114,54 @@ class _PanelTabBar(QTabBar):
             }
         return False
 
-    def _horizontal_label_option(self, index: int) -> QStyleOptionTab | None:
-        """Build a style option that draws the label horizontally."""
+    def _paint_horizontal_label(
+        self,
+        painter: QStylePainter,
+        option: QStyleOptionTab,
+        index: int,
+    ) -> None:
+        """Paint one horizontal side-tab label without waiting for Qt relayout."""
 
-        option = QStyleOptionTab()
-        self.initStyleOption(option, index)
-        if not option.rect.isValid():
-            return None
+        text_rect = option.rect.adjusted(8, 0, -8, 0)
+        for button_position in (
+            QTabBar.ButtonPosition.LeftSide,
+            QTabBar.ButtonPosition.RightSide,
+        ):
+            button = self.tabButton(index, button_position)
+            is_visible = getattr(button, "isVisible", None)
+            if not callable(is_visible) or not is_visible():
+                continue
+            button_rect = button.geometry()
+            if button_position == QTabBar.ButtonPosition.LeftSide:
+                left = max(text_rect.left(), button_rect.right() + 4)
+                text_rect.setLeft(left)
+            else:
+                right = min(text_rect.right(), button_rect.left() - 4)
+                text_rect.setRight(right)
+        if not text_rect.isValid():
+            return
+
+        elided_text = painter.fontMetrics().elidedText(
+            self.tabText(index),
+            self.elideMode(),
+            text_rect.width(),
+        )
+        text_role = (
+            QPalette.ColorRole.HighlightedText
+            if option.state & QStyle.StateFlag.State_Selected
+            else QPalette.ColorRole.WindowText
+        )
+        painter.save()
+        painter.setPen(option.palette.color(text_role))
+        painter.drawText(
+            text_rect,
+            Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter,
+            elided_text,
+        )
+        painter.restore()
+
+    def _horizontal_side_option(self, option: QStyleOptionTab) -> QStyleOptionTab:
+        """Return a north-shaped style option for horizontal side-tab painting."""
 
         horizontal_option = QStyleOptionTab(option)
         if horizontal_option.shape == QTabBar.Shape.RoundedWest:
@@ -140,29 +172,33 @@ class _PanelTabBar(QTabBar):
             horizontal_option.shape = QTabBar.Shape.RoundedNorth
         elif horizontal_option.shape == QTabBar.Shape.TriangularEast:
             horizontal_option.shape = QTabBar.Shape.TriangularNorth
-        else:
-            return horizontal_option
-
-        horizontal_size = self.style().sizeFromContents(
-            QStyle.ContentsType.CT_TabBarTab,
-            horizontal_option,
-            option.rect.size(),
-            self,
-        )
-        if horizontal_size.isValid():
-            horizontal_option.rect = QRect(
-                option.rect.left(),
-                option.rect.top(),
-                option.rect.height(),
-                option.rect.width(),
-            )
-            horizontal_option.rect = QStyle.alignedRect(
-                self.layoutDirection(),
-                Qt.AlignmentFlag.AlignCenter,
-                horizontal_size,
-                horizontal_option.rect,
-            )
         return horizontal_option
+
+    def _reposition_horizontal_side_tab_buttons(self) -> None:
+        """Move close buttons to the trailing edge of horizontal side tabs."""
+
+        for index in range(self.count()):
+            tab_rect = self.tabRect(index)
+            if not tab_rect.isValid():
+                continue
+            for button_position in (
+                QTabBar.ButtonPosition.LeftSide,
+                QTabBar.ButtonPosition.RightSide,
+            ):
+                button = self.tabButton(index, button_position)
+                is_visible = getattr(button, "isVisible", None)
+                if not callable(is_visible) or not is_visible():
+                    continue
+                button_rect = button.geometry()
+                button_y = tab_rect.top() + max(
+                    0,
+                    (tab_rect.height() - button_rect.height()) // 2,
+                )
+                if button_position == QTabBar.ButtonPosition.LeftSide:
+                    button_x = tab_rect.left() + 4
+                else:
+                    button_x = tab_rect.right() - button_rect.width() - 4
+                button.move(button_x, button_y)
 
     def _sync_render_mode_properties(self) -> None:
         """Mirror the current render mode into stable widget properties."""
